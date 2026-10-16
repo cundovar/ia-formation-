@@ -1,0 +1,63 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Créer un compte{% endblock %}
+
+{% block body %}
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-header">
+            <h1>Créer un compte</h1>
+            <p class="subtitle">Un compte est facultatif : il sert à retrouver les cours et QCM que votre formateur prépare pour vous.</p>
+        </div>
+
+        {{ form_start(registrationForm, {'attr': {'class': 'login-form', 'novalidate': true}}) }}
+            <div class="form-group">
+                {{ form_label(registrationForm.email) }}
+                {{ form_widget(registrationForm.email, {'attr': {'autocomplete': 'email', 'aria-describedby': 'email-help'}}) }}
+                <p class="form-help" id="email-help">Elle sert à vous connecter. Elle n'est jamais affichée sur le site.</p>
+                <div class="form-errors">{{ form_errors(registrationForm.email) }}</div>
+            </div>
+
+            <div class="form-group">
+                {{ form_label(registrationForm.username) }}
+                {{ form_widget(registrationForm.username, {'attr': {'autocomplete': 'nickname', 'aria-describedby': 'username-help'}}) }}
+                <p class="form-help" id="username-help">C'est le nom affiché sur le site, et celui à donner à votre formateur. Sans espace ; n'utilisez pas votre nom complet.</p>
+                <div class="form-errors">{{ form_errors(registrationForm.username) }}</div>
+            </div>
+
+            <div class="form-group">
+                {{ form_label(registrationForm.plainPassword.first) }}
+                {{ form_widget(registrationForm.plainPassword.first, {'attr': {'aria-describedby': 'password-help'}}) }}
+                <p class="form-help" id="password-help">Au moins 8 caractères.</p>
+                <div class="form-errors">{{ form_errors(registrationForm.plainPassword.first) }}{{ form_errors(registrationForm.plainPassword) }}</div>
+            </div>
+
+            <div class="form-group">
+                {{ form_label(registrationForm.plainPassword.second) }}
+                {{ form_widget(registrationForm.plainPassword.second) }}
+            </div>
+
+            <p class="terms-text">
+                Lire les <a href="{{ path('app_terms') }}" target="_blank">conditions d'utilisation</a>
+                et la <a href="{{ path('app_privacy') }}" target="_blank">politique de confidentialité</a>.
+            </p>
+            <div class="form-check">
+                {{ form_widget(registrationForm.agreeTerms) }}
+                {{ form_label(registrationForm.agreeTerms) }}
+            </div>
+            <div class="form-errors">{{ form_errors(registrationForm.agreeTerms) }}</div>
+
+            <button type="submit" class="btn-login">Créer mon compte</button>
+        {{ form_end(registrationForm) }}
+
+        <div class="register-link">
+            <p>Déjà un compte ? <a href="{{ path('app_login') }}">Se connecter</a></p>
+            <p><a href="{{ path('spa_app') }}">Retour au site sans compte</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block stylesheets %}
+{{ include('security/_auth_styles.html.twig') }}
+{% endblock %}

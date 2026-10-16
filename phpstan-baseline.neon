@@ -1,0 +1,13 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to an undefined method App\\Entity\\ChoicesQCM\:\:isCorrect\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Controller/Api/QCMApiController.php
+
+		-
+			message: '#^Property App\\Controller\\SitemapController\:\:\$urlGenerator is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Controller/SitemapController.php

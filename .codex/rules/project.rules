@@ -1,0 +1,23 @@
+# Règles de commandes Codex inspirées de DevDoc et adaptées au nouveau dépôt.
+# Tester avec : codex execpolicy check --pretty --rules .codex/rules/project.rules -- <commande>
+
+prefix_rule(
+    pattern = ["git", ["commit", "push"]],
+    decision = "prompt",
+    justification = "Publication du travail seulement après accord explicite.",
+    match = ["git push origin main"],
+)
+
+prefix_rule(
+    pattern = ["docker", "compose", "down", ["-v", "--volumes"]],
+    decision = "forbidden",
+    justification = "Supprime les volumes de données.",
+    match = ["docker compose down -v"],
+)
+
+prefix_rule(
+    pattern = ["sudo", "rm"],
+    decision = "forbidden",
+    justification = "Suppression en root interdite.",
+    match = ["sudo rm -rf var"],
+)

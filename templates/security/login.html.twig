@@ -1,0 +1,92 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion{% endblock %}
+
+{% block body %}
+<div class="login-page">
+    <div class="login-container">
+        <!-- Header avec logo -->
+        <div class="login-header">
+      
+            <h1>Bienvenue !</h1>
+            <p class="subtitle">Connectez-vous pour retrouver vos cours et QCM personnalisés</p>
+        </div>
+
+        <!-- Messages d'alerte -->
+        {% if error %}
+            <div class="alert alert-danger">
+                <i class="icon-exclamation"></i>
+                <span>{{ error.messageKey|trans(error.messageData, 'security') }}</span>
+            </div>
+        {% endif %}
+
+        {% if app.user %}
+            <div class="alert alert-info">
+                <i class="icon-info"></i>
+                <span>
+                    Connecté en tant que <strong>{{ app.user.userIdentifier }}</strong>.
+                    <form method="post" action="{{ path('app_logout') }}" class="inline-form">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                        <button type="submit">Se déconnecter</button>
+                    </form>
+                </span>
+            </div>
+        {% endif %}
+
+        <!-- Formulaire de connexion -->
+        <form method="post" novalidate class="login-form">
+            <div class="form-group">
+                <label for="inputUsername">
+                    <i class="icon-user"></i>
+                    Adresse e-mail
+                </label>
+                <input 
+                    type="text" 
+                    id="inputUsername" 
+                    name="username" 
+                    value="{{ last_username }}" 
+                    placeholder="vous@exemple.fr" 
+                    autocomplete="email" 
+                    required 
+                    autofocus
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="inputPassword">
+                    <i class="icon-lock"></i>
+                    Mot de passe
+                </label>
+                <input 
+                    type="password" 
+                    id="inputPassword" 
+                    name="password" 
+                    placeholder="Votre mot de passe" 
+                    autocomplete="current-password" 
+                    required
+                >
+            </div>
+
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+            <div class="form-check">
+                <input type="checkbox" id="rememberMe" name="_remember_me">
+                <label for="rememberMe">Se souvenir de moi</label>
+            </div>
+
+            <button type="submit" class="btn-login">
+                Se connecter
+            </button>
+        </form>
+
+        <div class="register-link">
+            <p><a href="{{ path('app_forgot_password') }}">Mot de passe oublié ?</a></p>
+            <p>Pas encore de compte ? <a href="{{ path('app_register') }}">Créer un compte</a></p>
+            <p>Les cours publics restent accessibles sans compte : <a href="{{ path('spa_app') }}">retour au site</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block stylesheets %}
+{{ include('security/_auth_styles.html.twig') }}
+{% endblock %}

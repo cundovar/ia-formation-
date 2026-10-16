@@ -1,0 +1,18 @@
+
+
+nav{
+    min-width: 290px !important;
+}
+
+
+.scroll-gauche {
+    direction: rtl; /* met la scrollbar à gauche */
+    /* auto, pas scroll : une colonne fixe toujours « défilable » capte la molette et la page ne descend plus */
+    overflow-y: auto;
+
+    text-align: left; /* garde le texte aligné à gauche */
+  }
+  
+  .scroll-gauche > * {
+    direction: ltr; /* remet le contenu en lecture normale */
+  }

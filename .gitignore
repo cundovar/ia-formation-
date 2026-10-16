@@ -1,0 +1,41 @@
+# Secrets and machine-local configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Dependencies and generated output
+node_modules/
+vendor/
+dist/
+build/
+public/build/
+coverage/
+.cache/
+
+# Symfony
+/var/
+/public/bundles/
+/config/secrets/prod/prod.decrypt.private.php
+/phpunit.xml
+.phpunit.result.cache
+phpstan.neon
+
+# Frontend generated output (service worker and manifest are rebuilt by Vite)
+/front/storybook-static/
+/front/public/
+/public/spa/sw.js
+/public/spa/workbox-*.js
+/public/spa/manifest.webmanifest
+
+# Uploaded media (course captures are managed in the back-office)
+/public/uploads/
+
+# Local data and backups
+backups/
+mysql_data/
+*.sqlite
+*.sqlite3
+*.sql.gz

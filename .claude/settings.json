@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "ask": ["Bash(git commit *)", "Bash(git push *)"],
+    "deny": [
+      "Read(./.env)", "Read(./.env.*)",
+      "Read(./backups/**)", "Read(./mysql_data/**)",
+      "Bash(sudo rm *)", "Bash(docker compose down -v*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Write|Edit|NotebookEdit",
+      "hooks": [{
+        "type": "command",
+        "command": "bash \"$CLAUDE_PROJECT_DIR/.agents/hooks/protect-files.sh\"",
+        "timeout": 10
+      }]
+    }]
+  }
+}

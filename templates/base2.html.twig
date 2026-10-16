@@ -1,0 +1,91 @@
+{# Chemin PWA - Modifier cette valeur pour changer le préfixe partout #}
+{% set pwaPath = '/spa' %}
+
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="logout-csrf-token" content="{{ csrf_token('logout') }}">
+
+    {# SEO: Title #}
+    <title>{% block title %}{{ seo.title|default('Formation IA') }}{% endblock %}</title>
+
+    {# SEO: Meta Description #}
+    <meta name="description" content="{{ seo.metaDescription|default('Plateforme de formation et de cours en ligne') }}">
+
+    {# SEO: Meta Keywords #}
+    {% if seo.metaKeywords %}
+    <meta name="keywords" content="{{ seo.metaKeywords }}">
+    {% endif %}
+
+    {# SEO: Robots #}
+    {% if seo.noIndex or seo.noFollow %}
+    <meta name="robots" content="{% if seo.noIndex %}noindex{% else %}index{% endif %}, {% if seo.noFollow %}nofollow{% else %}follow{% endif %}">
+    {% endif %}
+
+    {# SEO: Canonical URL #}
+    {% if seo.canonicalUrl %}
+    <link rel="canonical" href="{{ seo.canonicalUrl }}">
+    {% endif %}
+
+    {# Open Graph #}
+    <meta property="og:title" content="{{ seo.ogTitle|default(seo.title|default('Formation IA')) }}">
+    <meta property="og:description" content="{{ seo.ogDescription|default(seo.metaDescription|default('Plateforme de formation')) }}">
+    <meta property="og:type" content="website">
+    {% if seo.ogImage %}
+    <meta property="og:image" content="{{ seo.ogImage }}">
+    {% endif %}
+
+    {# Twitter Card #}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ seo.ogTitle|default(seo.title|default('Formation IA')) }}">
+    <meta name="twitter:description" content="{{ seo.ogDescription|default(seo.metaDescription|default('Plateforme de formation')) }}">
+    {% if seo.ogImage %}
+    <meta name="twitter:image" content="{{ seo.ogImage }}">
+    {% endif %}
+
+    {# Structured Data JSON-LD #}
+    {% if seo.structuredData is defined and seo.structuredData %}
+    <script type="application/ld+json">
+{{ seo.structuredData|raw }}
+    </script>
+    {% endif %}
+
+{# En dev, Vite ne génère pas le manifest : on l'inclut seulement en prod pour éviter les 404 #}
+{% if app.environment == 'prod' %}
+<link rel="manifest" href="{{ pwaPath }}/manifest.webmanifest" />
+{% endif %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#42b983" />
+    <link rel="icon" href="{{ pwaPath }}/pwa.png">
+    <!-- Meta tags pour iOS et PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Formation IA">
+    
+    <!-- Icônes Apple -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ pwaPath }}/pwa1.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{ pwaPath }}/pwa.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{ pwaPath }}/pwa.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="{{ pwaPath }}/pwa.png">
+
+    <!-- Splash screen iOS -->
+    <link rel="apple-touch-startup-image" href="{{ pwaPath }}/pwa1.png">
+
+
+
+
+
+
+                                                                                                                                                                
+                                                                                                                                                    
+{{ vite_entry_link_tags('main') }}
+{{ vite_entry_script_tags('main') }}
+                                                                                                                                                 
+               
+  </head>
+  <body>
+    {% block body %}{% endblock %}
+  </body>
+</html>

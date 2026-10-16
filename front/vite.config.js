@@ -1,0 +1,260 @@
+/// <reference types="vitest/config" />
+// On importe la fonction qui permet de définir la config de Vite
+import { defineConfig } from 'vite';
+import vueDevTools from 'vite-plugin-vue-devtools'; // On importe le plugin Vite pour Vue.js
+import vue from '@vitejs/plugin-vue';
+
+// On importe un plugin qui facilite l'intégration avec Symfony
+import symfony from 'vite-plugin-symfony';
+
+// On importe le plugin qui gère le mode PWA (Progressive Web App)
+import { VitePWA } from 'vite-plugin-pwa';
+
+// On importe la fonction pour gérer des chemins (path) facilement
+import { resolve } from 'path';
+import { fileURLToPath, URL } from 'node:url';
+import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+
+// On exporte la configuration principale de Vizte
+import path from 'node:path';
+
+const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
+
+// More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
+
+// Chemin PWA - Modifier cette valeur pour changer le préfixe partout
+const PWA_PATH = '/spa';
+const BUILD_OUTPUT_DIR = process.env.BUILD_OUTPUT_DIR || 'public/build';
+const PWA_OUTPUT_DIR = process.env.PWA_OUTPUT_DIR || `public${PWA_PATH}`;
+
+// Détecte si on est dans le contexte Storybook
+const isStorybook = process.env.npm_lifecycle_script?.includes('storybook') || false;
+
+// vite-plugin-pwa écrit le manifest dans le dossier de sortie de Vite (public/build), pas dans
+// celui de la PWA. La page le déclare en /spa/manifest.webmanifest : sans ce déplacement,
+// Symfony répond par la page HTML de la SPA, Chrome juge le site non installable et
+// n'envoie jamais beforeinstallprompt (le bouton « Installer » reste alors sans effet).
+const deplacerManifestPwa = (buildDir, pwaDir, nomFichier) => ({
+  name: 'deplacer-manifest-pwa',
+  apply: 'build',
+  closeBundle() {
+    const source = resolve(dirname, buildDir, nomFichier);
+    if (!existsSync(source)) return;
+    mkdirSync(resolve(dirname, pwaDir), { recursive: true });
+    copyFileSync(source, resolve(dirname, pwaDir, nomFichier));
+    rmSync(source);
+  }
+});
+
+export default defineConfig(() => {
+  const viteDevOrigin = process.env.VITE_DEV_ORIGIN || 'http://localhost:8092';
+  const viteDevUrl = new URL(viteDevOrigin);
+
+  return {
+    // Toujours /build/ pour que Nginx proxifie correctement vers Vite
+    base: '/build/',
+    // Configuration des alias de chemins
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url))
+      }
+    },
+    // Liste des plugins utilisés par Vite
+    plugins: [
+      // N'active vueDevTools que si on n'est pas dans Storybook
+      !isStorybook && vueDevTools(),
+      vue(),
+      // Active le support de Vue.js dans Vite
+      !isStorybook && symfony({
+        // Le navigateur passe par Nginx, qui proxifie /build vers Vite.
+        originOverride: viteDevOrigin
+      }),
+      // Active l'intégration spéciale avec Symfony
+      !isStorybook && VitePWA({
+        // Configure le plugin PWA
+        registerType: 'autoUpdate',
+        // Le service worker se met à jour automatiquement
+        manifestFilename: 'manifest.webmanifest',
+        // Nom du fichier manifest généré
+        injectRegister: 'auto',
+        // Injection automatique du registre du service worker
+        outDir: PWA_OUTPUT_DIR,
+        // Où mettre le service worker et le manifest (dans le repo)
+        base: `${PWA_PATH}/`,
+        scope: `${PWA_PATH}/`,
+        // Enregistre /spa/sw.js avec la portée /spa/ : sans cela, le plugin reprend la base
+        // Vite (/build/) et demande /build/sw.js, qui n'existe pas
+        manifest: {
+          // Contenu du manifest PWA
+          name: 'Formation IA',
+          // Nom complet de l'application
+          short_name: 'Formation IA',
+          // Nom court (pour l'écran d'accueil)
+          start_url: `${PWA_PATH}/`,
+          // URL de démarrage quand l'app est lancée
+          scope: `${PWA_PATH}/`,
+          // Limite les pages où le PWA fonctionne
+          description: 'Formations gratuites et sans inscription pour apprendre à utiliser l\'IA ou former d\'autres personnes à l\'IA',
+          theme_color: '#3b82f6',
+          // Couleur du thème (barre de statut, etc)
+          background_color: '#ffffff',
+          // Couleur de fond au lancement
+          display: 'standalone',
+          // Affichage comme une vraie app (sans barre d'adresse)
+          lang: 'fr',
+          // Langue de l'application
+          icons: [
+          // Icônes de l'application
+          {
+            src: `${PWA_PATH}/pwa.png`,
+            // Chemin de l'icône 192x192
+            sizes: '192x192',
+            type: 'image/png',
+            // « any » seul : ces icônes n'ont pas la marge de sécurité qu'exige « maskable »
+            purpose: 'any'
+          }, {
+            src: `${PWA_PATH}/pwa1.png`,
+            // Chemin de l'icône 512x512
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
+          }],
+          screenshots: [
+          // Capture affichée par Chrome à l'installation : taille réelle du fichier (512 × 512),
+          // format étroit seulement (un format « wide » exige une image plus large que haute)
+          {
+            src: `${PWA_PATH}/screenshot.png`,
+            sizes: '512x512',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Accueil de Formation IA'
+          }]
+        },
+        workbox: {
+          // Configuration de Workbox pour gérer le cache
+          globDirectory: PWA_OUTPUT_DIR,
+          // Où chercher les fichiers à mettre en cache (aligné avec outDir)
+          globPatterns: ['**/*.{png,svg}'],
+          // Seules les icônes vivent dans /spa ; le JS et le CSS sont dans /build (cache à l'exécution)
+          globIgnores: ['manifest.webmanifest', 'workbox-*.js', 'sw.js', 'screenshot.png'],
+          // Quels fichiers ignorer
+          // Pas de page HTML statique : la SPA est rendue par Symfony, on ne sert donc pas index.html
+          navigateFallback: null,
+          runtimeCaching: [{
+            // Pages de la SPA : réseau d'abord, dernière version en cache si hors ligne.
+            // Chemin en dur : Workbox copie la fonction dans sw.js, où PWA_PATH n'existe pas.
+            urlPattern: ({ request, url }) => request.mode === 'navigate' && url.pathname.startsWith('/spa/'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'spa-pages',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 50 }
+            }
+          }, {
+            // JS et CSS compilés : noms hachés, donc immuables
+            urlPattern: ({ url }) => url.pathname.startsWith('/build/assets/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'build-assets',
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 }
+            }
+          }, {
+            // Lecture de l'API publique (cours, menus, QCM) ; jamais les données personnelles
+            urlPattern: ({ request, url }) => request.method === 'GET'
+              && url.pathname.startsWith('/api/')
+              && !/^\/api\/(admin|notes|me-favorites|page-visits|customization|proposition-ia|users)/.test(url.pathname),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-public',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 }
+            }
+          }, {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 an
+              }
+            }
+          }, {
+            urlPattern: /\/api\/categories/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-categories-cache',
+              expiration: {
+                maxEntries: 5,
+                maxAgeSeconds: 60 * 60 // 1 heure
+              },
+              networkTimeoutSeconds: 3
+            }
+          }]
+        }
+      }),
+      !isStorybook && deplacerManifestPwa(BUILD_OUTPUT_DIR, PWA_OUTPUT_DIR, 'manifest.webmanifest'),
+    ].filter(Boolean),
+    // Configuration du serveur de développement Vite
+    // Le proxy /api redirige vers http://nginx
+    // ⚠ Ça c'est seulement utilisé par Vite Dev Server pendant le développement → ça n'a aucun effet en production
+    // ⚠ En prod, ton NGINX ne voit pas ce proxy config, c'est ton serveur web qui sert Symfony et tes assets directement.
+    server: {
+      host: true,
+      // Rend le serveur accessible depuis le réseau local
+      port: 5173,
+      // Port utilisé par le serveur
+      cors: true,
+      // Active CORS pour permettre les requêtes depuis Nginx
+      proxy: {
+        // Déclare un proxy pour rediriger les appels API
+        '/api': {
+          target: 'http://nginx',
+          // Redirige les requêtes /api vers nginx
+          changeOrigin: true,
+          // Modifie l'origine pour correspondre au target
+          secure: false // Autorise les connexions non sécurisées (HTTP)
+        }
+      },
+      strictPort: true,
+      // Si le port est déjà pris, ne pas essayer un autre
+      watch: {
+        usePolling: true,
+        // Active le polling (utile dans certains environnements, ex : Docker)
+        interval: 500,
+        // Intervalle très court pour forcer la détection
+        ignored: ['**/node_modules/**', '**/.git/**']
+      },
+      hmr: {
+        port: 5173,
+        host: viteDevUrl.hostname,
+        protocol: viteDevUrl.protocol === 'https:' ? 'wss' : 'ws',
+        // Le navigateur se connecte à Nginx, pas directement au port Docker de Vite.
+        clientPort: Number(viteDevUrl.port) || (viteDevUrl.protocol === 'https:' ? 443 : 80)
+      },
+      force: true, // Force la reconstruction des dépendances
+      // Désactiver les protections pour Docker
+      fs: {
+        strict: false,
+        allow: ['..']
+      },
+      // Permettre les requêtes de tous les hôtes
+      allowedHosts: true
+    },
+    // Configuration de la build (production)
+    build: {
+      // Place le manifest à la racine de outDir (pas dans .vite/)
+      manifest: true,
+      manifestDir: '.',
+      outDir: BUILD_OUTPUT_DIR,
+      emptyOutDir: false,
+      rollupOptions: {
+        // Options supplémentaires pour le bundler Rollup
+        input: {
+          main: resolve(dirname, 'src/main.js') // Point d'entrée principal de l'application
+        }
+      }
+    },
+    
+  };
+});

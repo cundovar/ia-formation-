@@ -1,0 +1,271 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.2'
+  NODE_VERSION: '22'
+
+jobs:
+  php:
+    name: PHP (syntaxe, PHPStan, PHPUnit)
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: test
+      APP_SECRET: ci-only-secret
+      DATABASE_URL: sqlite:///%kernel.project_dir%/var/ci.db
+      MAILER_DSN: null://null
+      MESSENGER_TRANSPORT_DSN: sync://
+      CORS_ALLOW_ORIGIN: '^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'
+      # Les dépréciations des dépendances (Doctrine, API Platform, Twig) sont affichées
+      # mais ne font plus échouer PHPUnit : seuls les vrais échecs de tests bloquent.
+      SYMFONY_DEPRECATIONS_HELPER: 'max[total]=999999'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, pdo_mysql, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+      # Symfony exige un fichier .env : celui-ci ne contient que des valeurs de CI
+      - name: Create CI .env
+        run: |
+          {
+            echo "APP_ENV=$APP_ENV"
+            echo "APP_SECRET=$APP_SECRET"
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "MAILER_DSN=$MAILER_DSN"
+            echo "MESSENGER_TRANSPORT_DSN=$MESSENGER_TRANSPORT_DSN"
+            echo "CORS_ALLOW_ORIGIN=$CORS_ALLOW_ORIGIN"
+          } > .env
+      - name: Validate Composer files
+        run: composer validate --no-check-publish
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Check PHP syntax
+        run: find src tests migrations -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Lint container, Twig and YAML
+        run: |
+          php bin/console lint:container
+          php bin/console lint:twig templates
+          php bin/console lint:yaml config
+      - name: Run PHPStan
+        run: composer analyse
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # Le test de liaison PHP → moteur Node n'ouvre aucune page : pas besoin de navigateur
+      - name: Install capture engine
+        run: npm ci --prefix capture
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Run PHPUnit
+        run: composer test
+
+  migrations:
+    name: Migrations MySQL
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: formateur_ia
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      APP_ENV: dev
+      APP_SECRET: ci-only-secret
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/formateur_ia?serverVersion=8.0.32&charset=utf8mb4
+      MAILER_DSN: null://null
+      MESSENGER_TRANSPORT_DSN: sync://
+      CORS_ALLOW_ORIGIN: '^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, pdo_mysql
+          coverage: none
+          tools: composer:v2
+      - name: Create CI .env
+        run: |
+          {
+            echo "APP_ENV=$APP_ENV"
+            echo "APP_SECRET=$APP_SECRET"
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "MAILER_DSN=$MAILER_DSN"
+            echo "MESSENGER_TRANSPORT_DSN=$MESSENGER_TRANSPORT_DSN"
+            echo "CORS_ALLOW_ORIGIN=$CORS_ALLOW_ORIGIN"
+          } > .env
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      # Les migrations doivent produire exactement le schéma des entités, et pouvoir être annulées
+      - name: Migrate, validate, roll back and migrate again
+        run: |
+          php bin/console doctrine:migrations:migrate --no-interaction
+          php bin/console doctrine:schema:validate
+          php bin/console doctrine:migrations:migrate first --no-interaction
+          php bin/console doctrine:migrations:migrate --no-interaction
+
+  capture:
+    name: Moteur de capture (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: capture/package-lock.json
+      - name: Install capture dependencies
+        run: npm ci --prefix capture
+      - name: Install Chromium for Playwright
+        run: npx --prefix capture playwright-core install --with-deps chromium
+      - name: Check syntax
+        run: npm run lint --prefix capture
+      - name: Run capture tests (local test site, no external network)
+        run: npm test --prefix capture
+
+  front:
+    name: Front Vue (ESLint, Vitest, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+      - name: Install Vue dependencies
+        run: npm ci --prefix front
+      - name: Run ESLint
+        run: npm run lint --prefix front
+      - name: Run Vue unit tests
+        run: npm test --prefix front
+      - name: Validate Vue production build
+        run: npm run check --prefix front
+
+  # Construit l'archive de production (vendor sans dev + build Vue) uniquement sur push vers main
+  build:
+    name: Build release
+    needs: [php, migrations, capture, front]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, pdo_mysql
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+      # .env de build uniquement (jamais envoyé sur le serveur) pour que les scripts Symfony tournent
+      - name: Create build .env
+        run: |
+          {
+            echo "APP_ENV=prod"
+            echo "APP_SECRET=build-only-secret"
+            echo "DATABASE_URL=sqlite:///%kernel.project_dir%/var/build.db"
+            echo "MAILER_DSN=null://null"
+            echo "MESSENGER_TRANSPORT_DSN=sync://"
+            echo "CORS_ALLOW_ORIGIN=^https?://localhost$"
+          } > .env
+      - name: Install production PHP dependencies
+        env:
+          APP_ENV: prod
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+      - name: Build Vue assets
+        env:
+          BUILD_OUTPUT_DIR: ../public/build
+          PWA_OUTPUT_DIR: ../public/spa
+        run: npm ci --prefix front && npm run build --prefix front
+      - name: Assemble production release
+        run: |
+          mkdir -p /tmp/production-release
+          git archive HEAD | tar -x -C /tmp/production-release
+          cp -a vendor /tmp/production-release/vendor
+          rm -rf /tmp/production-release/public/build /tmp/production-release/public/spa
+          cp -a public/build /tmp/production-release/public/build
+          if [ -d public/spa ]; then cp -a public/spa /tmp/production-release/public/spa; fi
+          # Assets des bundles (EasyAdmin, API Platform…) générés par assets:install
+          if [ -d public/bundles ]; then cp -aL public/bundles /tmp/production-release/public/bundles; fi
+          # Fichiers inutiles en production
+          rm -rf /tmp/production-release/{.agents,.claude,.codex,.github,tests,docs,front,nginx,php-fpm.d}
+          tar -C /tmp/production-release -czf /tmp/production-release.tar.gz .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: production-release
+          path: /tmp/production-release.tar.gz
+          retention-days: 14
+
+  deploy:
+    name: Deploy production (OVH)
+    needs: build
+    # Désactivé tant que l'hébergement de Formation IA n'est pas choisi : définir la variable
+    # de dépôt DEPLOY_ENABLED=true, ainsi que OVH_HOST, OVH_USER, OVH_PATH et le secret OVH_SSH_PASSWORD.
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency: production
+    env:
+      OVH_HOST: ${{ vars.OVH_HOST }}
+      OVH_USER: ${{ vars.OVH_USER }}
+      OVH_PATH: ${{ vars.OVH_PATH }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: production-release
+          path: /tmp/artifact
+      - name: Prepare SSH and release
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+          install -d -m 700 ~/.ssh
+          install -m 600 .github/ovh_known_hosts ~/.ssh/known_hosts
+          mkdir -p /tmp/release
+          tar -xzf /tmp/artifact/production-release.tar.gz -C /tmp/release
+      - name: Synchronize release to OVH
+        env:
+          SSHPASS: ${{ secrets.OVH_SSH_PASSWORD }}
+        run: |
+          sshpass -e rsync -az --delete --delay-updates \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='.git/' \
+            --exclude='.ovhconfig' \
+            --exclude='var/' \
+            --exclude='public/uploads/' \
+            -e 'ssh -o StrictHostKeyChecking=yes' \
+            /tmp/release/ "$OVH_USER@$OVH_HOST:$OVH_PATH/"
+      - name: Migrate database and clear Symfony cache
+        env:
+          SSHPASS: ${{ secrets.OVH_SSH_PASSWORD }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=yes "$OVH_USER@$OVH_HOST" \
+            "cd '$OVH_PATH' && mkdir -p var/cache var/log \
+             && php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=prod \
+             && php bin/console cache:clear --env=prod --no-debug"

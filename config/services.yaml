@@ -1,0 +1,87 @@
+parameters:
+    app.url: 'http://localhost:8080'
+    # Chemin SPA - Modifier cette valeur pour changer le préfixe
+    # Note: Modifier aussi les Routes dans SpaController.php et SitemapController.php
+    app.spa_path: '/spa'
+    env(CAPTURE_NODE_BINARY): 'node'
+    # Expéditeur des e-mails du site (mot de passe oublié)
+    env(MAILER_FROM): 'ne-pas-repondre@localhost'
+    env(CAPTURE_CHROMIUM_PATH): ''
+    env(CAPTURE_NO_SANDBOX): '0'
+    env(CAPTURE_HOME): ''
+    # Service Playwright isolé sur Netcup. Laisser l'URL vide en développement pour utiliser le moteur local.
+    env(CAPTURE_SERVICE_URL): ''
+    env(CAPTURE_SERVICE_TOKEN): ''
+    # Connecteur MCP (docs/CONNECTEUR.md) : adresse publique du site et hôtes de retour OAuth autorisés
+    env(MCP_PUBLIC_URL): ''
+    app.oauth.redirect_hosts: '%env(csv:OAUTH_REDIRECT_HOSTS)%'
+    env(OAUTH_REDIRECT_HOSTS): 'claude.ai,claude.com,chatgpt.com'
+
+services:
+    App\Doctrine\PrefixedNamingStrategy:
+        arguments:
+            $prefix: 'appy_'
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+            - '../src/Doctrine/'
+
+
+
+    # ===== ARCHITECTURE HEXAGONALE =====
+
+    # Infrastructure Services (doit être défini AVANT les bindings)
+
+
+
+    # Infrastructure Services (Favorite)
+    App\Infrastructure\Page\Repository\DoctrinePageRepository: ~
+    App\Infrastructure\Category\Repository\DoctrineCategoryRepository: ~
+    App\Infrastructure\Menu\Repository\DoctrineMenuRepository: ~
+    App\Infrastructure\Seo\Repository\DoctrineSeoRepository: ~
+    App\Infrastructure\PositionMenu\Repository\DoctrinePositionMenuRepository: ~
+    App\Infrastructure\CourseLevel\Repository\DoctrineCourseLevelRepository: ~
+    App\Infrastructure\PageContent\Repository\DoctrinePageContentRepository: ~
+    App\Infrastructure\QCM\Repository\DoctrineQCMRepository: ~
+
+    App\Infrastructure\SiteConfiguration\Repository\DoctrineSiteConfigurationRepository: ~
+    App\Infrastructure\LanguageQCM\Repository\DoctrineLanguageQCMRepository: ~
+    App\Infrastructure\NiveauQCM\Repository\DoctrineNiveauQCMRepository: ~
+    App\Infrastructure\ChoicesQCM\Repository\DoctrineChoicesQCMRepository: ~
+    App\Infrastructure\User\Repository\DoctrineUserRepository: ~
+    App\Infrastructure\PageBlock\Repository\DoctrinePageBlockRepository: ~
+    App\Infrastructure\SuperMenu\Repository\DoctrineSuperMenuRepository: ~
+    App\Infrastructure\Logo\Repository\DoctrineLogoRepository: ~
+    App\Infrastructure\CourseMedia\Repository\DoctrineCourseMediaRepository: ~
+    App\Infrastructure\Persistence\DoctrinePersistenceFlusher: ~
+    App\Infrastructure\Persistence\DoctrineTransactionalExecutor: ~
+
+    # Domain -> Infrastructure bindings (Favorite)
+    App\Domain\Page\Repository\PageRepositoryInterface: '@App\Infrastructure\Page\Repository\DoctrinePageRepository'
+    App\Domain\Category\Repository\CategoryRepositoryInterface: '@App\Infrastructure\Category\Repository\DoctrineCategoryRepository'
+    App\Domain\Menu\Repository\MenuRepositoryInterface: '@App\Infrastructure\Menu\Repository\DoctrineMenuRepository'
+    App\Domain\Seo\Repository\SeoRepositoryInterface: '@App\Infrastructure\Seo\Repository\DoctrineSeoRepository'
+    App\Domain\PositionMenu\Repository\PositionMenuRepositoryInterface: '@App\Infrastructure\PositionMenu\Repository\DoctrinePositionMenuRepository'
+    App\Domain\CourseLevel\Repository\CourseLevelRepositoryInterface: '@App\Infrastructure\CourseLevel\Repository\DoctrineCourseLevelRepository'
+    App\Domain\PageContent\Repository\PageContentRepositoryInterface: '@App\Infrastructure\PageContent\Repository\DoctrinePageContentRepository'
+    App\Domain\QCM\Repository\QCMRepositoryInterface: '@App\Infrastructure\QCM\Repository\DoctrineQCMRepository'
+    App\Domain\SiteConfiguration\Repository\SiteConfigurationRepositoryInterface: '@App\Infrastructure\SiteConfiguration\Repository\DoctrineSiteConfigurationRepository'
+    App\Domain\LanguageQCM\Repository\LanguageQCMRepositoryInterface: '@App\Infrastructure\LanguageQCM\Repository\DoctrineLanguageQCMRepository'
+    App\Domain\NiveauQCM\Repository\NiveauQCMRepositoryInterface: '@App\Infrastructure\NiveauQCM\Repository\DoctrineNiveauQCMRepository'
+    App\Domain\ChoicesQCM\Repository\ChoicesQCMRepositoryInterface: '@App\Infrastructure\ChoicesQCM\Repository\DoctrineChoicesQCMRepository'
+    App\Domain\User\Repository\UserRepositoryInterface: '@App\Infrastructure\User\Repository\DoctrineUserRepository'
+    App\Domain\PageBlock\Repository\PageBlockRepositoryInterface: '@App\Infrastructure\PageBlock\Repository\DoctrinePageBlockRepository'
+    App\Domain\SuperMenu\Repository\SuperMenuRepositoryInterface: '@App\Infrastructure\SuperMenu\Repository\DoctrineSuperMenuRepository'
+    App\Domain\Logo\Repository\LogoRepositoryInterface: '@App\Infrastructure\Logo\Repository\DoctrineLogoRepository'
+    App\Domain\CourseMedia\Repository\CourseMediaRepositoryInterface: '@App\Infrastructure\CourseMedia\Repository\DoctrineCourseMediaRepository'
+    App\Domain\Shared\Persistence\PersistenceFlusherInterface: '@App\Infrastructure\Persistence\DoctrinePersistenceFlusher'
+    App\Domain\Shared\Persistence\TransactionalExecutorInterface: '@App\Infrastructure\Persistence\DoctrineTransactionalExecutor'
+
+    App\Service\Capture\CaptureRunnerInterface: '@App\Service\Capture\ConfiguredCaptureRunner'

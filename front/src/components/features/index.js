@@ -1,0 +1,13 @@
+// Feature Components - Barrel Export
+export { default as HomePage } from './home/HomePage.vue'
+export { default as PageContent } from './pages/PageContent.vue'
+export { default as CourseCard } from './pages/CourseCard.vue'
+export { default as CourseDetail } from './pages/CourseDetail.vue'
+export { default as TableContent2 } from './pages/toc/TableContent2.vue'
+export { default as TableOfContents } from './pages/toc/TableOfContents.vue'
+export { default as SidebarToc } from './pages/toc/SidebarToc.vue'
+export { default as TocList } from './pages/toc/TocList.vue'
+export { default as SearchResults } from './search/SearchResults.vue'
+export { default as SearchResultsMobile } from './search/SearchResultsMobile.vue'
+export { default as SearchInput } from './search/SearchInput.vue'
+export { default as SearchResultItem } from './search/SearchResultItem.vue'

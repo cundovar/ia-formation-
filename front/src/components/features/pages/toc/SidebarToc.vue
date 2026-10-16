@@ -1,0 +1,223 @@
+<template>
+  <aside
+    v-if="toc.length > 0"
+    class="sidebar-toc"
+  >
+    <!-- Header avec bouton toggle -->
+    <div
+      class="toc-header"
+      :class="bgCategorie"
+    >
+      <button
+        class="toggle-btn"
+        @click="toggleClosed"
+      >
+        {{ closed ? '+' : 'X' }}
+      </button>
+      <span class="header-title">Sommaire</span>
+    </div>
+
+    <!-- Contenu (caché si closed) -->
+    <div
+      v-show="!closed"
+      class="toc-body"
+    >
+      <!-- Onglets du sommaire -->
+      <div class="toc-tabs">
+        <button
+          class="toc-tab"
+          :class="{ active: activeTab === 'sommaire' }"
+          @click="switchTab('sommaire')"
+        >
+          Sommaire
+        </button>
+      </div>
+
+      <!-- Contenu des onglets -->
+      <div class="tab-content">
+        <!-- Onglet Sommaire -->
+        <TocList
+          v-if="activeTab === 'sommaire'"
+          :toc="toc"
+          :active-id="activeId"
+          :show-progress="showProgress"
+          :is-open="true"
+          :is-mobile="false"
+          :bg-categorie="bgCategorie"
+          @scroll-to="handleScrollTo"
+        />
+      </div>
+    </div>
+  </aside>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import TocList from './TocList.vue'
+
+
+defineProps({
+  toc: {
+    type: Array,
+    required: true
+  },
+  activeId: {
+    type: String,
+    default: null
+  },
+  showProgress: {
+    type: Boolean,
+    default: true
+  },
+  pageId: {
+    type: Number,
+    default: null
+  },
+  bgCategorie: {
+    type: String,
+    default: ''
+  },
+  bgHover: {
+    type: String,
+    default: ''
+  }
+})
+
+const emit = defineEmits(['scroll-to'])
+
+const activeTab = ref('sommaire')
+const closed = ref(false)
+
+const toggleClosed = () => {
+  closed.value = !closed.value
+}
+
+
+
+const switchTab = (tab) => {
+  activeTab.value = tab
+}
+
+const handleScrollTo = (id) => {
+  emit('scroll-to', id)
+}
+
+
+
+</script>
+
+<style scoped>
+.sidebar-toc {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: fixed;
+  top: 120px;
+  right: 20px;
+  width: 250px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.toc-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.toggle-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #ef4444;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-btn:hover {
+  background: #dc2626;
+}
+
+.header-title {
+  font-weight: 600;
+  color: #374151;
+}
+
+.toc-body {
+  padding: 1rem;
+}
+
+.toc-tabs {
+  display: flex;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.toc-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.toc-tab::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.toc-tab:hover {
+  color: #6b7280;
+}
+
+.toc-tab.active {
+  color: #111827;
+}
+
+.toc-tab.active::after {
+  background: #111827;
+}
+
+.tab-content {
+  min-height: 100px;
+}
+
+/* Scrollbar */
+.sidebar-toc::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-toc::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-toc::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.sidebar-toc::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+</style>

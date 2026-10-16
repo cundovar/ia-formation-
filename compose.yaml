@@ -1,0 +1,101 @@
+name: formateur_ia
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/var/www/symfony
+    env_file:
+      - .env
+    expose:
+      - "9000"
+    networks: [connectPerso]
+
+  front:
+    build:
+      context: ./front
+    working_dir: /app
+    volumes:
+      - ./front:/app:cached
+      - front_node_modules:/app/node_modules
+      - ./public/build/.vite:/app/public/build/.vite
+    ports:
+      - "${HOST_VITE_PORT:-5177}:5173"
+    command: npm run dev:dock
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=500
+      - VITE_DEV_ORIGIN=${VITE_DEV_ORIGIN:-http://localhost:8096}
+    networks: [connectPerso]
+
+  # (optionnel) front-build pour produire /public/build
+  front-build:
+    build:
+      context: ./front
+    working_dir: /app
+    volumes:
+      - ./front:/app
+      - front_node_modules:/app/node_modules
+      - ./public/build:/app/public/build
+      - ./public/spa:/app/public/spa
+    command: >-
+      sh -c "npm run build && chown -R ${HOST_UID:-1000}:${HOST_GID:-1000}
+      /app/public/build /app/public/spa"
+    networks: [connectPerso]
+
+  nginx:
+    image: nginx:stable
+    ports:
+      - "${HOST_HTTP_PORT:-8096}:80"
+    depends_on:
+      - php
+    volumes:
+      - .:/var/www/symfony
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro  # <— configuration nginx
+    networks: [connectPerso]
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: formateur_ia
+    ports:
+      - "${HOST_DB_PORT:-3312}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks: [connectPerso]
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - "${HOST_PMA_PORT:-8097}:80"
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: root
+    networks: [connectPerso]
+
+  storybook:
+    build:
+      context: ./front
+    working_dir: /app
+    volumes:
+      - ./front:/app:cached
+      - front_node_modules:/app/node_modules
+    ports:
+      - "${HOST_STORYBOOK_PORT:-6007}:6006"
+    command: npm run storybook:dock
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=500
+    networks: [connectPerso]
+
+networks:
+  connectPerso:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  front_node_modules:

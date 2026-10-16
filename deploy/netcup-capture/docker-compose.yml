@@ -1,0 +1,42 @@
+name: formateur-ia-capture
+
+services:
+  capture:
+    build:
+      context: ../..
+      dockerfile: capture-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      CAPTURE_SERVICE_TOKEN: ${CAPTURE_SERVICE_TOKEN:?Set a 32-character minimum token}
+      PORT: '3000'
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - coolify
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.middlewares.formateur-ia-capture-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.formateur-ia-capture-http.entrypoints=http
+      - traefik.http.routers.formateur-ia-capture-http.rule=Host(`${CAPTURE_SERVICE_HOST:?Set the capture service hostname}`)
+      - traefik.http.routers.formateur-ia-capture-http.middlewares=formateur-ia-capture-redirect
+      - traefik.http.routers.formateur-ia-capture-https.entrypoints=https
+      - traefik.http.routers.formateur-ia-capture-https.rule=Host(`${CAPTURE_SERVICE_HOST:?Set the capture service hostname}`)
+      - traefik.http.routers.formateur-ia-capture-https.tls=true
+      - traefik.http.routers.formateur-ia-capture-https.tls.certresolver=letsencrypt
+      - traefik.http.services.formateur-ia-capture.loadbalancer.server.port=3000
+
+networks:
+  coolify:
+    external: true
