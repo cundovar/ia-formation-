@@ -126,7 +126,7 @@ const categoryName = computed(() => route.params.category)
 // Entrée de l'accueil à laquelle appartient ce parcours, pour le lien de retour
 const audience = computed(() => {
   const currentCategory = cats.value?.find(
-    cat => cat.name?.toLowerCase() === categoryName.value.toLowerCase()
+    cat => cat.name?.toLowerCase() === categoryName.value?.toLowerCase()
   )
   return getAudience(currentCategory?.audience)
 })
@@ -134,7 +134,7 @@ const audience = computed(() => {
 // Récupérer les données SEO directement depuis la catégorie
 const seoData = computed(() => {
   const currentCategory = cats.value?.find(
-    cat => cat.name.toLowerCase() === categoryName.value.toLowerCase()
+    cat => cat.name?.toLowerCase() === categoryName.value?.toLowerCase()
   )
 
   // Si la catégorie a un SEO défini, l'utiliser
@@ -167,7 +167,7 @@ const categoryDisplayName = computed(() => {
 const categoryBgClass = computed(() => {
   // Chercher la catégorie dans l'API par son nom
   const currentCategory = cats.value?.find(
-    cat => cat.name.toLowerCase() === categoryName.value.toLowerCase()
+    cat => cat.name?.toLowerCase() === categoryName.value?.toLowerCase()
   )
 
   // Retourner la couleur de l'API ou une couleur par défaut
@@ -177,7 +177,7 @@ const categoryBgClass = computed(() => {
 const categoryIconClass = computed(() => {
   // D'abord, chercher l'icône dans l'API (category.logo.logo)
   const currentCategory = cats.value?.find(
-    cat => cat.name.toLowerCase() === categoryName.value.toLowerCase()
+    cat => cat.name?.toLowerCase() === categoryName.value?.toLowerCase()
   )
 
   // Si l'icône existe dans l'API, l'utiliser
@@ -191,7 +191,7 @@ const categoryIconClass = computed(() => {
 const categoryPresentation = computed(() => {
   // Chercher la catégorie dans l'API par son nom
   const currentCategory = cats.value?.find(
-    cat => cat.name.toLowerCase() === categoryName.value.toLowerCase()
+    cat => cat.name?.toLowerCase() === categoryName.value?.toLowerCase()
   )
 
   // Retourner la description HTML de l'API
@@ -219,7 +219,7 @@ const categoryMenus = computed(() => {
   // Étape 1: Filtrer par catégorie
   let filteredMenus = menus.value.filter((menu) => {
     if (!menu.category) return false
-    const matches = menu.category.name.toLowerCase() === categoryName.value.toLowerCase()
+    const matches = menu.category.name?.toLowerCase() === categoryName.value?.toLowerCase()
 
     // if (matches) {
     //   console.log('  ✅ Match found:', menu.title, '- Category:', menu)
