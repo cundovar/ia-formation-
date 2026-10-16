@@ -34,13 +34,14 @@ use Symfony\Component\HttpFoundation\RequestStack;
 final class RedactionMcpServer
 {
     public const NAME = 'formation-ia-redaction';
-    public const VERSION = '0.8.0';
+    public const VERSION = '0.9.0';
 
     public const INSTRUCTIONS = <<<'TXT'
         Assistant de rédaction du site de formation à l'intelligence artificielle.
         Vous préparez des cours en brouillon, puis vous les publiez avec publier_cours.
         Pour modifier un cours déjà publié, lisez lister_cours_publies puis voir_brouillon avec son identifiant,
         et utilisez modifier_brouillon : les changements sont immédiatement visibles sur le site.
+        Pour retirer du site un cours, un module ou un parcours à la demande de la personne : mettre_en_brouillon.
         Avant d'écrire, lisez les règles (lire_regles) et le gabarit du public (obtenir_modele).
         Un brouillon doit être relu par un AUTRE connecteur (par exemple ChatGPT pour un brouillon rédigé
         avec Claude) avec la consigne « relire_brouillon » : la publication demande aucun contrôle bloquant et un
@@ -228,6 +229,13 @@ final class RedactionMcpServer
                     'sansModule' => ['type' => 'boolean', 'default' => false, 'description' => 'true seulement si la personne a choisi de publier ce cours hors de tout module'],
                 ], ['id']), "Publie le cours sur le site si les contrôles bloquants passent, si un autre connecteur l'a relu avec un avis favorable et si le cours est rangé dans un module (sauf sansModule). Sinon, renvoie ce qui bloque.", new ToolAnnotations(readOnlyHint: false, destructiveHint: false, openWorldHint: true)),
                 fn (array $args) => $this->redaction->publishDraft((int) $args['id'], (bool) ($args['sansModule'] ?? false)),
+            ],
+            [
+                new Tool('mettre_en_brouillon', 'Retirer du site (remettre en brouillon)', self::schema([
+                    'type' => ['type' => 'string', 'enum' => ['cours', 'module', 'parcours']],
+                    'id' => self::ID + ['description' => 'Identifiant du cours (lister_cours_publies), du module ou du parcours (lister_catalogue)'],
+                ], ['type', 'id']), "Retire immédiatement du site un cours publié, ou tous les cours publiés d'un module ou d'un parcours, en les repassant en brouillon ; un module ou un parcours sans cours publié disparaît du site. Rien n'est supprimé : contenu et relecture sont gardés. À faire seulement à la demande de la personne. Pour remettre en ligne : publier_cours sur chaque cours (une modification demande une nouvelle relecture).", new ToolAnnotations(readOnlyHint: false, destructiveHint: true, openWorldHint: true)),
+                fn (array $args) => $this->redaction->unpublish((string) $args['type'], (int) $args['id']),
             ],
             [
                 new Tool('classer_cours', 'Classer des cours dans un module', self::schema([

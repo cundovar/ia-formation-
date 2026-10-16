@@ -288,6 +288,41 @@ final class RedactionService
     }
 
     /**
+     * Retire du site un cours, ou tous les cours publiés d'un module ou d'un parcours, en les repassant en brouillon.
+     * Un module ou un parcours sans cours publié n'apparaît plus sur le site. Le contenu et la relecture sont
+     * gardés : sans modification, publier_cours remet un cours en ligne ; une modification demande une nouvelle relecture.
+     *
+     * @return array<string, mixed>
+     */
+    public function unpublish(string $type, int $id): array
+    {
+        $repository = $this->entityManager->getRepository(PageContent::class);
+        $courses = match ($type) {
+            'cours' => [$this->course($id)],
+            'module' => $repository->findBy([
+                'menu' => $this->entityManager->find(Menus::class, $id) ?? throw RedactionError::invalid([['champ' => 'id', 'message' => 'Module introuvable (voir lister_catalogue).']]),
+                'status' => PageContent::STATUS_PUBLISHED,
+            ]),
+            'parcours' => $repository->findBy([
+                'category' => $this->entityManager->find(Category::class, $id) ?? throw RedactionError::invalid([['champ' => 'id', 'message' => 'Parcours introuvable (voir lister_catalogue).']]),
+                'status' => PageContent::STATUS_PUBLISHED,
+            ]),
+            default => throw RedactionError::invalid([['champ' => 'type', 'message' => 'Type attendu : cours, module ou parcours.']]),
+        };
+
+        if ($type === 'cours' && !$courses[0]->isPublished()) {
+            throw new RedactionError("Ce cours n'est pas publié : il n'est déjà pas visible sur le site.", RedactionError::CONFLICT);
+        }
+
+        foreach ($courses as $course) {
+            $course->setStatus(PageContent::STATUS_DRAFT);
+        }
+        $this->entityManager->flush();
+
+        return ['type' => $type, 'id' => $id, 'misEnBrouillon' => array_map(fn (PageContent $c) => $this->summary($c), $courses)];
+    }
+
+    /**
      * @param list<array<string, mixed>> $extra contrôles propres à l'action
      * @return list<array<string, mixed>>
      */
