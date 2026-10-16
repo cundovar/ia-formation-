@@ -60,9 +60,21 @@ class SitemapController extends AbstractController
 
         // Catégories
         $categories = $this->categoryRepository->findAll();
+        $rubriques = [];
         foreach ($categories as $category) {
             if ($category->isVisible() === false || $category->isReserve()) {
                 continue;
+            }
+            // Grande rubrique de l'accueil : une page par rubrique qui contient un parcours ouvert à tous
+            $rubriqueId = $category->getSuperMenu()?->getId();
+            if ($rubriqueId !== null && !isset($rubriques[$rubriqueId])) {
+                $rubriques[$rubriqueId] = true;
+                $urls[] = [
+                    'loc' => $hostname . $spaPath . '/rubrique/' . $rubriqueId,
+                    'changefreq' => 'weekly',
+                    'priority' => '0.9',
+                    'lastmod' => (new \DateTime())->format('Y-m-d')
+                ];
             }
             $urls[] = [
                 'loc' => $hostname . $spaPath . '/category/' . $category->getName(),

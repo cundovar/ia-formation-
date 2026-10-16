@@ -13,6 +13,7 @@ vi.mock('@/utils/fetchDataPwa', () => ({ useData: () => ({ cats, menus, fetchMen
 const { default: HomePage } = await import('@/components/features/home/HomePage.vue')
 const { default: AudiencePage } = await import('@/views/AudiencePage.vue')
 const { default: CategoryPage } = await import('@/views/CategoryPage.vue')
+const { default: RubriquePage } = await import('@/views/RubriquePage.vue')
 
 const Stub = { template: '<div />' }
 
@@ -24,6 +25,7 @@ const mountAt = async (component, props = {}, path = '/') => {
       { path: '/apprendre', component: Stub },
       { path: '/former', component: Stub },
       { path: '/category/:category', component: Stub },
+      { path: '/rubrique/:id', component: Stub },
     ],
   })
   router.push(path)
@@ -126,5 +128,55 @@ describe('parcours', () => {
     expect(wrapper.text()).toContain('Premiers gestes numériques')
     expect(wrapper.text()).toContain('Utiliser un écran tactile')
     expect(wrapper.get('a[href="/pages/utiliser-un-ecran-tactile"]').exists()).toBe(true)
+  })
+})
+
+describe('rubriques', () => {
+  const automatiser = { id: 3, name: '3. Automatiser et gérer les données' }
+  const setRubriques = () => {
+    cats.value = [
+      { id: 1, name: 'automatisation avec n8n', audience: 'apprendre', superMenu: automatiser },
+      { id: 2, name: 'stockage des données', audience: 'apprendre', superMenu: automatiser },
+    ]
+    menus.value = [{ category: { id: 1 } }, { category: { id: 2 } }]
+  }
+
+  it('affiche les rubriques à l\'accueil, en gardant les deux entrées par profil', async () => {
+    setRubriques()
+    const wrapper = await mountAt(HomePage)
+
+    const rubrique = wrapper.get('[data-testid="rubriques-list"] h3 a')
+    expect(rubrique.text()).toBe('3. Automatiser et gérer les données')
+    expect(rubrique.attributes('href')).toBe('/rubrique/3')
+    expect(wrapper.get('[data-testid="rubriques-list"]').text()).toContain('Automatisation avec n8n')
+    expect(wrapper.find('[data-testid="entry-former"]').exists()).toBe(true)
+    expect(wrapper.findAll('h1')).toHaveLength(1)
+  })
+
+  it('n\'affiche que les parcours de la rubrique ouverte', async () => {
+    setRubriques()
+    cats.value.push({ id: 4, name: 'autre rubrique', audience: 'apprendre', superMenu: { id: 5, name: 'Autre' } })
+    menus.value.push({ category: { id: 4 } })
+
+    const wrapper = await mountAt(RubriquePage, { id: '3' })
+
+    expect(wrapper.get('h1').text()).toBe('3. Automatiser et gérer les données')
+    expect(wrapper.get('[data-testid="parcours-list"]').findAll('li')).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('Autre rubrique')
+  })
+
+  it('présente les modules d\'un parcours comme des chapitres numérotés', async () => {
+    cats.value = [{ id: 1, name: 'n8n', audience: 'apprendre' }]
+    const course = (title, slug, label) => ({ title, category: { id: 1, name: 'n8n' }, menu: { label }, page: { slug } })
+    menus.value = [
+      course('Premier nœud', '/premier-noeud', 'Construire un premier workflow'),
+      course('Pourquoi automatiser', '/pourquoi', 'Comprendre l’automatisation'),
+    ]
+
+    const wrapper = await mountAt(CategoryPage, {}, '/category/n8n')
+
+    const titles = wrapper.findAll('[data-testid="chapters"] .chapter-title').map((t) => t.text())
+    expect(titles).toEqual(['Chapitre 1 — Construire un premier workflow', 'Chapitre 2 — Comprendre l’automatisation'])
+    expect(wrapper.get('a[href="/pages/pourquoi"]').exists()).toBe(true)
   })
 })

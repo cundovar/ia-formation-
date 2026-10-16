@@ -11,8 +11,48 @@
  * @param {{ordre: number}|null} selectedNiveau niveau choisi dans l'en-tête
  */
 export function buildParcours(categories, courses, audience, selectedNiveau = null) {
+  return listParcours(categories, courses, (category) => category?.audience === audience, selectedNiveau)
+}
+
+/**
+ * Parcours d'une grande rubrique (champ `superMenu` d'une catégorie), tous publics confondus,
+ * avec les mêmes règles d'affichage et le même ordre que buildParcours.
+ *
+ * @param {number} rubriqueId identifiant de la rubrique
+ */
+export function buildParcoursOfRubrique(categories, courses, rubriqueId, selectedNiveau = null) {
+  return listParcours(
+    categories,
+    courses,
+    (category) => category?.superMenu?.id === rubriqueId && Boolean(category.audience),
+    selectedNiveau
+  )
+}
+
+/**
+ * Grandes rubriques de l'accueil : seules celles qui contiennent au moins un parcours affiché.
+ * Rangées par leur nom, chiffres compris (« 2. … » avant « 10. … »), car une rubrique n'a pas de rang.
+ */
+export function buildRubriques(categories, courses, selectedNiveau = null) {
+  const rubriques = new Map()
+  for (const category of categories) {
+    const rubrique = category?.superMenu
+    if (rubrique?.id != null && !rubriques.has(rubrique.id)) rubriques.set(rubrique.id, rubrique)
+  }
+
+  return [...rubriques.values()]
+    .map((rubrique) => ({
+      id: rubrique.id,
+      name: rubrique.name ?? '',
+      parcours: buildParcoursOfRubrique(categories, courses, rubrique.id, selectedNiveau),
+    }))
+    .filter((rubrique) => rubrique.parcours.length > 0)
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true }))
+}
+
+function listParcours(categories, courses, belongs, selectedNiveau) {
   return categories
-    .filter((category) => category?.audience === audience && category.visible !== false)
+    .filter((category) => belongs(category) && category.visible !== false)
     .filter((category) => matchesNiveau(category.niveauCours, selectedNiveau))
     .map((category) => ({
       id: category.id,
@@ -35,6 +75,27 @@ export function buildParcours(categories, courses, audience, selectedNiveau = nu
         (a.ordre ?? Number.POSITIVE_INFINITY) - (b.ordre ?? Number.POSITIVE_INFINITY) ||
         a.title.localeCompare(b.title, 'fr')
     )
+}
+
+/**
+ * Rang d'un module d'après son nom : « Chapitre 3 — … », « 3. … » ou « 3 - … » donnent 3, sinon null.
+ */
+export function chapterNumber(label = '') {
+  const match = /^\s*(?:chapitre\s*)?(\d+)\b/i.exec(label)
+  return match ? Number(match[1]) : null
+}
+
+/**
+ * Ordre des modules d'un parcours : d'abord ceux dont le nom porte un numéro de chapitre, dans l'ordre
+ * des numéros, puis les autres dans l'ordre où ils arrivent.
+ */
+export function sortChapters(groups) {
+  return groups
+    .map((group, index) => ({ group, index, number: chapterNumber(group.label) }))
+    .sort((a, b) =>
+      (a.number ?? Number.POSITIVE_INFINITY) - (b.number ?? Number.POSITIVE_INFINITY) || a.index - b.index
+    )
+    .map(({ group }) => group)
 }
 
 const matchesNiveau = (niveau, selectedNiveau) =>

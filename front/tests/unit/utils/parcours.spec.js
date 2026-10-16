@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildParcours, toPlainText } from '@/utils/parcours'
+import { buildParcours, buildParcoursOfRubrique, buildRubriques, chapterNumber, sortChapters, toPlainText } from '@/utils/parcours'
 
 const debutant = { name: 'Débutant', ordre: 1 }
 const confirme = { name: 'Confirmé', ordre: 2 }
@@ -85,5 +85,49 @@ describe('toPlainText', () => {
     expect(toPlainText('<img src="x" onerror="window.__piege = true">Bonjour <em>à tous</em>')).toBe('Bonjour à tous')
     expect(window.__piege).toBe(false)
     expect(toPlainText(null)).toBe('')
+  })
+})
+
+describe('rubriques', () => {
+  const automatiser = { id: 3, name: '3. Automatiser et gérer les données' }
+  const decouvrir = { id: 1, name: '1. Découvrir et utiliser l’IA' }
+  const former = { id: 6, name: '6. Former et accompagner' }
+  const vide = { id: 9, name: '9. Sans cours' }
+
+  const cats = [
+    { id: 10, name: 'automatisation avec n8n', audience: 'apprendre', superMenu: automatiser },
+    { id: 11, name: 'découvrir l’IA', audience: 'apprendre', superMenu: decouvrir },
+    { id: 12, name: 'animer un atelier', audience: 'former', superMenu: former },
+    { id: 13, name: 'stockage des données', audience: 'apprendre', superMenu: automatiser },
+    { id: 14, name: 'en préparation', audience: 'apprendre', superMenu: vide },
+    { id: 15, name: 'masqué', audience: 'apprendre', superMenu: automatiser, visible: false },
+    { id: 16, name: 'sans rubrique', audience: 'apprendre' },
+  ]
+  const cours = [10, 11, 12, 13, 15, 16].map((id) => ({ category: { id } }))
+
+  it('range les rubriques par numéro et ne garde que celles qui ont un parcours affiché', () => {
+    const rubriques = buildRubriques(cats, cours)
+    expect(rubriques.map((r) => r.id)).toEqual([1, 3, 6])
+    expect(names(rubriques[1].parcours)).toEqual(['automatisation avec n8n', 'stockage des données'])
+  })
+
+  it('liste les parcours d\'une rubrique, tous publics confondus', () => {
+    expect(names(buildParcoursOfRubrique(cats, cours, 6))).toEqual(['animer un atelier'])
+    expect(buildParcoursOfRubrique(cats, cours, 9)).toEqual([])
+  })
+})
+
+describe('chapitres', () => {
+  it('lit le numéro d\'un module', () => {
+    expect(chapterNumber('Chapitre 2 — Construire un workflow')).toBe(2)
+    expect(chapterNumber('3. Intégrer une étape IA')).toBe(3)
+    expect(chapterNumber('Comprendre l’automatisation')).toBeNull()
+  })
+
+  it('range les modules numérotés dans l\'ordre, puis les autres dans leur ordre d\'arrivée', () => {
+    const labels = ['Annexe', 'Chapitre 10 — Projet', 'Chapitre 2 — Workflow', 'Bonus', 'Chapitre 1 — Comprendre']
+    expect(sortChapters(labels.map((label) => ({ label }))).map((g) => g.label)).toEqual([
+      'Chapitre 1 — Comprendre', 'Chapitre 2 — Workflow', 'Chapitre 10 — Projet', 'Annexe', 'Bonus',
+    ])
   })
 })

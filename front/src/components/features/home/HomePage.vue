@@ -16,9 +16,68 @@
       </p>
     </section>
 
+    <!-- Grandes rubriques : rubrique → parcours → modules → cours -->
+    <section
+      v-if="rubriques.length"
+      class="mx-auto mt-10 max-w-6xl"
+      aria-labelledby="rubriques-title"
+    >
+      <h2
+        id="rubriques-title"
+        class="text-center text-2xl font-bold text-gray-900 md:text-3xl"
+      >
+        Choisissez une rubrique
+      </h2>
+      <ul
+        class="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3"
+        data-testid="rubriques-list"
+      >
+        <li
+          v-for="(rubrique, index) in rubriques"
+          :key="rubrique.id"
+          :class="['surface-card', `surface-card--${cardVariants[index % cardVariants.length]}`, 'entry-card group relative flex flex-col p-6']"
+        >
+          <h3 class="text-xl font-bold text-gray-900 md:text-2xl">
+            <router-link
+              :to="`/rubrique/${rubrique.id}`"
+              class="entry-link"
+            >
+              {{ rubrique.name }}
+            </router-link>
+          </h3>
+          <ul class="mt-3 space-y-1 text-lg text-gray-700">
+            <li
+              v-for="item in rubrique.parcours"
+              :key="item.id"
+              class="flex items-start gap-2"
+            >
+              <i
+                class="fas fa-angle-right mt-1.5 text-gray-500"
+                aria-hidden="true"
+              />
+              <span>{{ item.title }}</span>
+            </li>
+          </ul>
+          <span
+            class="mt-auto inline-flex items-center gap-2 self-start pt-4 text-lg font-bold text-blue-800 group-hover:underline"
+            aria-hidden="true"
+          >
+            {{ rubrique.parcours.length }} parcours
+            <i class="fas fa-arrow-right transition-transform duration-300 group-hover:translate-x-1" />
+          </span>
+        </li>
+      </ul>
+    </section>
+
     <!-- Les deux entrées du site -->
+    <h2
+      v-if="rubriques.length"
+      class="mx-auto mt-14 max-w-5xl text-center text-2xl font-bold text-gray-900 md:text-3xl"
+    >
+      Ou choisissez selon votre profil
+    </h2>
     <nav
-      class="mx-auto mt-10 grid max-w-5xl gap-6 md:grid-cols-2"
+      :class="['mx-auto grid max-w-5xl gap-6 md:grid-cols-2', rubriques.length ? 'mt-6' : 'mt-10']"
       aria-label="Choisir votre parcours"
     >
       <article
@@ -128,7 +187,23 @@
 </template>
 
 <script setup>
+import { computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { AUDIENCES } from '@/config/audiences'
+import { useData } from '@/utils/fetchDataPwa'
+import { buildRubriques } from '@/utils/parcours'
+import { useNiveauStore } from '@/stores/niveauCoursStore'
+
+// Couleurs pastel des cartes, comme celles des parcours
+const cardVariants = ['blue', 'green', 'purple', 'amber']
+
+const { fetchMenus, menus, cats } = useData()
+const { selectedNiveau } = storeToRefs(useNiveauStore())
+const rubriques = computed(() => buildRubriques(cats.value, menus.value, selectedNiveau.value))
+
+onMounted(() => {
+  fetchMenus()
+})
 
 const howItWorks = [
   {

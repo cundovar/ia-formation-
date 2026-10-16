@@ -11,6 +11,7 @@ const ComponentsDemo = () => import('../views/ComponentsDemo.vue')
 const HomePage = () => import('../components/features/home/HomePage.vue')
 const AudiencePage = () => import('../views/AudiencePage.vue')
 const MonEspacePage = () => import('../views/MonEspacePage.vue')
+const RubriquePage = () => import('../views/RubriquePage.vue')
 
 const routes = [
   // Route accueil
@@ -32,6 +33,14 @@ const routes = [
     name: 'former',
     component: AudiencePage,
     props: { audienceKey: 'former' }
+  },
+
+  // Grande rubrique de l'accueil : ses parcours (rubrique → parcours → modules → cours)
+  {
+    path: '/rubrique/:id(\\d+)',
+    name: 'rubrique',
+    component: RubriquePage,
+    props: true
   },
 
   // Espace de l'apprenant connecté : cours, parcours et QCM personnalisés, compte

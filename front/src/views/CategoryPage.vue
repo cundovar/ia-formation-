@@ -38,15 +38,50 @@
         />
       </div>
 
-      <div class="flex flex-wrap justify-center items-start">
-        <CourseCard
-          v-for="group in categoryMenus"
+      <!-- Modules présentés comme des chapitres numérotés et dépliables, avec leurs cours -->
+      <ol
+        v-if="categoryMenus.length"
+        class="chapters"
+        data-testid="chapters"
+      >
+        <li
+          v-for="(group, index) in categoryMenus"
           :key="group.label"
-          :title="group.label"
-          :menus="group.items"
-          :icon-class="getGroupIconClass(group.label)"
-        />
-      </div>
+          :class="['surface-card', `surface-card--${chapterVariants[index % chapterVariants.length]}`, 'chapter']"
+        >
+          <details :open="index === 0">
+            <summary class="chapter-summary">
+              <span class="chapter-title">{{ chapterTitle(group.label, index) }}</span>
+              <span class="chapter-count">{{ group.items.length }} cours</span>
+              <i
+                class="fas fa-chevron-down chapter-chevron"
+                aria-hidden="true"
+              />
+            </summary>
+            <ol class="chapter-courses">
+              <li
+                v-for="item in group.items"
+                :key="item.id ?? item.page?.slug"
+              >
+                <router-link
+                  :to="`/pages${item.page.slug}`"
+                  class="chapter-course"
+                >
+                  <i
+                    class="fas fa-file-lines"
+                    aria-hidden="true"
+                  />
+                  <span>{{ item.title }}</span>
+                  <i
+                    class="fas fa-arrow-right chapter-arrow"
+                    aria-hidden="true"
+                  />
+                </router-link>
+              </li>
+            </ol>
+          </details>
+        </li>
+      </ol>
 
       <div
         v-if="!categoryMenus.length"
@@ -70,12 +105,12 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useData } from '../utils/fetchDataPwa'
-import CourseCard from '../components/features/pages/CourseCard.vue'
 import SeoHead from '../components/layout/SeoHead.vue'
 import SafeHtml from '../components/ui/SafeHtml.vue'
 import { storeToRefs } from 'pinia'
 import { useNiveauStore } from "@/stores/niveauCoursStore";
 import { getAudience } from '@/config/audiences'
+import { chapterNumber, sortChapters } from '@/utils/parcours'
 
 
 
@@ -241,11 +276,15 @@ if(selectedNiveau.value){
   }
   Object.values(grouped).forEach((group) => group.items.sort(sortByRank))
 
-  return Object.values(grouped)
+  return sortChapters(Object.values(grouped))
 })
 
-// Icône commune à tous les modules d'un parcours
-const getGroupIconClass = () => 'fas fa-book'
+// Couleurs pastel des chapitres
+const chapterVariants = ['blue', 'green', 'purple', 'amber']
+
+// « Chapitre 2 — Construire un workflow » : un module déjà numéroté garde son nom
+const chapterTitle = (label, index) =>
+  chapterNumber(label) === null ? `Chapitre ${index + 1} — ${label}` : label
 
 onMounted(() => {
   fetchMenus()
@@ -254,6 +293,107 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  list-style: none;
+}
+
+.chapter-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  list-style: none;
+  min-height: 3.5rem;
+}
+
+.chapter-summary::-webkit-details-marker {
+  display: none;
+}
+
+.chapter-summary:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+  border-radius: 1rem;
+}
+
+.chapter-title {
+  flex: 1;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.chapter-count {
+  font-size: 1rem;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.chapter-chevron {
+  color: #374151;
+  transition: transform 160ms ease;
+}
+
+details[open] .chapter-chevron {
+  transform: rotate(180deg);
+}
+
+.chapter-courses {
+  list-style: none;
+  margin: 0;
+  padding: 0 1rem 1rem;
+}
+
+.chapter-course {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  min-height: 3.25rem;
+  border-radius: 0.75rem;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: #1f2937;
+  text-decoration: none;
+}
+
+.chapter-course span {
+  flex: 1;
+}
+
+.chapter-course:hover,
+.chapter-course:focus-visible {
+  background: rgb(255 255 255 / 75%);
+}
+
+.chapter-course:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.chapter-arrow {
+  font-size: 0.875rem;
+  transition: transform 160ms ease;
+}
+
+.chapter-course:hover .chapter-arrow {
+  transform: translateX(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chapter-chevron,
+  .chapter-arrow {
+    transition: none;
+  }
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;
