@@ -10,6 +10,7 @@ use App\Entity\Menus;
 use App\Entity\NiveauCours;
 use App\Entity\Page;
 use App\Entity\PageContent;
+use App\Entity\SuperMenu;
 use App\Service\Capture\AutomaticCaptureService;
 use App\Service\Capture\CaptureFailed;
 use App\Service\Capture\ImageDepositService;
@@ -47,10 +48,15 @@ final class RedactionService
     public function catalogue(): array
     {
         return [
+            'rubriques' => array_map(fn (SuperMenu $r) => [
+                'id' => $r->getId(),
+                'nom' => $r->getName(),
+            ], $this->entityManager->getRepository(SuperMenu::class)->findBy([], ['name' => 'ASC'])),
             'parcours' => array_map(fn (Category $c) => [
                 'id' => $c->getId(),
                 'nom' => $c->getName(),
                 'public' => $c->getAudience(),
+                'rubriqueId' => $c->getSuperMenu()?->getId(),
                 'description' => $c->getDescription(),
                 'niveau' => $c->getNiveauCours()?->getName(),
                 'visible' => $c->isVisible() !== false,
@@ -90,6 +96,13 @@ final class RedactionService
             $errors[] = ['champ' => 'nom', 'message' => 'Ce parcours existe déjà (identifiant '.$existing->getId().').'];
         }
         $level = $this->optionalLevel($data, $errors);
+        $rubrique = null;
+        if (isset($data['rubriqueId'])) {
+            $rubrique = $this->entityManager->find(SuperMenu::class, (int) $data['rubriqueId']);
+            if ($rubrique === null) {
+                $errors[] = ['champ' => 'rubriqueId', 'message' => 'Rubrique introuvable (voir lister_catalogue).'];
+            }
+        }
         if ($errors !== []) {
             throw RedactionError::invalid($errors);
         }
@@ -98,10 +111,62 @@ final class RedactionService
             ->setName($name)
             ->setAudience($audience)
             ->setDescription($this->nullable($data['description'] ?? null))
-            ->setNiveauCours($level);
+            ->setNiveauCours($level)
+            ->setSuperMenu($rubrique);
         $this->persistValid($category);
 
-        return ['id' => $category->getId(), 'nom' => $category->getName(), 'public' => $category->getAudience(), 'description' => $category->getDescription(), 'niveauId' => $level?->getId()];
+        return ['id' => $category->getId(), 'nom' => $category->getName(), 'public' => $category->getAudience(), 'description' => $category->getDescription(), 'niveauId' => $level?->getId(), 'rubriqueId' => $rubrique?->getId()];
+    }
+
+    /**
+     * Grande rubrique qui regroupe des parcours (entité SuperMenu). Créer une rubrique ne publie rien.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function createRubrique(array $data): array
+    {
+        $name = $this->requiredName($data, 255);
+        $existing = $this->entityManager->getRepository(SuperMenu::class)->findOneBy(['name' => $name]);
+        if ($existing !== null) {
+            throw RedactionError::invalid([['champ' => 'nom', 'message' => 'Cette rubrique existe déjà (identifiant '.$existing->getId().').']]);
+        }
+
+        $rubrique = (new SuperMenu())->setName($name);
+        $this->persistValid($rubrique);
+
+        return ['id' => $rubrique->getId(), 'nom' => $rubrique->getName()];
+    }
+
+    /**
+     * Range des parcours dans une rubrique (ou les en retire avec null). Ne change ni les cours, ni les modules,
+     * ni le rang des parcours. Les parcours valides sont classés même si d'autres sont refusés.
+     *
+     * @param list<int> $parcoursIds
+     * @return array<string, mixed>
+     */
+    public function classifyParcours(array $parcoursIds, ?int $rubriqueId): array
+    {
+        $rubrique = null;
+        if ($rubriqueId !== null) {
+            $rubrique = $this->entityManager->find(SuperMenu::class, $rubriqueId)
+                ?? throw RedactionError::invalid([['champ' => 'rubriqueId', 'message' => 'Rubrique introuvable (voir lister_catalogue).']]);
+        }
+
+        $result = ['rubrique' => $rubrique === null ? null : ['id' => $rubrique->getId(), 'nom' => $rubrique->getName()], 'classes' => [], 'refus' => []];
+        foreach (array_values(array_unique(array_map('intval', $parcoursIds))) as $id) {
+            $category = $this->entityManager->find(Category::class, $id);
+            if ($category === null) {
+                $result['refus'][] = ['id' => $id, 'raison' => 'Parcours introuvable (voir lister_catalogue).'];
+                continue;
+            }
+            $previous = $category->getSuperMenu();
+            $category->setSuperMenu($rubrique);
+            $result['classes'][] = ['id' => $id, 'nom' => $category->getName(), 'ancienneRubriqueId' => $previous?->getId(), 'nouvelleRubriqueId' => $rubrique?->getId()];
+        }
+        $this->entityManager->flush();
+
+        return $result;
     }
 
     /**

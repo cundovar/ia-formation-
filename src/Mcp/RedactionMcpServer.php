@@ -143,7 +143,7 @@ final class RedactionMcpServer
 
         return [
             [
-                new Tool('lister_catalogue', 'Lister le catalogue', self::schema([]), 'Parcours (avec leur public : apprendre ou former), modules, niveaux et sites capturables, avec leurs identifiants.', $readOnly),
+                new Tool('lister_catalogue', 'Lister le catalogue', self::schema([]), 'Rubriques (grands thèmes), parcours (avec leur public : apprendre ou former, et leur rubrique), modules, niveaux, avec leurs identifiants. Organisation : rubrique → parcours → modules → cours.', $readOnly),
                 fn () => $this->redaction->catalogue(),
             ],
             [
@@ -152,8 +152,22 @@ final class RedactionMcpServer
                     'public' => ['type' => 'string', 'enum' => Category::AUDIENCES, 'description' => "apprendre (personnes qui découvrent l'IA) ou former (formateurs à l'IA)"],
                     'description' => ['type' => ['string', 'null'], 'maxLength' => 2000],
                     'niveauId' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                    'rubriqueId' => ['type' => ['integer', 'null'], 'minimum' => 1, 'description' => 'Rubrique qui regroupe ce parcours (lister_catalogue, creer_rubrique)'],
                 ], ['nom', 'public']), "Ajoute un parcours au catalogue. Il n'apparaît sur le site qu'une fois un de ses cours publié. À créer seulement à la demande de la personne.", $write),
                 fn (array $args) => $this->redaction->createParcours($args),
+            ],
+            [
+                new Tool('creer_rubrique', 'Créer une rubrique', self::schema([
+                    'nom' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255, 'description' => "Grand thème qui regroupe 2 ou 3 parcours, par exemple « Automatiser et gérer les données »"],
+                ], ['nom']), "Ajoute une grande rubrique au-dessus des parcours (rubrique → parcours → modules → cours). Rien n'est publié. Range ensuite les parcours avec classer_parcours. À créer seulement à la demande de la personne.", $write),
+                fn (array $args) => $this->redaction->createRubrique($args),
+            ],
+            [
+                new Tool('classer_parcours', 'Classer des parcours dans une rubrique', self::schema([
+                    'parcoursIds' => ['type' => 'array', 'items' => self::ID, 'minItems' => 1, 'maxItems' => 50, 'description' => 'Parcours à ranger (lister_catalogue)'],
+                    'rubriqueId' => ['type' => ['integer', 'null'], 'minimum' => 1, 'description' => 'Rubrique de destination ; null pour retirer les parcours de leur rubrique'],
+                ], ['parcoursIds', 'rubriqueId']), "Range des parcours dans une rubrique, ou les déplace d'une rubrique à l'autre. Ne modifie ni les cours, ni les modules, ni le rang des parcours (ordonner_parcours). Renvoie les parcours classés (ancienne et nouvelle rubrique) et les refus.", new ToolAnnotations(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true)),
+                fn (array $args) => $this->redaction->classifyParcours(array_map('intval', (array) $args['parcoursIds']), isset($args['rubriqueId']) ? (int) $args['rubriqueId'] : null),
             ],
             [
                 new Tool('creer_module', 'Créer un module', self::schema([
@@ -537,7 +551,7 @@ final class RedactionMcpServer
 
             Démarche :
             1. lire_regles sans argument, puis lis en entier les règles POS, LIM, DON, RED, ACC et CAP utiles au sujet.
-            2. lister_catalogue : choisis le parcours dont le public est « {$audience} », puis le module (chapitre) du cours. Pour une série de cours, propose d'abord des modules par thème et crée-les avec l'accord de la personne (creer_module). S'il manque un parcours ou un niveau, procède de même (creer_parcours, creer_niveau).
+            2. lister_catalogue : choisis le parcours dont le public est « {$audience} », puis le module (chapitre) du cours. Pour une série de cours, propose d'abord des modules par thème et crée-les avec l'accord de la personne (creer_module). S'il manque une rubrique, un parcours ou un niveau, procède de même (creer_rubrique, creer_parcours avec rubriqueId, creer_niveau).
             3. obtenir_modele « {$modele} » et suis sa structure.
             4. Rédige en langage clair (RED-01) : une action par étape, des phrases de moins de 20 mots, aucun jargon pour le public « apprendre » (expliquer « prompt », « modèle », « hallucination » s'ils sont employés).
             5. Données : uniquement fictives (DON-04) — « Mme Exemple », adresses en @example.com, numéros écrits avec des X, clés d'API écrites sk-XXXX. Les exemples de consignes (prompts) ne contiennent aucune donnée personnelle ou confidentielle.

@@ -41,7 +41,7 @@ On peut inverser les rôles. Deux connecteurs ajoutés dans le même outil fonct
 
 | Outil | Rôle |
 | --- | --- |
-| `lister_catalogue` | Parcours (avec leur public), modules, niveaux, sites capturables |
+| `lister_catalogue` | Rubriques, parcours (avec leur public et leur rubrique), modules, niveaux. Organisation : rubrique → parcours → modules → cours |
 | `creer_parcours`, `creer_module`, `creer_niveau` | Structure du catalogue, à la demande de la personne ; un doublon est refusé avec l'identifiant existant. Un parcours n'apparaît sur le site qu'avec un cours publié |
 | `lire_regles` | Statut du référentiel, liste des règles, ou texte de règles précises avec leurs sources |
 | `obtenir_modele` | Gabarit `cours-apprendre`, `cours-former` ou `fiche-outil` |
@@ -53,6 +53,8 @@ On peut inverser les rôles. Deux connecteurs ajoutés dans le même outil fonct
 | `publier_cours` | Publication si aucun contrôle bloquant, une relecture favorable d'un autre connecteur et un module (sauf `sansModule: true`, choix explicite) |
 | `mettre_en_brouillon` | Retire du site un cours publié, ou tous les cours publiés d'un module ou d'un parcours (`type` : `cours`, `module`, `parcours`), en les repassant en brouillon ; un module ou un parcours sans cours publié disparaît du site. Rien n'est supprimé : le contenu et la relecture sont gardés, et `publier_cours` remet chaque cours en ligne (une modification demande une nouvelle relecture) |
 | `classer_cours` | Range ou déplace jusqu'à 100 cours, publiés compris, dans un module du même parcours (`null` : hors module), sans toucher au contenu, au statut ni à la relecture. L'ordre des identifiants fixe le rang des cours dans le module (1, 2, 3…) ; renvoie les cours classés (ancien et nouveau module), ceux déjà en place, leur rang (`ordres`) et les refus |
+| `creer_rubrique` | Grande rubrique au-dessus des parcours (entité `SuperMenu`, aussi gérée dans le back-office) ; un doublon est refusé avec l'identifiant existant. `creer_parcours` accepte `rubriqueId` |
+| `classer_parcours` | Range ou déplace des parcours dans une rubrique (`null` : hors rubrique), sans toucher aux cours, aux modules ni au rang des parcours |
 | `ordonner_parcours` | Fixe l'ordre des parcours dans le catalogue d'après l'ordre des identifiants (rang 1, 2, 3…) ; les parcours non cités passent après, par ordre alphabétique ; renvoie le rang de chaque parcours et les refus |
 | `definir_illustration_parcours` | Associe une illustration existante (type `illustration`, jamais une capture) à un parcours pour sa miniature sur la carte du catalogue ; `null` retire la miniature. Nouvelle image : `preparer_depot_image` (type illustration), envoi du fichier, puis cet outil avec l'identifiant renvoyé |
 | `remplacer_capture` | Remplace dans un cours, même publié, le marqueur d'une capture par une autre ; refusé si le cours est en relecture humaine ou si le remplacement ajoute un contrôle bloquant ; la relecture est gardée |
