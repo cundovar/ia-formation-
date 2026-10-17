@@ -72,6 +72,7 @@
 import { computed, onMounted } from "vue";
 import navFooterMobil from "./components/navigation/NavFooterMobile.vue";
 import { useData } from "./utils/fetchDataPwa";
+import { sortChapters } from "./utils/parcours";
 
 // Composants importés
 import AppHeader from "./components/layout/AppHeader.vue";
@@ -131,14 +132,19 @@ const { body, initCustomization } = useCustomization();
 // COMPUTED: catsMenuGauche - Catégories filtrées pour le menu de navigation
 // =============================================================================
 // Cette computed filtre les catégories en 3 étapes:
-// 1. Position: seulement les catégories du menu-gauche ou menu-droite
+// 1. Position et contenu : un parcours sans position (cas des parcours créés par le connecteur) ou placé
+//    dans le menu de gauche ou de droite, qui contient au moins un cours affiché, comme dans les catalogues
 // 2. Visibilité: filtre selon les droits utilisateur (admin, connecté, etc.)
 // 3. NIVEAU: filtre par le niveau sélectionné dans le header (Junior/Senior/etc.)
 const catsMenuGauche = computed(() => {
-  // Étape 1: Filtrer par position dans le menu
+  // Étape 1: Filtrer par position dans le menu et garder les parcours qui ont des cours
+  const withCourses = new Set((menus.value || []).map((menu) => menu.category?.id))
   let menuGaucheCategories = (cats.value || []).filter(
-    (cat) => cat.positionMenus?.position === "menu-gauche" ||
-             cat.positionMenus?.position === "menu-droite"
+    (cat) => {
+      const position = cat.positionMenus?.position
+      const inMenu = !position || position === "menu-gauche" || position === "menu-droite"
+      return inMenu && withCourses.has(cat.id)
+    }
   )
 
   // Étape 2: Appliquer le filtre de visibilité (droits utilisateur)
@@ -234,7 +240,10 @@ const menusByCategory = computed(() => {
       grouped[label].items.push(menu);
     });
 
-    result[cat.name] = Object.values(grouped);
+    // Chapitres dans l'ordre de leur numéro, cours dans l'ordre pédagogique (rang), comme sur la page du parcours
+    const byRank = (a, b) => (a.ordre ?? Number.POSITIVE_INFINITY) - (b.ordre ?? Number.POSITIVE_INFINITY) || (a.id ?? 0) - (b.id ?? 0);
+    Object.values(grouped).forEach((group) => group.items.sort(byRank));
+    result[cat.name] = sortChapters(Object.values(grouped));
   });
 
   //console.log("menusByCategory result:", result);

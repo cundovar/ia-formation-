@@ -31,13 +31,31 @@ final class RubriqueConnectorTest extends McpTestCase
         self::assertSame([999999], array_column($classes['data']['refus'], 'id'));
 
         $catalogue = $this->tool(self::CLAUDE, 'lister_catalogue')['data'];
-        self::assertSame([['id' => $rubriqueId, 'nom' => 'Automatiser et gérer les données']], $catalogue['rubriques']);
+        self::assertSame([['id' => $rubriqueId, 'nom' => 'Automatiser et gérer les données', 'ordre' => 1]], $catalogue['rubriques']);
         self::assertSame([$rubriqueId, $rubriqueId], array_column($catalogue['parcours'], 'rubriqueId'));
 
         // null retire un parcours de sa rubrique
         $this->tool(self::CLAUDE, 'classer_parcours', ['parcoursIds' => [$donnees], 'rubriqueId' => null]);
         $this->entityManager->clear();
         self::assertNull($this->entityManager->find(Category::class, $donnees)->getSuperMenu());
+    }
+
+    public function testRubriquesAreRankedForTheHomePage(): void
+    {
+        $donnees = $this->tool(self::CLAUDE, 'creer_rubrique', ['nom' => 'Automatiser et gérer les données'])['data'];
+        $decouvrir = $this->tool(self::CLAUDE, 'creer_rubrique', ['nom' => 'Découvrir et utiliser l\'IA'])['data'];
+        self::assertSame([1, 2], [$donnees['ordre'], $decouvrir['ordre']]);
+
+        $ranked = $this->tool(self::CLAUDE, 'ordonner_rubriques', ['rubriqueIds' => [$decouvrir['id'], $donnees['id'], 999999]]);
+        self::assertFalse($ranked['error'], $ranked['text']);
+        self::assertSame([[$decouvrir['id'], 1], [$donnees['id'], 2]], array_map(static fn (array $o) => [$o['id'], $o['ordre']], $ranked['data']['ordres']));
+        self::assertSame([999999], array_column($ranked['data']['refus'], 'id'));
+
+        // Le rang est servi au site avec chaque parcours
+        $parcours = $this->tool(self::CLAUDE, 'creer_parcours', ['nom' => 'Découvrir l\'IA', 'public' => 'apprendre', 'rubriqueId' => $decouvrir['id']])['data'];
+        $this->client->request('GET', '/api/categories/'.$parcours['id'], [], [], ['HTTP_ACCEPT' => 'application/ld+json']);
+        $superMenu = json_decode((string) $this->client->getResponse()->getContent(), true)['superMenu'];
+        self::assertSame([$decouvrir['id'], 'Découvrir et utiliser l\'IA', 1], [$superMenu['id'], $superMenu['name'], $superMenu['ordre']]);
     }
 
     public function testUnknownRubriqueIsRejected(): void

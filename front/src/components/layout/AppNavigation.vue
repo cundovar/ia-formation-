@@ -38,8 +38,6 @@
         :hovered-category="hoveredCategory"
         :click-menu="clickMenu"
         :is-xl-ou-plus="isXlOuPlus"
-        :islg-ou-plus="islgOuPlus"
-        :is-open-menu-gauche="isOpenMenuGauche"
         @open-menu="$emit('openMenu', $event)"
         @hover-category="$emit('hoverCategory', $event)"
         @close-menu="$emit('closeMenu')"

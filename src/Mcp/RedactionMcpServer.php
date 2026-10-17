@@ -159,8 +159,15 @@ final class RedactionMcpServer
             [
                 new Tool('creer_rubrique', 'Créer une rubrique', self::schema([
                     'nom' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255, 'description' => "Grand thème qui regroupe 2 ou 3 parcours, par exemple « Automatiser et gérer les données »"],
+                    'ordre' => ['type' => 'integer', 'minimum' => 0, 'description' => "Rang sur l'accueil ; par défaut après les rubriques existantes"],
                 ], ['nom']), "Ajoute une grande rubrique au-dessus des parcours (rubrique → parcours → modules → cours). Rien n'est publié. Range ensuite les parcours avec classer_parcours. À créer seulement à la demande de la personne.", $write),
                 fn (array $args) => $this->redaction->createRubrique($args),
+            ],
+            [
+                new Tool('ordonner_rubriques', 'Ordonner les rubriques', self::schema([
+                    'rubriqueIds' => ['type' => 'array', 'items' => self::ID, 'minItems' => 1, 'maxItems' => 50, 'description' => "Rubriques dans l'ordre où elles doivent apparaître : le premier identifiant devient le rang 1 (lister_catalogue)"],
+                ], ['rubriqueIds']), "Fixe l'ordre des grandes rubriques sur l'accueil et dans le menu du site, d'après l'ordre des identifiants (rang 1, 2, 3…). Les rubriques non citées passent après. Ne modifie ni les parcours ni les cours. Renvoie le rang de chaque rubrique et les identifiants refusés.", new ToolAnnotations(readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true)),
+                fn (array $args) => $this->redaction->orderRubriques(array_map('intval', (array) $args['rubriqueIds'])),
             ],
             [
                 new Tool('classer_parcours', 'Classer des parcours dans une rubrique', self::schema([

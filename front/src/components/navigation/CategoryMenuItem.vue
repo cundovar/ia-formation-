@@ -1,125 +1,88 @@
 <template>
-  <div  
-    class="cursor-pointer flex relative  px-2 flex-col justify-center"
-    @click="!isXlOuPlus && $emit('openMenu', cat.name)"
+  <!-- Un parcours du menu : sur ordinateur, le survol ouvre ses chapitres à droite ; sur mobile, un clic les déplie -->
+  <div
+    class="parcours-item"
     @mouseenter="isXlOuPlus && $emit('hoverCategory', cat.name)"
   >
-    <!-- Titre de la catégorie -->
-    <h1
-      :class="[
-        menuGauche.categoryBgColor,
-        menuGauche.categoryTextColor,
-        menuGauche.categoryTextSize,
-        menuGauche.categoryHoverColor,
-        {
-          'bg-yellow-200': (islgOuPlus && hoveredCategory === cat.name) || (!islgOuPlus && clickMenu === cat.name),
-        },
-        isOpenMenuGauche ? 'flex items-end justify-end ' : ''
-      ]"
-      class=" max-md:drop-shadow-xl max-md:drop-shadow-gray-400 max-md:border-b max-md:border-gray-400 pt-2 md:mt-2 max-md:text-center uppercase  pb-2 pl-1"
+    <router-link
+      v-if="isXlOuPlus"
+      :to="`/category/${cat.name}`"
+      :class="['parcours-row', { 'parcours-row--active': isOpen }]"
+      @click="$emit('closeMenu')"
+      @focus="$emit('hoverCategory', cat.name)"
     >
-      <!-- Desktop : lien direct vers la catégorie -->
+      <span class="parcours-name">{{ cat.name }}</span>
+      <i
+        class="fas fa-chevron-right parcours-chevron"
+        aria-hidden="true"
+      />
+    </router-link>
+    <button
+      v-else
+      type="button"
+      :class="['parcours-row', { 'parcours-row--active': isOpen }]"
+      :aria-expanded="isOpen"
+      @click="$emit('openMenu', cat.name)"
+    >
+      <span class="parcours-name">{{ cat.name }}</span>
+      <i
+        :class="['fas', isOpen ? 'fa-chevron-up' : 'fa-chevron-down', 'parcours-chevron']"
+        aria-hidden="true"
+      />
+    </button>
+
+    <!-- Chapitres et cours du parcours -->
+    <div
+      v-if="isOpen"
+      class="parcours-panel div-scrollbar"
+    >
       <router-link
-        v-if="isXlOuPlus"
-        :to="`/category/${cat.name.toLowerCase()}`"
-        class="cursor-pointer text-lg hover:underline block  focus:bg-blue-500"
+        :to="`/category/${cat.name}`"
+        class="parcours-all"
         @click="$emit('closeMenu')"
       >
-        {{ cat.name }}
+        Voir le parcours
+        <i
+          class="fas fa-arrow-right"
+          aria-hidden="true"
+        />
       </router-link>
 
-      <!-- Mobile/Tablet : texte cliquable qui ouvre le menu -->
-      <span
-        v-else
-        :class="[menuGauche.categoryTextSize, menuGauche.categoryBgColor]"
-      >
-        {{ cat.name }}
-      </span>
-    </h1>
-
-    <!-- Sous-menu déroulant -->
-    <div class="xl:absolute xl:top-0 xl:-right-[26rem] xl:z-40 xl:shadow-lg max-h-[20rem] xl:pr-10 xl:pl-10 xl:w-[25rem] rounded-xl bg-gray-200 div-scrollbar overflow-y-auto">
-      <!-- Bouton "Voir tous" en mobile/tablet -->
-      <div
-        v-if="!isXlOuPlus && clickMenu === cat.name"
-        class="p-2"
-      >
-        <router-link
-          :to="`/category/${cat.name.toLowerCase()}`"
-          class="block w-full"
-          @click="$emit('closeMenu')"
-        >
-          <AppButton
-            variant="ghost"
-            size="md"
-            icon="pi pi-eye"
-            :text-content="`Voir tous les cours de ${cat.name}`"
-            full-width
-          />
-        </router-link>
-      </div>
-
-      <!-- Menu des cours -->
-
-      <template
+      <section
         v-for="group in menusByCategory[cat.name]"
         :key="group.label"
+        class="parcours-chapter"
       >
-        <div
-          v-if="(isXlOuPlus && hoveredCategory === cat.name) || (!isXlOuPlus && clickMenu === cat.name)"
-          class="md:gap-y-1"
-        >
-          <div class="p-2 md:w-2/3 md:mt-1 md:border-b mb-2 md:text-start md:bg-transparent   max-md:text-center  max-md:text-sm max-md:border-t">
-            <p class="font-semibold  ">
-              {{ group.label }}
-            </p>
-          </div>
-
-          <button
+        <p class="parcours-chapter-title">
+          {{ group.label }}
+        </p>
+        <ul class="parcours-courses">
+          <li
             v-for="menu in group.items"
             :key="menu.page.slug"
-            :class="[
-              menuGauche.menuItemBgColor,
-              menuGauche.menuItemHoverBgColor,
-              'w-full md:rounded-sm shadow-2xl border border-indigo-800 mb-2 xl:ml-2 flex flex-col gap-2 text-sm'
-            ]"
           >
             <router-link
               :to="`/pages${menu.page.slug}`"
-              :class="[
-                menuGauche.menuItemTextColor,
-                'focus:bg-gray-400 focus:text-white z-50 hover:text-fuchsia-900'
-              ]"
+              class="parcours-course"
               @click="$emit('closeMenu')"
             >
-              <div class="p-2 flex justify-around max-md:justify-start items-center max-md:text-start">
-                <div class="flex justify-center items-center w-1/3">
-                  <i class="pi pi-book max-md:text-blue-600 md:text-yellow-600" />
-                </div>
-
-                <div class="flex-1 text-center border-blue-300 shadow border flex justify-center items-center">
-                  {{ menu.title }}
-                </div>
-
-                <div class="flex justify-center items-center w-1/3">
-                  <i class="pi pi-book max-md:text-blue-600 md:text-yellow-600" />
-                </div>
-              </div>
+              <i
+                class="fas fa-file-lines"
+                aria-hidden="true"
+              />
+              <span>{{ menu.title }}</span>
             </router-link>
-          </button>
-        </div>
-      </template>
+          </li>
+        </ul>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup>
-import { useCustomization } from '../../composables/ui/useCustomization';
-import AppButton from '../ui/AppButton.vue';
+import { computed } from 'vue'
 
-const { menuGauche } = useCustomization();
-console.log("rrrrr",menuGauche.value)
-defineProps({
+const props = defineProps({
   cat: {
     type: Object,
     required: true
@@ -139,16 +102,144 @@ defineProps({
   isXlOuPlus: {
     type: Boolean,
     default: false
-  },
-  islgOuPlus: {
-    type: Boolean,
-    default: false
-  },
-  isOpenMenuGauche: {
-    type: Boolean,
-    default: false
   }
-});
+})
 
-defineEmits(['openMenu', 'hoverCategory', 'closeMenu']);
+defineEmits(['openMenu', 'hoverCategory', 'closeMenu'])
+
+const isOpen = computed(() =>
+  props.isXlOuPlus ? props.hoveredCategory === props.cat.name : props.clickMenu === props.cat.name
+)
 </script>
+
+<style scoped>
+.parcours-item {
+  position: relative;
+}
+
+.parcours-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #1f2937;
+  text-decoration: none;
+  background: transparent;
+  transition: background-color 160ms ease;
+}
+
+.parcours-row:hover,
+.parcours-row--active {
+  background: #fff;
+}
+
+.parcours-row--active {
+  box-shadow: inset 4px 0 0 #93c5fd;
+}
+
+.parcours-row:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.parcours-name {
+  flex: 1;
+}
+
+.parcours-chevron {
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+/* Panneau des chapitres : à droite de la colonne sur ordinateur, sous le parcours sur mobile */
+.parcours-panel {
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 8px 20px rgb(15 23 42 / 10%);
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+@media (min-width: 1280px) {
+  .parcours-panel {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 1rem);
+    z-index: 40;
+    width: 24rem;
+    margin: 0;
+  }
+}
+
+.parcours-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  text-decoration: underline;
+}
+
+.parcours-all:focus-visible,
+.parcours-course:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.parcours-chapter + .parcours-chapter {
+  margin-top: 0.5rem;
+}
+
+.parcours-chapter-title {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #4b5563;
+}
+
+.parcours-courses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.parcours-course {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-height: 2.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: #1f2937;
+  text-decoration: none;
+}
+
+.parcours-course i {
+  margin-top: 0.2rem;
+  color: #1e40af;
+}
+
+.parcours-course:hover {
+  background: #eff6ff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parcours-row {
+    transition: none;
+  }
+}
+</style>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildParcours, buildParcoursOfRubrique, buildRubriques, chapterNumber, sortChapters, toPlainText } from '@/utils/parcours'
+import { buildParcours, buildParcoursOfRubrique, buildRubriques, chapterNumber, groupByRubrique, sortChapters, toPlainText } from '@/utils/parcours'
 
 const debutant = { name: 'Débutant', ordre: 1 }
 const confirme = { name: 'Confirmé', ordre: 2 }
@@ -109,6 +109,18 @@ describe('rubriques', () => {
     const rubriques = buildRubriques(cats, cours)
     expect(rubriques.map((r) => r.id)).toEqual([1, 3, 6])
     expect(names(rubriques[1].parcours)).toEqual(['automatisation avec n8n', 'stockage des données'])
+  })
+
+  it('suit le rang des rubriques avant leur nom', () => {
+    const ranked = cats.map((cat) => ({ ...cat, superMenu: cat.superMenu && { ...cat.superMenu, ordre: { 1: 3, 3: 1, 6: 2, 9: 4 }[cat.superMenu.id] } }))
+    expect(buildRubriques(ranked, cours).map((r) => r.id)).toEqual([3, 6, 1])
+  })
+
+  it('regroupe les parcours du menu par rubrique, les parcours sans rubrique à la fin', () => {
+    const menu = groupByRubrique(cats.filter((cat) => cat.visible !== false))
+    expect(menu.map((group) => group.id)).toEqual([1, 3, 6, 9, null])
+    expect(names(menu[1].categories)).toEqual(['automatisation avec n8n', 'stockage des données'])
+    expect(menu.at(-1).name).toBeNull()
   })
 
   it('liste les parcours d\'une rubrique, tous publics confondus', () => {

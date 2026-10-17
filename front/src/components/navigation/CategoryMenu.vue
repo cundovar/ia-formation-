@@ -1,39 +1,82 @@
 <template>
-  <!-- Boucle sur les SuperMenus -->
+  <!-- Parcours du menu regroupés par grande rubrique (SuperMenu), dans l'ordre des rubriques -->
   <div
-    v-for="(superMenu, superMenuName) in categoriesBySuperMenu"
-    :key="superMenuName"
-    class="border-b border-gray-300"
+    class="rubrique-menu"
+    data-testid="rubrique-menu"
   >
-    <details class="group">
-      <summary class="cursor-pointer p-2 bg-blue-100 hover:bg-blue-200 font-bold uppercase text-gray-500">
-        {{ superMenuName }}
-      </summary>
+    <template
+      v-for="group in groups"
+      :key="group.id ?? 'sans-rubrique'"
+    >
+      <details
+        v-if="group.name"
+        class="rubrique"
+        :open="isOpen(group)"
+      >
+        <summary class="rubrique-summary">
+          <span class="rubrique-name">{{ group.name }}</span>
+          <i
+            class="fas fa-chevron-down rubrique-chevron"
+            aria-hidden="true"
+          />
+        </summary>
+        <ul class="rubrique-parcours">
+          <li
+            v-for="cat in group.categories"
+            :key="cat.id"
+          >
+            <CategoryMenuItem
+              :cat="cat"
+              :menus-by-category="menusByCategory"
+              :hovered-category="hoveredCategory"
+              :click-menu="clickMenu"
+              :is-xl-ou-plus="isXlOuPlus"
+              @open-menu="$emit('openMenu', $event)"
+              @hover-category="$emit('hoverCategory', $event)"
+              @close-menu="$emit('closeMenu')"
+            />
+          </li>
+        </ul>
+      </details>
 
-      <!-- Boucle sur les Categories de ce SuperMenu -->
-      <div class="">
-        <CategoryMenuItem
-          v-for="cat in superMenu"
-          :key="cat.id"
-          :cat="cat"
-          :menus-by-category="menusByCategory"
-          :hovered-category="hoveredCategory"
-          :click-menu="clickMenu"
-          :is-xl-ou-plus="isXlOuPlus"
-          :islg-ou-plus="islgOuPlus"
-          :is-open-menu-gauche="isOpenMenuGauche"
-          @open-menu="$emit('openMenu', $event)"
-          @hover-category="$emit('hoverCategory', $event)"
-          @close-menu="$emit('closeMenu')"
-        />
+      <!-- Parcours sans rubrique : à la suite, sous un titre seulement s'il existe des rubriques -->
+      <div
+        v-else
+        class="rubrique"
+      >
+        <p
+          v-if="groups.length > 1"
+          class="rubrique-summary rubrique-summary--static"
+        >
+          <span class="rubrique-name">Autres parcours</span>
+        </p>
+        <ul class="rubrique-parcours">
+          <li
+            v-for="cat in group.categories"
+            :key="cat.id"
+          >
+            <CategoryMenuItem
+              :cat="cat"
+              :menus-by-category="menusByCategory"
+              :hovered-category="hoveredCategory"
+              :click-menu="clickMenu"
+              :is-xl-ou-plus="isXlOuPlus"
+              @open-menu="$emit('openMenu', $event)"
+              @hover-category="$emit('hoverCategory', $event)"
+              @close-menu="$emit('closeMenu')"
+            />
+          </li>
+        </ul>
       </div>
-    </details>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import CategoryMenuItem from './CategoryMenuItem.vue';
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import CategoryMenuItem from './CategoryMenuItem.vue'
+import { groupByRubrique } from '@/utils/parcours'
 
 const props = defineProps({
   cats: {
@@ -55,33 +98,93 @@ const props = defineProps({
   isXlOuPlus: {
     type: Boolean,
     default: false
-  },
-  islgOuPlus: {
-    type: Boolean,
-    default: false
-  },
-  isOpenMenuGauche: {
-    type: Boolean,
-    default: false
   }
-});
+})
 
-// Grouper les catégories par SuperMenu
-const categoriesBySuperMenu = computed(() => {
-  const grouped = {};
+defineEmits(['openMenu', 'hoverCategory', 'closeMenu'])
 
-  props.cats.forEach(cat => {
-    const superMenuName = cat.superMenu?.name || 'Autres';
+const route = useRoute()
+const groups = computed(() => groupByRubrique(props.cats))
 
-    if (!grouped[superMenuName]) {
-      grouped[superMenuName] = [];
-    }
-
-    grouped[superMenuName].push(cat);
-  });
-
-  return grouped;
-});
-
-defineEmits(['openMenu', 'hoverCategory', 'closeMenu']);
+// Une rubrique est ouverte si elle contient le parcours affiché ; sinon seule la première l'est
+const currentCategory = computed(() => String(route.params.category ?? '').toLowerCase())
+const isOpen = (group) =>
+  group.categories.some((cat) => cat.name?.toLowerCase() === currentCategory.value) ||
+  (!currentCategory.value && group === groups.value[0])
 </script>
+
+<style scoped>
+.rubrique-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rubrique {
+  border-radius: 1rem;
+  background: #eff6ff;
+  box-shadow: 0 4px 12px rgb(15 23 42 / 6%);
+}
+
+.rubrique-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 1rem;
+}
+
+.rubrique-summary::-webkit-details-marker {
+  display: none;
+}
+
+.rubrique-summary:hover {
+  background: #dbeafe;
+}
+
+.rubrique-summary:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.rubrique-summary--static {
+  cursor: default;
+}
+
+.rubrique-summary--static:hover {
+  background: transparent;
+}
+
+.rubrique-name {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #111827;
+}
+
+.rubrique-chevron {
+  font-size: 0.875rem;
+  color: #374151;
+  transition: transform 160ms ease;
+}
+
+details[open] > .rubrique-summary .rubrique-chevron {
+  transform: rotate(180deg);
+}
+
+.rubrique-parcours {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.5rem 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rubrique-chevron {
+    transition: none;
+  }
+}
+</style>

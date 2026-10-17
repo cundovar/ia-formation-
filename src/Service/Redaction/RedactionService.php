@@ -51,6 +51,7 @@ final class RedactionService
             'rubriques' => array_map(fn (SuperMenu $r) => [
                 'id' => $r->getId(),
                 'nom' => $r->getName(),
+                'ordre' => $r->getOrdre(),
             ], $this->entityManager->getRepository(SuperMenu::class)->findBy([], ['name' => 'ASC'])),
             'parcours' => array_map(fn (Category $c) => [
                 'id' => $c->getId(),
@@ -132,10 +133,42 @@ final class RedactionService
             throw RedactionError::invalid([['champ' => 'nom', 'message' => 'Cette rubrique existe déjà (identifiant '.$existing->getId().').']]);
         }
 
-        $rubrique = (new SuperMenu())->setName($name);
+        if (isset($data['ordre'])) {
+            $order = (int) $data['ordre'];
+        } else {
+            // Par défaut, la nouvelle rubrique se place après les autres
+            $last = $this->entityManager->getRepository(SuperMenu::class)->findOneBy([], ['ordre' => 'DESC']);
+            $order = (int) $last?->getOrdre() + 1;
+        }
+
+        $rubrique = (new SuperMenu())->setName($name)->setOrdre($order);
         $this->persistValid($rubrique);
 
-        return ['id' => $rubrique->getId(), 'nom' => $rubrique->getName()];
+        return ['id' => $rubrique->getId(), 'nom' => $rubrique->getName(), 'ordre' => $rubrique->getOrdre()];
+    }
+
+    /**
+     * Fixe l'ordre des rubriques sur l'accueil et dans le menu : le premier identifiant devient le rang 1.
+     *
+     * @param list<int> $rubriqueIds
+     * @return array<string, mixed>
+     */
+    public function orderRubriques(array $rubriqueIds): array
+    {
+        $result = ['ordres' => [], 'refus' => []];
+        $rank = 0;
+        foreach (array_values(array_unique(array_map('intval', $rubriqueIds))) as $id) {
+            $rubrique = $this->entityManager->find(SuperMenu::class, $id);
+            if ($rubrique === null) {
+                $result['refus'][] = ['id' => $id, 'raison' => 'Rubrique introuvable (voir lister_catalogue).'];
+                continue;
+            }
+            $rubrique->setOrdre(++$rank);
+            $result['ordres'][] = ['id' => $id, 'nom' => $rubrique->getName(), 'ordre' => $rank];
+        }
+        $this->entityManager->flush();
+
+        return $result;
     }
 
     /**

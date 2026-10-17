@@ -31,7 +31,7 @@ export function buildParcoursOfRubrique(categories, courses, rubriqueId, selecte
 
 /**
  * Grandes rubriques de l'accueil : seules celles qui contiennent au moins un parcours affiché.
- * Rangées par leur nom, chiffres compris (« 2. … » avant « 10. … »), car une rubrique n'a pas de rang.
+ * Rangées par rang (champ `ordre`), puis par nom, chiffres compris (« 2. … » avant « 10. … »).
  */
 export function buildRubriques(categories, courses, selectedNiveau = null) {
   const rubriques = new Map()
@@ -44,11 +44,40 @@ export function buildRubriques(categories, courses, selectedNiveau = null) {
     .map((rubrique) => ({
       id: rubrique.id,
       name: rubrique.name ?? '',
+      ordre: rubrique.ordre ?? null,
       parcours: buildParcoursOfRubrique(categories, courses, rubrique.id, selectedNiveau),
     }))
     .filter((rubrique) => rubrique.parcours.length > 0)
-    .sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true }))
+    .sort(byRankThenName)
 }
+
+/**
+ * Parcours du menu de gauche regroupés par rubrique, dans l'ordre des rubriques puis des parcours.
+ * Les parcours sans rubrique forment un dernier groupe sans titre (`name: null`).
+ *
+ * @param {Array} categories parcours déjà filtrés pour le menu
+ * @returns {Array<{id: number|null, name: string|null, categories: Array}>}
+ */
+export function groupByRubrique(categories) {
+  const groups = new Map()
+  for (const category of categories) {
+    const rubrique = category?.superMenu?.id != null ? category.superMenu : null
+    const key = rubrique?.id ?? 'sans-rubrique'
+    if (!groups.has(key)) {
+      groups.set(key, { id: rubrique?.id ?? null, name: rubrique?.name ?? null, ordre: rubrique?.ordre ?? null, categories: [] })
+    }
+    groups.get(key).categories.push(category)
+  }
+
+  return [...groups.values()]
+    .map((group) => ({ ...group, categories: [...group.categories].sort(byRankThenName) }))
+    .sort((a, b) => (a.id === null) - (b.id === null) || byRankThenName(a, b))
+}
+
+// Rang croissant (sans rang : à la fin), puis nom avec les chiffres dans l'ordre naturel
+const byRankThenName = (a, b) =>
+  (a.ordre ?? Number.POSITIVE_INFINITY) - (b.ordre ?? Number.POSITIVE_INFINITY) ||
+  (a.name ?? '').localeCompare(b.name ?? '', 'fr', { numeric: true })
 
 function listParcours(categories, courses, belongs, selectedNiveau) {
   return categories
