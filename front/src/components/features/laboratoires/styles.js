@@ -22,6 +22,8 @@ export const COULEURS_BLOC = {
   orange: { carte: 'border-orange-300 bg-orange-50', icone: 'bg-orange-100 text-orange-900' },
   yellow: { carte: 'border-yellow-300 bg-yellow-50', icone: 'bg-yellow-100 text-yellow-900' },
   teal: { carte: 'border-teal-300 bg-teal-50', icone: 'bg-teal-100 text-teal-900' },
+  lime: { carte: 'border-lime-300 bg-lime-50', icone: 'bg-lime-100 text-lime-900' },
+  fuchsia: { carte: 'border-fuchsia-300 bg-fuchsia-50', icone: 'bg-fuchsia-100 text-fuchsia-900' },
 }
 
 // État d'un bloc pendant l'exécution : un texte, une icône et une couleur

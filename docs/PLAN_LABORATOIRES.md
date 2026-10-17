@@ -30,7 +30,7 @@ Faire manipuler un workflow fait de blocs (déclencheur, condition, agent, outil
   - Garde-fous : 200 étapes au plus, `structuredClone` à chaque étape, environ 50 Ko de données au maximum.
 - **Bloc** = `{ definition (ports, icône, couleur pastel, libellé), schemaConfig, executer({ entree, config, contexte }), explication }`. Les exécuteurs peuvent renvoyer une promesse, ce qui permettra de brancher un mode réel plus tard sans changer le moteur.
 - **Critères** :
-  - types : `contientBloc`, `lienEntre`, `blocAvant`, `sortieAttendue`, `blocExecute`, `blocNonExecute`, `outilAppele`, `outilNonAppele`, `outilNonPropose`, `mcpAvant`, `sansErreur`, `nombreMaxBlocs` ;
+  - types : `contientBloc`, `lienEntre`, `blocAvant`, `sortieAttendue`, `blocExecute`, `blocNonExecute`, `outilAppele`, `outilNonAppele`, `outilNonPropose`, `mcpAvant`, `donneeNonMemorisee`, `sansErreur`, `nombreMaxBlocs` ;
   - le workflow est vérifié sur **tous** les jeux de données.
 
 ## 4. Format d'un laboratoire
@@ -131,6 +131,14 @@ Décisions :
 - T3.4 (L) Labos 4, 5, 7 et 11.
 
 ### Phase 4 — RAG, mémoire, débogage
+
+État au 17 octobre 2026 : T4.1 à T4.3 présents dans le code et testés localement (Vitest, ESLint, build, navigateur sur l'application Vue servie seule : labo 9 fait entièrement dans l'interface en 375 px, labo 8 pas à pas). Non vérifié : site complet, CI, relecture éditoriale des trois labos.
+
+Décisions :
+- Recherche fictive : score = part des mots de la question (sans accents, mots vides ni « s » final) présents dans le passage ; tri par score puis par ordre des documents ; réglages `topK` (1 à 5) et score minimal. Le bloc range `passages`, `sources` (identifiants) et `citations` (texte) pour que l'agent cite sa source.
+- Mémoire : un bloc qui retient, relit ou oublie, dans l'état de l'exécution (10 souvenirs au plus) ; elle repart vide à chaque exécution. Chaque mise en mémoire est tracée, d'où le critère `donneeNonMemorisee` (une donnée du jeu n'est jamais retenue, même dans un objet).
+- La conversation du labo 9 est rejouée en une exécution ; une transformation verrouillée retire le premier message pour figurer la fenêtre de contexte.
+- Ordre des labos avancés : 1 RAG, 2 mémoire, 3 débogage, 4 injection et permissions. Le catalogue (chunk partagé, aussi chargé par l'encart « Pratiquer » des cours) passe à 80 Ko, 18,6 Ko compressé.
 - T4.1 (M) `blocs/rag.js` et `rechercheFictive.js` : passages, score, `topK`, sources.
 - T4.2 (S) `blocs/memoire.js` : mémoire limitée à une exécution.
 - T4.3 (L) Labos 8, 9 et 10.

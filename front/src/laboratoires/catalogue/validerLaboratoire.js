@@ -88,6 +88,18 @@ export function validerLaboratoire(lab) {
   }
   if (lab.blocsDisponibles.includes('agent') && !agent) ajouter('le bloc agent est disponible, mais simulateurs.agent manque.')
 
+  const passages = new Set()
+  ;(lab.simulateurs?.documents ?? []).forEach((document) => {
+    if (!document.id || !document.titre || !document.source) ajouter('document fictif : id, titre et source sont obligatoires.')
+    if (!Array.isArray(document.passages) || document.passages.length === 0) ajouter(`document fictif ${document.id} : prévoyez au moins un passage.`)
+    ;(document.passages ?? []).forEach((passage) => {
+      if (!passage.id || typeof passage.texte !== 'string' || !passage.texte.trim()) ajouter(`document fictif ${document.id} : chaque passage a un id et un texte.`)
+      if (passages.has(passage.id)) ajouter(`passage en double « ${passage.id} ».`)
+      passages.add(passage.id)
+    })
+  })
+  if (lab.blocsDisponibles.includes('rag') && passages.size === 0) ajouter('le bloc rag est disponible, mais simulateurs.documents est vide.')
+
   const mcp = lab.simulateurs?.mcp
   if (mcp) {
     if (!mcp.nom) ajouter('serveur MCP fictif : le nom est obligatoire.')
