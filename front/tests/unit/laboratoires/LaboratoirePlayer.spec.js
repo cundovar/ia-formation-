@@ -123,6 +123,37 @@ describe('lecteur de laboratoire', () => {
     wrapper.unmount()
   })
 
+  it('propose la vue graphique sur grand écran, et seulement là', async () => {
+    window.innerWidth = 1280
+    const wrapper = await monter('trier-des-emails')
+    expect(wrapper.get('[data-testid="vue-etapes"]').attributes('aria-pressed')).toBe('true')
+    await wrapper.get('[data-testid="vue-graphe"]').trigger('click')
+    expect(wrapper.get('[data-testid="vue-graphe"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="bloc-a-lire"]').exists()).toBe(false)
+    wrapper.unmount()
+
+    window.innerWidth = 375
+    const mobile = await monter('trier-des-emails')
+    expect(mobile.find('[data-testid="vue-graphe"]').exists()).toBe(false)
+    expect(mobile.find('[data-testid="bloc-a-lire"]').exists()).toBe(true)
+    mobile.unmount()
+    window.innerWidth = 1024
+  })
+
+  it('annule et rétablit depuis l\'éditeur, et duplique un bloc', async () => {
+    const wrapper = await monter('trier-des-emails')
+    expect(wrapper.get('[data-testid="annuler"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-testid="dupliquer-a-lire"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="bloc-transformation-1"]').exists()).toBe(true)
+    expect(document.activeElement.id).toBe('bloc-transformation-1')
+    await wrapper.get('[data-testid="annuler"]').trigger('click')
+    expect(wrapper.find('[data-testid="bloc-transformation-1"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="retablir"]').trigger('click')
+    expect(wrapper.find('[data-testid="bloc-transformation-1"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('vide la séance en quittant la page', async () => {
     const wrapper = await monter()
     const store = useLaboratoireStore()

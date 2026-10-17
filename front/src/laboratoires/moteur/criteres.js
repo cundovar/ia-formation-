@@ -57,7 +57,7 @@ export const EVALUATEURS = {
  */
 export async function evaluerCriteres(laboratoire, definition, { registre = BLOCS } = {}) {
   const workflow = normaliser(definition)
-  const options = { registre, blocsDisponibles: laboratoire.blocsDisponibles ?? null }
+  const options = { registre, blocsDisponibles: laboratoire.blocsDisponibles ?? null, simulateurs: laboratoire.simulateurs ?? {} }
   const executions = {}
   for (const jeu of laboratoire.jeuxDeDonnees) {
     executions[jeu.id] = await executerTout(workflow, jeu, options)

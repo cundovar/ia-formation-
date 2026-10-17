@@ -164,6 +164,19 @@
         {{ ouvert ? 'Fermer les réglages' : 'Modifier' }}
       </button>
       <button
+        v-if="dupliquable"
+        type="button"
+        :class="BOUTON.secondaire"
+        :data-testid="`dupliquer-${noeud.id}`"
+        @click="dupliquer"
+      >
+        <i
+          class="fas fa-clone"
+          aria-hidden="true"
+        />
+        Dupliquer
+      </button>
+      <button
         v-if="!verrouille"
         type="button"
         :class="BOUTON.danger"
@@ -267,6 +280,14 @@ const relier = (sortie) => {
 const delier = (lienId, sortie) => {
   store.delier(lienId)
   garderFocus(sortie)
+}
+
+const dupliquable = computed(() => props.noeud.type !== 'declencheur' && (store.lab?.blocsDisponibles ?? []).includes(props.noeud.type))
+
+const dupliquer = async () => {
+  const id = store.dupliquerBloc(props.noeud.id)
+  await nextTick()
+  document.getElementById(`bloc-${id}`)?.focus()
 }
 
 const supprimer = () => {

@@ -111,6 +111,56 @@ describe('store des laboratoires', () => {
     expect((await store.verifier()).reussi).toBe(true)
   })
 
+  it('annule et rétablit les modifications, une frappe continue comptant pour une étape', () => {
+    expect(store.peutAnnuler).toBe(false)
+    const id = store.ajouterBloc('condition')
+    store.configurer(id, 'chemin', 'e')
+    store.configurer(id, 'chemin', 'em')
+    store.configurer(id, 'chemin', 'email.objet')
+    store.relier('declencheur', 'sortie', id)
+    expect(store.historique.passe).toHaveLength(3)
+
+    store.annuler()
+    expect(store.workflow.liens.some((lien) => lien.cible === id)).toBe(false)
+    store.annuler()
+    expect(store.workflow.noeuds.find((noeud) => noeud.id === id).config.chemin).toBe('')
+    store.annuler()
+    expect(store.workflow.noeuds).toHaveLength(3)
+    expect(store.peutAnnuler).toBe(false)
+
+    store.retablir()
+    store.retablir()
+    expect(store.workflow.noeuds.find((noeud) => noeud.id === id).config.chemin).toBe('email.objet')
+    // Une nouvelle modification efface ce qui pouvait être rétabli
+    store.supprimerBloc(id)
+    expect(store.peutRetablir).toBe(false)
+  })
+
+  it('limite l\'historique à 20 étapes', () => {
+    for (let i = 0; i < 25; i++) store.configurer('a-lire', i % 2 ? 'champ' : 'valeur', `x${i}`)
+    expect(store.historique.passe).toHaveLength(20)
+  })
+
+  it('duplique un bloc sans ses liens, mais jamais le déclencheur', () => {
+    const copie = store.dupliquerBloc('a-lire')
+    const noeud = store.workflow.noeuds.find((candidat) => candidat.id === copie)
+    expect(noeud).toMatchObject({ type: 'transformation', libelle: 'Classer dans À lire (copie)', config: { valeur: 'À lire' }, position: { x: 720, y: 260 } })
+    expect(store.workflow.liens.some((lien) => lien.source === copie || lien.cible === copie)).toBe(false)
+    expect(store.dupliquerBloc('declencheur')).toBeNull()
+  })
+
+  it('sélectionne et déplace un bloc sans annuler l\'exécution', async () => {
+    await store.toutExecuter()
+    store.selectionner('a-lire')
+    store.deplacer('a-lire', { x: 10.4, y: 20.6 })
+    expect(store.workflow.noeuds.find((noeud) => noeud.id === 'a-lire').position).toEqual({ x: 10, y: 21 })
+    expect(store.execution).not.toBeNull()
+    store.supprimerBloc('a-lire')
+    expect(store.noeudSelectionne).toBeNull()
+    store.selectionner('inconnu')
+    expect(store.noeudSelectionne).toBeNull()
+  })
+
   it('affiche les indices un par un, puis la correction', async () => {
     store.afficherIndice()
     store.afficherIndice()

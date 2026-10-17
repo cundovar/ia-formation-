@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "slug": "conditions-et-branchements",
+  "ordre": 3,
+  "titre": "Combiner des conditions",
+  "niveau": "debutant",
+  "public": "apprendre",
+  "duree": "15 minutes",
+  "coursSlugs": [],
+  "prerequis": ["trier-des-emails"],
+  "objectif": "Combiner deux tests avec « et » ou « ou » pour décider d'un branchement.",
+  "scenario": "La mairie Exemple, une commune imaginaire, reçoit des signalements : une fuite d'eau, un lampadaire en panne, un chauffage arrêté… Une automatisation classe chaque signalement « Prioritaire » ou « Normal ». Elle ne regarde que l'urgence. Or le service veut aussi traiter en priorité les signalements d'une personne de plus de 75 ans.",
+  "simulation": "Les signalements et la commune sont imaginaires. Le classement est calculé par des règles fixes, sans IA.",
+  "instructions": [
+    "Exécutez le workflow avec le signalement « Chauffage arrêté chez Mme Exemple » : il est classé « Normal ».",
+    "Ouvrez la condition « Le signalement est-il prioritaire ? ».",
+    "Dans « Deuxième test », choisissez « Un des deux tests suffit (ou) ».",
+    "Testez si « signalement.age » est supérieur à 75.",
+    "Exécutez avec chaque signalement, puis vérifiez votre workflow."
+  ],
+  "blocsDisponibles": ["declencheur", "condition", "transformation", "resultat"],
+  "workflowInitial": {
+    "noeuds": [
+      { "id": "declencheur", "type": "declencheur", "libelle": "Un signalement arrive", "config": { "evenement": "Un habitant envoie un signalement à la mairie" }, "position": { "x": 0, "y": 0 } },
+      { "id": "prioritaire", "type": "condition", "libelle": "Le signalement est-il prioritaire ?", "config": { "chemin": "signalement.urgence", "operateur": "egal", "valeur": "haute", "liaison": "", "chemin2": "", "operateur2": "superieur", "valeur2": "" }, "position": { "x": 340, "y": 0 } },
+      { "id": "classer-prioritaire", "type": "transformation", "libelle": "Classer « Prioritaire »", "config": { "operation": "definir", "champ": "priorite", "source": "", "valeur": "Prioritaire" }, "position": { "x": 680, "y": -180 } },
+      { "id": "classer-normal", "type": "transformation", "libelle": "Classer « Normal »", "config": { "operation": "definir", "champ": "priorite", "source": "", "valeur": "Normal" }, "position": { "x": 680, "y": 180 } },
+      { "id": "resultat", "type": "resultat", "libelle": "Priorité choisie", "config": {}, "position": { "x": 1020, "y": 0 } }
+    ],
+    "liens": [
+      { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "prioritaire" },
+      { "id": "l2", "source": "prioritaire", "sortie": "vrai", "cible": "classer-prioritaire" },
+      { "id": "l3", "source": "prioritaire", "sortie": "faux", "cible": "classer-normal" },
+      { "id": "l4", "source": "classer-prioritaire", "sortie": "sortie", "cible": "resultat" },
+      { "id": "l5", "source": "classer-normal", "sortie": "sortie", "cible": "resultat" }
+    ]
+  },
+  "verrous": { "noeuds": ["declencheur", "classer-prioritaire", "classer-normal", "resultat"] },
+  "jeuxDeDonnees": [
+    {
+      "id": "fuite",
+      "libelle": "Fuite d'eau dans la rue des Exemples",
+      "donnees": { "signalement": { "objet": "Fuite d'eau sur le trottoir", "urgence": "haute", "age": 42 } }
+    },
+    {
+      "id": "chauffage",
+      "libelle": "Chauffage arrêté chez Mme Exemple",
+      "donnees": { "signalement": { "objet": "Chauffage collectif arrêté", "urgence": "basse", "age": 82 } }
+    },
+    {
+      "id": "lampadaire",
+      "libelle": "Lampadaire en panne",
+      "donnees": { "signalement": { "objet": "Lampadaire éteint place de l'Exemple", "urgence": "basse", "age": 35 } }
+    },
+    {
+      "id": "limite",
+      "libelle": "Banc cassé signalé par M. Exemple, 75 ans",
+      "donnees": { "signalement": { "objet": "Banc cassé au parc", "urgence": "basse", "age": 75 } }
+    }
+  ],
+  "criteres": [
+    { "id": "fuite", "type": "sortieAttendue", "jeu": "fuite", "chemin": "priorite", "egal": "Prioritaire", "message": "La fuite d'eau, très urgente, reste « Prioritaire »." },
+    { "id": "chauffage", "type": "sortieAttendue", "jeu": "chauffage", "chemin": "priorite", "egal": "Prioritaire", "message": "Le chauffage arrêté chez une personne de 82 ans devient « Prioritaire »." },
+    { "id": "lampadaire", "type": "sortieAttendue", "jeu": "lampadaire", "chemin": "priorite", "egal": "Normal", "message": "Le lampadaire en panne reste « Normal »." },
+    { "id": "limite", "type": "sortieAttendue", "jeu": "limite", "chemin": "priorite", "egal": "Normal", "message": "À 75 ans tout juste, la personne n'a pas « plus de 75 ans » : le signalement reste « Normal »." },
+    { "id": "sans-erreur", "type": "sansErreur", "message": "Le classement fonctionne sans erreur pour les quatre signalements." }
+  ],
+  "indices": [
+    "Le service veut une priorité si l'urgence est haute, ou si la personne a plus de 75 ans : un seul des deux tests suffit.",
+    "Deuxième test : « Un des deux tests suffit (ou) », donnée « signalement.age », test « est supérieur à », valeur 75.",
+    "« Est supérieur à 75 » est faux pour 75 : c'est voulu, le service a dit « plus de 75 ans »."
+  ],
+  "correction": {
+    "explication": "La condition combine deux tests avec « ou » : le signalement est prioritaire si l'urgence est haute ou si la personne a plus de 75 ans. Avec « et », il faudrait les deux à la fois : le chauffage de Mme Exemple serait resté « Normal ». Le cas limite (75 ans tout juste) montre qu'il faut choisir le test avec soin : « supérieur à » n'inclut pas la valeur elle-même.",
+    "workflow": {
+      "noeuds": [
+        { "id": "declencheur", "type": "declencheur", "libelle": "Un signalement arrive", "config": { "evenement": "Un habitant envoie un signalement à la mairie" }, "position": { "x": 0, "y": 0 } },
+        { "id": "prioritaire", "type": "condition", "libelle": "Le signalement est-il prioritaire ?", "config": { "chemin": "signalement.urgence", "operateur": "egal", "valeur": "haute", "liaison": "ou", "chemin2": "signalement.age", "operateur2": "superieur", "valeur2": "75" }, "position": { "x": 340, "y": 0 } },
+        { "id": "classer-prioritaire", "type": "transformation", "libelle": "Classer « Prioritaire »", "config": { "operation": "definir", "champ": "priorite", "source": "", "valeur": "Prioritaire" }, "position": { "x": 680, "y": -180 } },
+        { "id": "classer-normal", "type": "transformation", "libelle": "Classer « Normal »", "config": { "operation": "definir", "champ": "priorite", "source": "", "valeur": "Normal" }, "position": { "x": 680, "y": 180 } },
+        { "id": "resultat", "type": "resultat", "libelle": "Priorité choisie", "config": {}, "position": { "x": 1020, "y": 0 } }
+      ],
+      "liens": [
+        { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "prioritaire" },
+        { "id": "l2", "source": "prioritaire", "sortie": "vrai", "cible": "classer-prioritaire" },
+        { "id": "l3", "source": "prioritaire", "sortie": "faux", "cible": "classer-normal" },
+        { "id": "l4", "source": "classer-prioritaire", "sortie": "sortie", "cible": "resultat" },
+        { "id": "l5", "source": "classer-normal", "sortie": "sortie", "cible": "resultat" }
+      ]
+    }
+  },
+  "aRetenir": [
+    "« Et » : les deux tests doivent être vrais. « Ou » : un seul suffit.",
+    "Testez les cas limites (75 ans tout juste) : c'est là que les règles se trompent le plus souvent.",
+    "Une règle traduit une décision humaine : demandez-vous toujours ce que la personne a vraiment voulu dire."
+  ],
+  "animation": "En atelier : faites formuler la règle à voix haute (« prioritaire si… ») avant de la configurer. Demandez ensuite au groupe ce qui se passe pour une personne de 75 ans tout juste.",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}

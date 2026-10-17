@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "slug": "json-et-api",
+  "ordre": 1,
+  "titre": "Comprendre les échanges JSON et API",
+  "niveau": "intermediaire",
+  "public": "apprendre",
+  "duree": "20 minutes",
+  "coursSlugs": [],
+  "prerequis": ["conditions-et-branchements"],
+  "objectif": "Envoyer une requête à une API, lire sa réponse JSON et réagir à un code d'erreur.",
+  "scenario": "Le club de randonnée Exemple veut répondre automatiquement à la question « Quel temps fera-t-il pour la sortie ? ». L'automatisation interroge une API météo fictive. Elle s'arrête sur une erreur : l'API ne sait pas de quelle ville on parle.",
+  "simulation": "L'API météo est fictive : ses réponses sont écrites à l'avance dans le laboratoire. Aucune requête ne part sur Internet.",
+  "instructions": [
+    "Exécutez le workflow pas à pas et ouvrez « Données transmises » du bloc API : la réponse a le statut 400.",
+    "Lisez reponse.corps.erreur : l'API attend un paramètre « ville ».",
+    "Dans le bloc API, ajoutez le paramètre à l'adresse : ?ville={{demande.ville}}",
+    "Une ville inconnue renvoie 404 : ajoutez une condition sur reponse.statut, puis un message pour ce cas.",
+    "Vérifiez votre workflow avec les trois demandes."
+  ],
+  "blocsDisponibles": ["declencheur", "api", "condition", "transformation", "resultat"],
+  "simulateurs": {
+    "api": [
+      {
+        "methode": "GET",
+        "url": "https://meteo.exemple.test/previsions",
+        "reponses": [
+          { "si": { "chemin": "requete.parametres.ville", "operateur": "egal", "valeur": "Ville-sur-Exemple" }, "statut": 200, "corps": { "ville": "Ville-sur-Exemple", "temperature": 18, "ciel": "ensoleillé", "unite": "°C" } },
+          { "si": { "chemin": "requete.parametres.ville", "operateur": "egal", "valeur": "Port-Exemple" }, "statut": 200, "corps": { "ville": "Port-Exemple", "temperature": 12, "ciel": "pluvieux", "unite": "°C" } },
+          { "si": { "chemin": "requete.parametres.ville", "operateur": "existe" }, "statut": 404, "corps": { "erreur": "Ville inconnue" } },
+          { "statut": 400, "corps": { "erreur": "Paramètre « ville » manquant" } }
+        ]
+      }
+    ]
+  },
+  "workflowInitial": {
+    "noeuds": [
+      { "id": "declencheur", "type": "declencheur", "libelle": "Une demande arrive", "config": { "evenement": "Un membre demande la météo de la prochaine sortie" }, "position": { "x": 0, "y": 0 } },
+      { "id": "meteo", "type": "api", "libelle": "Demander la météo", "config": { "methode": "GET", "url": "https://meteo.exemple.test/previsions", "corps": "", "champ": "reponse" }, "position": { "x": 340, "y": 0 } },
+      { "id": "message", "type": "transformation", "libelle": "Préparer la réponse", "config": { "operation": "definir", "champ": "message", "source": "", "valeur": "À {{demande.ville}}, il fera {{reponse.corps.temperature}} °C, ciel {{reponse.corps.ciel}}." }, "position": { "x": 680, "y": -180 } },
+      { "id": "resultat", "type": "resultat", "libelle": "Réponse au membre", "config": {}, "position": { "x": 1020, "y": 0 } }
+    ],
+    "liens": [
+      { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "meteo" },
+      { "id": "l2", "source": "meteo", "sortie": "sortie", "cible": "message" },
+      { "id": "l3", "source": "message", "sortie": "sortie", "cible": "resultat" }
+    ]
+  },
+  "verrous": { "noeuds": ["declencheur", "resultat"] },
+  "jeuxDeDonnees": [
+    { "id": "ville", "libelle": "Sortie à Ville-sur-Exemple", "donnees": { "demande": { "membre": "Nadia Exemple", "ville": "Ville-sur-Exemple" } } },
+    { "id": "port", "libelle": "Sortie à Port-Exemple", "donnees": { "demande": { "membre": "Paul Exemple", "ville": "Port-Exemple" } } },
+    { "id": "inconnue", "libelle": "Sortie dans une ville mal orthographiée", "donnees": { "demande": { "membre": "Inès Exemple", "ville": "Vile-sur-Exempel" } } }
+  ],
+  "criteres": [
+    { "id": "ville", "type": "sortieAttendue", "jeu": "ville", "chemin": "message", "egal": "À Ville-sur-Exemple, il fera 18 °C, ciel ensoleillé.", "message": "La météo de Ville-sur-Exemple est annoncée." },
+    { "id": "port", "type": "sortieAttendue", "jeu": "port", "chemin": "message", "egal": "À Port-Exemple, il fera 12 °C, ciel pluvieux.", "message": "La météo de Port-Exemple est annoncée." },
+    { "id": "inconnue", "type": "sortieAttendue", "jeu": "inconnue", "chemin": "message", "egal": "Ville inconnue : vérifiez l'orthographe.", "message": "Pour une ville inconnue, le membre reçoit « Ville inconnue : vérifiez l'orthographe. »" },
+    { "id": "condition", "type": "contientBloc", "bloc": "condition", "message": "Le workflow teste la réponse de l'API avant de l'utiliser." },
+    { "id": "sans-erreur", "type": "sansErreur", "message": "Le workflow fonctionne sans erreur pour les trois demandes." }
+  ],
+  "indices": [
+    "Une adresse d'API peut contenir des paramètres après un point d'interrogation : ?ville=… Écrivez ?ville={{demande.ville}} pour reprendre la ville de la demande.",
+    "Une réponse réussie a le statut 200. Ajoutez une condition : « reponse.statut » « est égal à » 200.",
+    "Si vrai : « Préparer la réponse ». Si faux : une nouvelle transformation qui écrit « Ville inconnue : vérifiez l'orthographe. » dans « message ». Reliez les deux au Résultat."
+  ],
+  "correction": {
+    "explication": "Le bloc API envoie la ville dans l'adresse (paramètre ?ville=). L'API fictive répond un objet JSON : un code de statut et un corps. Le statut 200 veut dire que tout s'est bien passé ; 404 que la ville est introuvable ; 400 que la requête est incomplète. La condition lit reponse.statut avant d'utiliser reponse.corps.temperature : sans elle, le workflow plante quand la donnée manque.",
+    "workflow": {
+      "noeuds": [
+        { "id": "declencheur", "type": "declencheur", "libelle": "Une demande arrive", "config": { "evenement": "Un membre demande la météo de la prochaine sortie" }, "position": { "x": 0, "y": 0 } },
+        { "id": "meteo", "type": "api", "libelle": "Demander la météo", "config": { "methode": "GET", "url": "https://meteo.exemple.test/previsions?ville={{demande.ville}}", "corps": "", "champ": "reponse" }, "position": { "x": 340, "y": 0 } },
+        { "id": "statut-ok", "type": "condition", "libelle": "L'API a-t-elle répondu ?", "config": { "chemin": "reponse.statut", "operateur": "egal", "valeur": "200", "liaison": "", "chemin2": "", "operateur2": "egal", "valeur2": "" }, "position": { "x": 680, "y": 0 } },
+        { "id": "message", "type": "transformation", "libelle": "Préparer la réponse", "config": { "operation": "definir", "champ": "message", "source": "", "valeur": "À {{demande.ville}}, il fera {{reponse.corps.temperature}} °C, ciel {{reponse.corps.ciel}}." }, "position": { "x": 1020, "y": -180 } },
+        { "id": "inconnue", "type": "transformation", "libelle": "Signaler la ville inconnue", "config": { "operation": "definir", "champ": "message", "source": "", "valeur": "Ville inconnue : vérifiez l'orthographe." }, "position": { "x": 1020, "y": 180 } },
+        { "id": "resultat", "type": "resultat", "libelle": "Réponse au membre", "config": {}, "position": { "x": 1360, "y": 0 } }
+      ],
+      "liens": [
+        { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "meteo" },
+        { "id": "l2", "source": "meteo", "sortie": "sortie", "cible": "statut-ok" },
+        { "id": "l4", "source": "statut-ok", "sortie": "vrai", "cible": "message" },
+        { "id": "l5", "source": "statut-ok", "sortie": "faux", "cible": "inconnue" },
+        { "id": "l3", "source": "message", "sortie": "sortie", "cible": "resultat" },
+        { "id": "l6", "source": "inconnue", "sortie": "sortie", "cible": "resultat" }
+      ]
+    }
+  },
+  "aRetenir": [
+    "Une API répond toujours deux choses : un code de statut (200, 404, 500…) et un contenu, souvent en JSON.",
+    "Testez le statut avant d'utiliser le contenu : une API peut échouer, et c'est normal.",
+    "Une adresse d'API peut transporter des informations dans ses paramètres (?ville=…). N'y mettez jamais de donnée personnelle ni de clé."
+  ],
+  "animation": "En atelier : affichez la réponse JSON de l'API et faites retrouver ensemble où se trouve la température (reponse.corps.temperature) avant de modifier le workflow.",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}

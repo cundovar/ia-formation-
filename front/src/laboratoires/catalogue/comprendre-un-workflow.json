@@ -22,8 +22,8 @@
   "workflowInitial": {
     "noeuds": [
       { "id": "declencheur", "type": "declencheur", "libelle": "Un message arrive", "config": { "evenement": "Un message arrive par le formulaire de contact" }, "position": { "x": 0, "y": 0 } },
-      { "id": "accuse", "type": "transformation", "libelle": "Préparer l'accusé de réception", "config": { "operation": "definir", "champ": "accuse", "source": "", "valeur": "Bonjour {{contact.prenom}}, nous avons bien reçu votre message." }, "position": { "x": 260, "y": 0 } },
-      { "id": "resultat", "type": "resultat", "libelle": "Résultat", "config": {}, "position": { "x": 520, "y": 0 } }
+      { "id": "accuse", "type": "transformation", "libelle": "Préparer l'accusé de réception", "config": { "operation": "definir", "champ": "accuse", "source": "", "valeur": "Bonjour {{contact.prenom}}, nous avons bien reçu votre message." }, "position": { "x": 340, "y": 0 } },
+      { "id": "resultat", "type": "resultat", "libelle": "Résultat", "config": {}, "position": { "x": 680, "y": 0 } }
     ],
     "liens": [
       { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "accuse" }
@@ -63,8 +63,8 @@
     "workflow": {
       "noeuds": [
         { "id": "declencheur", "type": "declencheur", "libelle": "Un message arrive", "config": { "evenement": "Un message arrive par le formulaire de contact" }, "position": { "x": 0, "y": 0 } },
-        { "id": "accuse", "type": "transformation", "libelle": "Préparer l'accusé de réception", "config": { "operation": "definir", "champ": "accuse", "source": "", "valeur": "Bonjour {{contact.prenom}}, nous avons bien reçu votre message." }, "position": { "x": 260, "y": 0 } },
-        { "id": "resultat", "type": "resultat", "libelle": "Résultat", "config": {}, "position": { "x": 520, "y": 0 } }
+        { "id": "accuse", "type": "transformation", "libelle": "Préparer l'accusé de réception", "config": { "operation": "definir", "champ": "accuse", "source": "", "valeur": "Bonjour {{contact.prenom}}, nous avons bien reçu votre message." }, "position": { "x": 340, "y": 0 } },
+        { "id": "resultat", "type": "resultat", "libelle": "Résultat", "config": {}, "position": { "x": 680, "y": 0 } }
       ],
       "liens": [
         { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "accuse" },

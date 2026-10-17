@@ -7,6 +7,10 @@ import { normaliser, valider } from '@/laboratoires/moteur/workflow'
 // Séance d'un laboratoire : rien n'est persisté (LAB-07), tout disparaît en quittant la page
 let minuteur = null
 
+// Historique annuler / rétablir : copies du workflow, 20 au plus
+const TAILLE_HISTORIQUE = 20
+const copier = (workflow) => JSON.parse(JSON.stringify(workflow))
+
 const arreterMinuteur = () => {
   clearTimeout(minuteur)
   minuteur = null
@@ -23,14 +27,19 @@ export const useLaboratoireStore = defineStore('laboratoire', {
     verification: null,
     indicesAffiches: 0,
     correctionAffichee: false,
+    historique: { passe: [], futur: [], derniereCle: null },
+    // Bloc sélectionné dans la vue graphique (ses réglages s'affichent sous le graphe)
+    noeudSelectionne: null,
   }),
 
   getters: {
     jeu: (state) => state.lab?.jeuxDeDonnees.find((jeu) => jeu.id === state.jeuId) ?? null,
-    options: (state) => ({ blocsDisponibles: state.lab?.blocsDisponibles ?? null }),
+    options: (state) => ({ blocsDisponibles: state.lab?.blocsDisponibles ?? null, simulateurs: state.lab?.simulateurs ?? {} }),
     erreursValidation() {
       return this.lab ? valider(this.workflow, this.options) : []
     },
+    peutAnnuler: (state) => state.historique.passe.length > 0,
+    peutRetablir: (state) => state.historique.futur.length > 0,
     verrouille: (state) => (noeudId) => (state.lab?.verrous?.noeuds ?? []).includes(noeudId),
     terminee: (state) => Boolean(state.execution && estTerminee(state.execution)),
     // Bloc qui s'exécutera à la prochaine étape
@@ -61,6 +70,35 @@ export const useLaboratoireStore = defineStore('laboratoire', {
       this.$reset()
     },
 
+    // Garde l'état actuel avant une modification. Les frappes successives dans un même
+    // champ (même `cle`) ne font qu'une étape d'historique.
+    memoriser(cle = null) {
+      const historique = this.historique
+      if (cle && cle === historique.derniereCle) return
+      historique.passe.push(copier(this.workflow))
+      if (historique.passe.length > TAILLE_HISTORIQUE) historique.passe.shift()
+      historique.futur = []
+      historique.derniereCle = cle
+    },
+
+    annuler() {
+      const historique = this.historique
+      if (!historique.passe.length) return
+      historique.futur.push(copier(this.workflow))
+      this.workflow = historique.passe.pop()
+      historique.derniereCle = null
+      this.apresModification()
+    },
+
+    retablir() {
+      const historique = this.historique
+      if (!historique.futur.length) return
+      historique.passe.push(copier(this.workflow))
+      this.workflow = historique.futur.pop()
+      historique.derniereCle = null
+      this.apresModification()
+    },
+
     // Toute modification du workflow annule l'exécution et la vérification en cours
     apresModification() {
       this.pause()
@@ -74,22 +112,56 @@ export const useLaboratoireStore = defineStore('laboratoire', {
       let numero = 1
       while (this.workflow.noeuds.some((noeud) => noeud.id === `${type}-${numero}`)) numero += 1
       const id = `${type}-${numero}`
-      const derniere = this.workflow.noeuds.at(-1)?.position ?? { x: -260, y: 0 }
-      this.workflow.noeuds.push({ id, type, libelle: '', config: bloc.configParDefaut(), position: { x: derniere.x + 260, y: derniere.y } })
+      const derniere = this.workflow.noeuds.at(-1)?.position ?? { x: -340, y: 0 }
+      this.memoriser()
+      this.workflow.noeuds.push({ id, type, libelle: '', config: bloc.configParDefaut(), position: { x: derniere.x + 340, y: derniere.y } })
       this.apresModification()
       return id
     },
 
+    // Copie d'un bloc (réglages compris, sans ses liens). Le déclencheur reste unique.
+    dupliquerBloc(noeudId) {
+      const source = this.workflow.noeuds.find((noeud) => noeud.id === noeudId)
+      if (!source || source.type === 'declencheur' || !this.lab?.blocsDisponibles.includes(source.type)) return null
+      let numero = 1
+      while (this.workflow.noeuds.some((noeud) => noeud.id === `${source.type}-${numero}`)) numero += 1
+      const id = `${source.type}-${numero}`
+      const position = source.position ?? { x: 0, y: 0 }
+      this.memoriser()
+      this.workflow.noeuds.push({
+        id,
+        type: source.type,
+        libelle: source.libelle ? `${source.libelle} (copie)` : '',
+        config: copier(source.config ?? {}),
+        position: { x: position.x + 40, y: position.y + 80 },
+      })
+      this.apresModification()
+      return id
+    },
+
+    selectionner(noeudId) {
+      this.noeudSelectionne = this.workflow.noeuds.some((noeud) => noeud.id === noeudId) ? noeudId : null
+    },
+
+    // Position dans la vue graphique : sans effet sur l'exécution, hors historique
+    deplacer(noeudId, position) {
+      const noeud = this.workflow.noeuds.find((candidat) => candidat.id === noeudId)
+      if (noeud) noeud.position = { x: Math.round(position.x), y: Math.round(position.y) }
+    },
+
     supprimerBloc(noeudId) {
-      if (this.verrouille(noeudId)) return
+      if (this.verrouille(noeudId) || !this.workflow.noeuds.some((noeud) => noeud.id === noeudId)) return
+      this.memoriser()
       this.workflow.noeuds = this.workflow.noeuds.filter((noeud) => noeud.id !== noeudId)
       this.workflow.liens = this.workflow.liens.filter((lien) => lien.source !== noeudId && lien.cible !== noeudId)
+      if (this.noeudSelectionne === noeudId) this.noeudSelectionne = null
       this.apresModification()
     },
 
     configurer(noeudId, champ, valeur) {
       const noeud = this.workflow.noeuds.find((candidat) => candidat.id === noeudId)
       if (!noeud || this.verrouille(noeudId)) return
+      this.memoriser(`config:${noeudId}:${champ}`)
       noeud.config = { ...noeud.config, [champ]: valeur }
       this.apresModification()
     },
@@ -97,6 +169,7 @@ export const useLaboratoireStore = defineStore('laboratoire', {
     renommer(noeudId, libelle) {
       const noeud = this.workflow.noeuds.find((candidat) => candidat.id === noeudId)
       if (!noeud || this.verrouille(noeudId)) return
+      this.memoriser(`nom:${noeudId}`)
       noeud.libelle = libelle
     },
 
@@ -106,12 +179,15 @@ export const useLaboratoireStore = defineStore('laboratoire', {
       let numero = this.workflow.liens.length + 1
       while (this.workflow.liens.some((lien) => lien.id === `lien-${numero}`)) numero += 1
       const id = `lien-${numero}`
+      this.memoriser()
       this.workflow.liens.push({ id, source, sortie, cible })
       this.apresModification()
       return id
     },
 
     delier(lienId) {
+      if (!this.workflow.liens.some((lien) => lien.id === lienId)) return
+      this.memoriser()
       this.workflow.liens = this.workflow.liens.filter((lien) => lien.id !== lienId)
       this.apresModification()
     },
@@ -181,12 +257,14 @@ export const useLaboratoireStore = defineStore('laboratoire', {
     },
 
     chargerCorrection() {
+      this.memoriser()
       this.workflow = normaliser(this.lab.correction.workflow)
       this.correctionAffichee = true
       this.apresModification()
     },
 
     restaurerInitial() {
+      this.memoriser()
       this.workflow = normaliser(this.lab.workflowInitial)
       this.apresModification()
     },
