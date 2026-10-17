@@ -31,17 +31,6 @@
         />
       </div>
 
-      <!-- Menu des catégories -->
-      <CategoryMenu
-        :cats="cats"
-        :menus-by-category="menusByCategory"
-        :hovered-category="hoveredCategory"
-        :click-menu="clickMenu"
-        :is-xl-ou-plus="isXlOuPlus"
-        @open-menu="$emit('openMenu', $event)"
-        @hover-category="$emit('hoverCategory', $event)"
-        @close-menu="$emit('closeMenu')"
-      />
       <!-- Les deux entrées de l'accueil -->
       <div
         v-for="audience in AUDIENCES"
@@ -69,12 +58,16 @@
           class="audience-dropdown"
           aria-label="Parcours pour apprendre l’IA"
         >
-          <section
-            v-for="group in apprendreGroups"
+          <details
+            v-for="(group, index) in apprendreGroups"
             :key="group.id ?? 'sans-rubrique'"
             class="audience-dropdown-group"
+            :open="index === 0"
           >
-            <h3 v-if="group.name">{{ group.name }}</h3>
+            <summary>
+              {{ group.name ?? 'Autres parcours' }}
+              <i class="fas fa-chevron-down" aria-hidden="true" />
+            </summary>
             <ul>
               <li v-for="cat in group.categories" :key="cat.id">
                 <router-link :to="`/category/${encodeURIComponent(cat.name)}`">
@@ -82,7 +75,7 @@
                 </router-link>
               </li>
             </ul>
-          </section>
+          </details>
         </div>
       </div>
       <router-link
@@ -113,7 +106,6 @@
 
 <script setup>
 import ButtonArrowMenu from '../ui/ButtonArrowMenu.vue';
-import CategoryMenu from '../navigation/CategoryMenu.vue';
 import MenuLinks from '../navigation/MenuLinks.vue';
 import { AUDIENCES } from '@/config/audiences';
 import { computed, ref } from 'vue';
@@ -183,25 +175,47 @@ defineEmits(['openMenu', 'hoverCategory', 'closeMenu', 'toggleMenuGauche']);
   box-shadow: 0 10px 24px rgb(15 23 42 / 18%);
 }
 
-.audience-dropdown-group + .audience-dropdown-group {
-  margin-top: 0.75rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid #bfdbfe;
+.audience-dropdown-group {
+  border-radius: 0.65rem;
+  background: #dbeafe;
 }
 
-.audience-dropdown h3 {
-  margin: 0 0 0.35rem;
-  color: #1e3a8a;
-  font-size: 0.85rem;
+.audience-dropdown-group + .audience-dropdown-group {
+  margin-top: 0.45rem;
+}
+
+.audience-dropdown summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.7rem 0.8rem;
+  color: #1f2937;
   font-weight: 700;
+  list-style: none;
+}
+
+.audience-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.audience-dropdown summary .fa-chevron-down {
+  transition: transform 150ms ease-in-out;
+}
+
+.audience-dropdown details[open] summary .fa-chevron-down {
+  transform: rotate(180deg);
 }
 
 .audience-dropdown ul {
   display: grid;
   gap: 0.15rem;
-  margin: 0;
-  padding: 0;
+  margin: 0 0.45rem 0.45rem;
+  padding: 0.3rem;
   list-style: none;
+  border-radius: 0.45rem;
+  background: #eff6ff;
 }
 
 .audience-dropdown a {
@@ -213,7 +227,7 @@ defineEmits(['openMenu', 'hoverCategory', 'closeMenu', 'toggleMenuGauche']);
 
 .audience-dropdown a:hover,
 .audience-dropdown a:focus-visible {
-  background: #dbeafe;
+  background: #bfdbfe;
   text-decoration: underline;
 }
 </style>
