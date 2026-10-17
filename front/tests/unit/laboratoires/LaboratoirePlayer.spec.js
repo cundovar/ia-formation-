@@ -154,6 +154,68 @@ describe('lecteur de laboratoire', () => {
     wrapper.unmount()
   })
 
+  it('propose les outils en cases à cocher et montre les règles de l\'agent simulé', async () => {
+    const wrapper = await monter('injection-et-permissions')
+    const store = useLaboratoireStore()
+    await wrapper.get('[data-testid="modifier-assistant"]').trigger('click')
+    const caseSuppression = wrapper.get('#config-assistant-outils-supprimer_dossier')
+    expect(caseSuppression.element.checked).toBe(true)
+    expect(wrapper.get('label[for="config-assistant-outils-supprimer_dossier"]').text()).toMatch(/modifie des données/)
+    await caseSuppression.setValue(false)
+    expect(store.workflow.noeuds.find((noeud) => noeud.id === 'assistant').config.outils).toEqual(['archiver_dossier'])
+    expect(wrapper.get('[data-testid="informations-simulateur"]').text()).toMatch(/Règle 1 : si « contexte.texte » contient « supprime »/)
+    wrapper.unmount()
+  })
+
+  it('attend la décision humaine, au clavier, puis continue', async () => {
+    const wrapper = await monter('injection-et-permissions')
+    const store = useLaboratoireStore()
+    store.chargerCorrection()
+    await flushPromises()
+    // Exécution continue : elle s'arrête d'elle-même sur la validation
+    store.vitesse = 1
+    await wrapper.get('[data-testid="lecture"]').trigger('click')
+    for (let essai = 0; essai < 50 && !store.enAttente; essai += 1) await new Promise((fin) => { setTimeout(fin, 5) })
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="question-validation"]').text()).toBe('Autoriser l\'outil archiver_dossier sur le dossier Sorties 2025 ?')
+    expect(document.activeElement.id).toBe('validation-titre')
+    expect(wrapper.get('[data-testid="etat-accord"]').text()).toBe('Attend votre décision')
+    expect(wrapper.get('[data-testid="pas-a-pas"]').attributes('disabled')).toBeDefined()
+    expect(store.lecture).toBe(false)
+
+    await wrapper.get('[data-testid="approuver"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="validation-humaine"]').exists()).toBe(false)
+    expect(document.activeElement.id).toBe('bouton-pas-a-pas')
+    expect(wrapper.get('[data-testid="etat-accord"]').text()).toBe('Exécuté')
+    await store.toutExecuter()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="resultat-final"]').text()).toMatch(/dossier archivé/)
+
+    await wrapper.get('[data-testid="reinitialiser"]').trigger('click')
+    await store.toutExecuter()
+    await flushPromises()
+    expect(store.execution.statut).toBe('attente_humaine')
+    await wrapper.get('[data-testid="refuser"]').trigger('click')
+    await store.toutExecuter()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="resultat-final"]').text()).toMatch(/Action refusée par le secrétariat/)
+    wrapper.unmount()
+  })
+
+  it('affiche les messages JSON-RPC échangés avec le serveur MCP fictif', async () => {
+    const wrapper = await monter('appel-outil-mcp')
+    const store = useLaboratoireStore()
+    expect(wrapper.find('[data-testid="messages-mcp"]').exists()).toBe(false)
+    await store.toutExecuter()
+    await flushPromises()
+    const panneau = wrapper.get('[data-testid="messages-mcp"]')
+    expect(panneau.text()).toMatch(/tools\/call \(id 1\) :\s*erreur -32600/)
+    expect(panneau.text()).toMatch(/Session non initialisée/)
+    wrapper.unmount()
+  })
+
   it('vide la séance en quittant la page', async () => {
     const wrapper = await monter()
     const store = useLaboratoireStore()

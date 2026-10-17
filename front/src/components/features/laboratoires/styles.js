@@ -18,12 +18,17 @@ export const COULEURS_BLOC = {
   violet: { carte: 'border-violet-300 bg-violet-50', icone: 'bg-violet-100 text-violet-900' },
   emerald: { carte: 'border-emerald-300 bg-emerald-50', icone: 'bg-emerald-100 text-emerald-900' },
   rose: { carte: 'border-rose-300 bg-rose-50', icone: 'bg-rose-100 text-rose-900' },
+  indigo: { carte: 'border-indigo-300 bg-indigo-50', icone: 'bg-indigo-100 text-indigo-900' },
+  orange: { carte: 'border-orange-300 bg-orange-50', icone: 'bg-orange-100 text-orange-900' },
+  yellow: { carte: 'border-yellow-300 bg-yellow-50', icone: 'bg-yellow-100 text-yellow-900' },
+  teal: { carte: 'border-teal-300 bg-teal-50', icone: 'bg-teal-100 text-teal-900' },
 }
 
 // État d'un bloc pendant l'exécution : un texte, une icône et une couleur
 export const ETATS = {
   attente: { texte: 'En attente', icone: 'fas fa-hourglass-start', classes: 'bg-white text-gray-700 border-gray-300' },
   prochain: { texte: 'Prochaine étape', icone: 'fas fa-play', classes: 'bg-blue-100 text-blue-950 border-blue-400' },
+  decision: { texte: 'Attend votre décision', icone: 'fas fa-user-clock', classes: 'bg-yellow-100 text-yellow-950 border-yellow-400' },
   ok: { texte: 'Exécuté', icone: 'fas fa-check', classes: 'bg-green-100 text-green-950 border-green-400' },
   ignore: { texte: 'Ignoré (chemin non pris)', icone: 'fas fa-forward', classes: 'bg-gray-100 text-gray-800 border-gray-300' },
   erreur: { texte: 'Erreur', icone: 'fas fa-triangle-exclamation', classes: 'bg-red-100 text-red-950 border-red-400' },

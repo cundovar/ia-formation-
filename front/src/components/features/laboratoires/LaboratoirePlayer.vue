@@ -134,7 +134,9 @@
 
       <div :class="vueAffichee === 'graphe' ? 'grid items-start gap-4 lg:grid-cols-2' : 'space-y-4 lg:sticky lg:top-32 lg:self-start'">
         <BarreControles />
+        <ValidationHumaine />
         <JournalExecution />
+        <MessagesMcp />
       </div>
     </div>
 
@@ -166,6 +168,8 @@ import { useLaboratoireStore } from '@/stores/laboratoire'
 import VueSequentielle from './editeur/VueSequentielle.vue'
 import BarreControles from './execution/BarreControles.vue'
 import JournalExecution from './execution/JournalExecution.vue'
+import MessagesMcp from './execution/MessagesMcp.vue'
+import ValidationHumaine from './execution/ValidationHumaine.vue'
 import CriteresReussite from './CriteresReussite.vue'
 import IndicesCorrection from './IndicesCorrection.vue'
 import GrapheIndisponible from './editeur/GrapheIndisponible.vue'

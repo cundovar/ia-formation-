@@ -6,7 +6,8 @@
  * relié à un vrai service s'y branchera sans changer ce moteur.
  *
  * Statuts : 'pret' → 'en_cours' → 'termine' | 'erreur'. 'invalide' si le workflow a des erreurs.
- * État d'un bloc : 'attente', 'ok', 'ignore' (branche non prise), 'erreur'.
+ * 'attente_humaine' : un bloc de validation attend une décision (`repondreValidation`).
+ * État d'un bloc : 'attente', 'decision' (attend une personne), 'ok', 'ignore' (branche non prise), 'erreur'.
  */
 import { BLOCS, trouverBloc } from '../blocs/index.js'
 import { ErreurExecution, LIMITES } from './erreurs.js'
@@ -36,6 +37,13 @@ export function creerExecution(definition, jeu = { donnees: {} }, { registre = B
     resultat: null,
     erreur: null,
     compteurEtapes: 0,
+    // Validation humaine : bloc en attente et décisions déjà prises
+    attente: null,
+    decisions: {},
+    // Ce qu'ont fait les simulateurs (outils appelés, messages MCP…), dans l'ordre
+    evenements: [],
+    // État partagé par les blocs pendant une exécution (session MCP…) ; il disparaît ensuite
+    etatSimulateurs: {},
   }
 }
 
@@ -51,8 +59,24 @@ function entreeDuNoeud(execution, noeudId) {
 
 const tailleJson = (donnees) => JSON.stringify(donnees ?? null).length
 
+export const DECISIONS_HUMAINES = ['approuver', 'refuser']
+
+/**
+ * Enregistre la décision d'une personne pour le bloc de validation en attente.
+ * L'étape suivante exécute ce bloc avec la décision.
+ */
+export function repondreValidation(execution, noeudId, decision) {
+  if (execution.statut !== 'attente_humaine' || execution.attente?.noeudId !== noeudId) return execution
+  if (!DECISIONS_HUMAINES.includes(decision)) return execution
+  const suivante = cloner(execution)
+  suivante.decisions[noeudId] = decision
+  suivante.attente = null
+  suivante.statut = 'en_cours'
+  return suivante
+}
+
 export async function etapeSuivante(execution, { registre = BLOCS } = {}) {
-  if (estTerminee(execution)) return execution
+  if (estTerminee(execution) || execution.statut === 'attente_humaine') return execution
   const suivante = cloner(execution)
   suivante.statut = 'en_cours'
   suivante.compteurEtapes += 1
@@ -75,12 +99,21 @@ export async function etapeSuivante(execution, { registre = BLOCS } = {}) {
     suivante.etats[noeudId] = 'ignore'
     liensSortants(suivante.workflow, noeudId).forEach((lien) => { suivante.liensActifs[lien.id] = false })
     suivante.journal.push({ ...entreeJournal, statut: 'ignore', explication: `${nom} ne s'exécute pas : le chemin qui y mène n'a pas été pris.` })
+  } else if (bloc.humain && !(noeudId in suivante.decisions)) {
+    // Pause : une personne doit approuver ou refuser avant que ce bloc s'exécute
+    const question = bloc.questionDe ? bloc.questionDe(noeud.config ?? {}, entree) : ''
+    suivante.statut = 'attente_humaine'
+    suivante.etats[noeudId] = 'decision'
+    suivante.entrees[noeudId] = entree
+    suivante.attente = { noeudId, nom, question, entree }
+    suivante.journal.push({ ...entreeJournal, statut: 'decision', entree, explication: `${nom} attend une décision humaine${question ? ` : « ${question} »` : ''}. Approuvez ou refusez pour continuer.` })
+    return suivante
   } else {
     try {
       const reponse = await bloc.executer({
         entree,
         config: cloner(noeud.config ?? {}),
-        contexte: { jeu: suivante.jeu, simulateurs: suivante.simulateurs },
+        contexte: { jeu: suivante.jeu, simulateurs: suivante.simulateurs, etat: suivante.etatSimulateurs, decision: suivante.decisions[noeudId] },
       })
       const donnees = reponse.donnees ?? {}
       if (tailleJson(donnees) > LIMITES.tailleDonnees) {
@@ -94,6 +127,8 @@ export async function etapeSuivante(execution, { registre = BLOCS } = {}) {
         suivante.liensActifs[lien.id] = sortiesActives.includes(lien.sortie)
       })
       if (noeud.type === 'resultat') suivante.resultat = cloner(donnees)
+      if (reponse.etat) suivante.etatSimulateurs = cloner(reponse.etat)
+      ;(reponse.evenements ?? []).forEach((evenement) => suivante.evenements.push({ ...cloner(evenement), noeudId, etape: suivante.compteurEtapes }))
       suivante.journal.push({
         ...entreeJournal,
         statut: 'ok',
@@ -120,10 +155,24 @@ export async function etapeSuivante(execution, { registre = BLOCS } = {}) {
   return suivante
 }
 
+/**
+ * Exécute jusqu'au bout. À une validation humaine, `decider(attente, jeu)` donne la décision ;
+ * sans `decider`, l'exécution s'arrête en 'attente_humaine'.
+ */
 export async function executerTout(definition, jeu, options = {}) {
-  let execution = creerExecution(definition, jeu, options)
-  while (!estTerminee(execution)) {
-    execution = await etapeSuivante(execution, options)
+  return poursuivre(creerExecution(definition, jeu, options), options)
+}
+
+export async function poursuivre(execution, { decider = null, ...options } = {}) {
+  let courante = execution
+  while (!estTerminee(courante)) {
+    if (courante.statut === 'attente_humaine') {
+      if (!decider) break
+      courante = repondreValidation(courante, courante.attente.noeudId, decider(courante.attente, courante.jeu))
+      if (courante.statut === 'attente_humaine') break
+      continue
+    }
+    courante = await etapeSuivante(courante, options)
   }
-  return execution
+  return courante
 }

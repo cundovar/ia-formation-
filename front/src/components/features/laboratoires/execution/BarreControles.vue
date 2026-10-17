@@ -32,9 +32,10 @@
 
     <div class="mt-4 grid grid-cols-2 gap-2">
       <button
+        id="bouton-pas-a-pas"
         type="button"
         :class="BOUTON.principal"
-        :disabled="invalide || store.lecture"
+        :disabled="invalide || store.lecture || store.enAttente"
         data-testid="pas-a-pas"
         @click="store.pas()"
       >
@@ -48,7 +49,7 @@
         v-if="!store.lecture"
         type="button"
         :class="BOUTON.principal"
-        :disabled="invalide"
+        :disabled="invalide || store.enAttente"
         data-testid="lecture"
         @click="store.lire()"
       >
@@ -91,6 +92,12 @@
       class="mt-3 text-base text-red-900"
     >
       Corrigez d'abord les problèmes signalés dans le workflow.
+    </p>
+    <p
+      v-else-if="store.enAttente"
+      class="mt-3 text-base text-gray-900"
+    >
+      L'exécution attend votre décision : approuvez ou refusez ci-dessous.
     </p>
 
     <div class="mt-3">
