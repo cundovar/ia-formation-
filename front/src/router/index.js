@@ -12,6 +12,8 @@ const HomePage = () => import('../components/features/home/HomePage.vue')
 const AudiencePage = () => import('../views/AudiencePage.vue')
 const MonEspacePage = () => import('../views/MonEspacePage.vue')
 const RubriquePage = () => import('../views/RubriquePage.vue')
+const LaboratoiresPage = () => import('../views/LaboratoiresPage.vue')
+const LaboratoirePage = () => import('../views/LaboratoirePage.vue')
 
 const routes = [
   // Route accueil
@@ -40,6 +42,19 @@ const routes = [
     path: '/rubrique/:id(\\d+)',
     name: 'rubrique',
     component: RubriquePage,
+    props: true
+  },
+
+  // Laboratoires : workflows et agents simulés dans le navigateur (docs/PLAN_LABORATOIRES.md)
+  {
+    path: '/laboratoires',
+    name: 'laboratoires',
+    component: LaboratoiresPage
+  },
+  {
+    path: '/laboratoires/:slug',
+    name: 'laboratoire',
+    component: LaboratoirePage,
     props: true
   },
 

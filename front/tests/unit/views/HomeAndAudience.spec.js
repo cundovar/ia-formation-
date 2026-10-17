@@ -26,6 +26,7 @@ const mountAt = async (component, props = {}, path = '/') => {
       { path: '/former', component: Stub },
       { path: '/category/:category', component: Stub },
       { path: '/rubrique/:id', component: Stub },
+      { path: '/laboratoires', component: Stub },
     ],
   })
   router.push(path)
@@ -44,6 +45,11 @@ beforeEach(() => {
 })
 
 describe('accueil', () => {
+  it('propose les laboratoires', async () => {
+    const wrapper = await mountAt(HomePage)
+    expect(wrapper.get('[data-testid="entry-laboratoires"] h2 a').attributes('href')).toBe('/laboratoires')
+  })
+
   it('propose les deux entrées comme des liens titrés', async () => {
     const wrapper = await mountAt(HomePage)
 

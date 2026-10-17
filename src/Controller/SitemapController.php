@@ -33,8 +33,8 @@ class SitemapController extends AbstractController
             'lastmod' => (new \DateTime())->format('Y-m-d')
         ];
 
-        // Les deux entrées publiques de l'accueil
-        foreach (['/apprendre', '/former'] as $entry) {
+        // Les deux entrées publiques de l'accueil et le catalogue des laboratoires (définis dans le front)
+        foreach (['/apprendre', '/former', '/laboratoires'] as $entry) {
             $urls[] = [
                 'loc' => $hostname . $spaPath . $entry,
                 'changefreq' => 'weekly',

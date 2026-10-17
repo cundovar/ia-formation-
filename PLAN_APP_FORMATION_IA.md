@@ -16,6 +16,7 @@ L'accueil propose deux entrées : **« J'apprends à utiliser l'IA »** (`/appre
 | --- | --- | --- |
 | Interface | Vue 3, Vue Router, Vite, Tailwind, composants et styles de l'app médiateur | Même identité visuelle, fonds clairs ou pastel uniquement. |
 | Entraînement | QCM avec correction, publics et personnalisés | Aucun score enregistré sur le serveur. Les exercices interactifs de l'app médiateur (simulateurs) ne sont pas repris. |
+| Laboratoires IA | Workflows à blocs exécutés par un simulateur JavaScript local et déterministe (`front/src/laboratoires/`) | Décision du 17 octobre 2026, voir `docs/PLAN_LABORATOIRES.md`. Aucune IA réelle, aucun appel réseau, rien d'enregistré. Distincts du connecteur MCP de rédaction. |
 | Connexion faible et hors ligne | PWA et cache IndexedDB, module téléchargeable | Cache vidé à la déconnexion. |
 | API et administration | Symfony 6.4, Doctrine, API Platform, EasyAdmin | Contenus non publiés et réservés filtrés par `PublishedContentExtension`. |
 | Rédaction assistée | Connecteur MCP `/mcp` (claude.ai, ChatGPT), OAuth administrateur | Publication après contrôles bloquants et relecture favorable d'un autre connecteur. |
@@ -43,4 +44,6 @@ Compte apprenant **facultatif** : adresse e-mail (connexion, jamais affichée ni
 4. Vérifier le parcours sur mobile, au clavier et en connexion lente ou coupée.
 5. Choisir l'hébergement, le domaine et le service de capture de production, puis activer le déploiement.
 
-Hors du premier périmètre : suivi de progression, attestations, réservations, statistiques, exercices interactifs. Si une demande les rend nécessaires, mettre à jour ce plan avant de les introduire.
+6. Laboratoires IA (décision du 17 octobre 2026) : simulateur local de workflows et d'agents, définitions en JSON dans le code, règle `regles/07-laboratoires.md`. Phases et tâches : `docs/PLAN_LABORATOIRES.md`.
+
+Hors du premier périmètre : suivi de progression, attestations, réservations, statistiques, exercices interactifs autres que les laboratoires, mode « IA réelle » des laboratoires (appels à un modèle, même côté serveur). Si une demande les rend nécessaires, mettre à jour ce plan avant de les introduire.

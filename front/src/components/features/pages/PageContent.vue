@@ -59,6 +59,39 @@
             />
           </div>
 
+          <!-- Laboratoires qui font pratiquer ce cours (champ coursSlugs du laboratoire) -->
+          <section
+            v-if="laboratoires.length"
+            class="mx-5 mt-10 rounded-2xl border border-rose-200 bg-rose-50 p-5"
+            aria-labelledby="pratiquer-titre"
+            data-testid="pratiquer"
+          >
+            <h2
+              id="pratiquer-titre"
+              class="flex items-center gap-3 text-2xl font-bold text-gray-900"
+            >
+              <i
+                class="fas fa-flask"
+                aria-hidden="true"
+              />
+              Pratiquer
+            </h2>
+            <ul class="mt-3 space-y-2 text-lg">
+              <li
+                v-for="lab in laboratoires"
+                :key="lab.slug"
+              >
+                <router-link
+                  :to="`/laboratoires/${lab.slug}`"
+                  class="font-bold text-blue-800 underline"
+                >
+                  {{ lab.titre }}
+                </router-link>
+                <span class="text-gray-700"> : {{ lab.objectif }}</span>
+              </li>
+            </ul>
+          </section>
+
           <!-- Navigation Precedent / Suivant -->
           <div class="flex justify-center items-center p-3 md:p-5 mt-10 border-t border-gray-300 gap-4 md:gap-10">
             <router-link
@@ -109,7 +142,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { computed, ref, watch, onMounted, nextTick } from 'vue'
 import Prism from 'prismjs'
 import api from '@/services/api'
 import SidebarToc from './toc/SidebarToc.vue'
@@ -120,6 +153,7 @@ import { expandCaptures } from '@/utils/captures'
 import { structureCourse } from '@/utils/courseSections'
 import { useToc } from '@/composables/ui/useToc'
 import { useVisibilityFilter } from '@/composables/ui/useVisibilityFilter'
+import { laboratoiresDuCours } from '@/laboratoires/catalogue'
 
 // Props
 const props = defineProps({
@@ -131,6 +165,7 @@ const props = defineProps({
 
 // Composables
 const contentRef = ref(null)
+const laboratoires = computed(() => laboratoiresDuCours(props.slug))
 const { toc, activeId, scrollToHeading, generateToc } = useToc(contentRef, {
   includeH3: false,
   offsetTop: 120

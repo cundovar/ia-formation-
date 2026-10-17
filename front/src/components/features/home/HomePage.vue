@@ -168,6 +168,36 @@
       </ul>
     </section>
 
+    <!-- Laboratoires : pratiquer avec des workflows simulés -->
+    <section
+      class="surface-card surface-card--white entry-card group relative mx-auto mt-10 flex max-w-5xl flex-col gap-4 p-6 md:flex-row md:items-center"
+      aria-labelledby="labos-title"
+      data-testid="entry-laboratoires"
+    >
+      <div
+        class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-rose-100"
+        aria-hidden="true"
+      >
+        <i class="fas fa-flask text-3xl text-gray-900" />
+      </div>
+      <div>
+        <h2
+          id="labos-title"
+          class="text-2xl font-bold text-gray-900"
+        >
+          <router-link
+            to="/laboratoires"
+            class="entry-link"
+          >
+            Laboratoires : apprendre en manipulant
+          </router-link>
+        </h2>
+        <p class="mt-2 text-lg text-gray-700">
+          Construisez une automatisation bloc par bloc, lancez-la et regardez ce qui se passe à chaque étape. Tout est simulé dans votre navigateur.
+        </p>
+      </div>
+    </section>
+
     <!-- Le site n'est pas un service officiel -->
     <aside
       class="mx-auto mt-10 flex max-w-5xl items-start gap-4 rounded-2xl border-l-8 border-amber-500 bg-amber-50 p-6"
