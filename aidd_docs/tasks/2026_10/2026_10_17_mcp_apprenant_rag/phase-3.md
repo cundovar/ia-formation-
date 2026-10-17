@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: QCM sessions
@@ -7,8 +7,8 @@ status: pending
 ## Architecture projection
 
 ```txt
-✅ learner QCM session service and tests
-✏️ learner MCP tools
+✅ learner QCM session service
+✅ learner MCP tools
 ```
 
 ## Tasks to do
@@ -23,3 +23,7 @@ status: pending
 | Task | Acceptance criteria |
 | --- | --- |
 | 1 | Correct answers are absent before submission. |
+
+## Delivery note
+
+The session token is signed, bound to the learner, and expires after fifteen minutes. It records neither score nor attempt.

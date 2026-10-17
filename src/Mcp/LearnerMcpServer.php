@@ -6,6 +6,7 @@ namespace App\Mcp;
 
 use App\Entity\User;
 use App\Service\Learner\LearnerContentService;
+use App\Service\Learner\LearnerQcmSessionService;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use Mcp\Schema\Tool;
@@ -23,6 +24,7 @@ final class LearnerMcpServer
 
     public function __construct(
         private LearnerContentService $content,
+        private LearnerQcmSessionService $qcm,
         private LoggerInterface $logger,
         #[Autowire('%kernel.project_dir%/var/mcp-sessions')] private string $sessionDir,
     ) {}
@@ -41,6 +43,14 @@ final class LearnerMcpServer
                 'public' => ['type' => 'string', 'enum' => ['apprendre', 'former']],
             ]), 'Parcours visibles pour ce compte, publics ou attribués à la personne.', $readOnly),
             new CallbackTool(fn (array $args) => self::result($this->content->parcours($learner, isset($args['public']) ? (string) $args['public'] : null))),
+        );
+        $builder->add(
+            new Tool('demarrer_qcm', 'Démarrer un QCM', self::schema(['id' => ['type' => 'integer', 'minimum' => 1]], ['id']), 'Retourne la question et les choix d’un QCM accessible. Les corrections restent cachées jusqu’à la réponse.', $readOnly),
+            new CallbackTool(fn (array $args) => self::result($this->qcm->start($learner, (int) $args['id']) ?? ['erreur' => 'QCM introuvable.'])),
+        );
+        $builder->add(
+            new Tool('repondre_qcm', 'Répondre au QCM', self::schema(['session' => ['type' => 'string', 'minLength' => 20], 'choixId' => ['type' => 'integer', 'minimum' => 1]], ['session', 'choixId']), 'Vérifie un choix pour la session reçue. Le résultat n’est pas enregistré.', $readOnly),
+            new CallbackTool(fn (array $args) => self::result($this->qcm->submit($learner, (string) $args['session'], (int) $args['choixId']) ?? ['erreur' => 'Session ou choix introuvable.'])),
         );
         $builder->add(
             new Tool('rechercher_cours', 'Rechercher des passages cités', self::schema([
