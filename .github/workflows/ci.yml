@@ -261,11 +261,14 @@ jobs:
             --exclude='public/uploads/' \
             -e 'ssh -o StrictHostKeyChecking=yes' \
             /tmp/release/ "$OVH_USER@$OVH_HOST:$OVH_PATH/"
-      - name: Migrate database and clear Symfony cache
+      # cache:clear renomme var/cache/prod, ce qui échoue parfois sur le disque partagé d'OVH
+      # (« Cannot rename… already exists ») : on supprime l'ancien cache puis on le reconstruit.
+      - name: Migrate database and rebuild Symfony cache
         env:
           SSHPASS: ${{ secrets.OVH_SSH_PASSWORD }}
         run: |
           sshpass -e ssh -o StrictHostKeyChecking=yes "$OVH_USER@$OVH_HOST" \
             "cd '$OVH_PATH' && mkdir -p var/cache var/log \
              && php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=prod \
-             && php bin/console cache:clear --env=prod --no-debug"
+             && rm -rf var/cache/prod var/cache/pro~ \
+             && php bin/console cache:warmup --env=prod --no-debug"
