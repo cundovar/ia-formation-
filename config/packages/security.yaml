@@ -12,7 +12,15 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
-        # Connecteur MCP (claude.ai, ChatGPT) : jeton OAuth, sans session, brouillons uniquement
+        # Connecteur MCP apprenant : jeton OAuth propre, sans session, lecture de son seul catalogue.
+        mcp_learner:
+            pattern: ^/mcp/apprenant
+            stateless: true
+            custom_authenticators:
+                - App\Security\OAuthBearerAuthenticator
+            entry_point: App\Security\OAuthBearerAuthenticator
+
+        # Connecteur MCP de rédaction : jeton OAuth, sans session, brouillons uniquement
         mcp:
             pattern: ^/mcp
             stateless: true
@@ -49,9 +57,10 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
+         - { path: ^/mcp/apprenant, roles: ROLE_AGENT_APPRENANT }
          - { path: ^/mcp, roles: ROLE_AGENT_REDACTION }
-         # Consentement OAuth : un administrateur autorise le connecteur (la connexion renvoie ici)
-         - { path: ^/oauth/authorize, roles: ROLE_ADMIN }
+         # Consentement OAuth : un compte autorise le connecteur apprenant ; rédaction réservée aux admins.
+         - { path: ^/oauth/authorize, roles: ROLE_USER }
          - { path: ^/admin, roles: ROLE_ADMIN }
          # Compte de la personne connectée (/user-api/me) et espace apprenant (/user-api/mon-espace)
          - { path: ^/user-api, roles: ROLE_USER }

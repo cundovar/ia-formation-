@@ -37,13 +37,19 @@ class OAuthAuthorizationCode
     #[ORM\Column(name: 'code_challenge', length: 128)]
     private string $codeChallenge;
 
+    #[ORM\Column(length: 500)]
+    private string $resource;
+
+    #[ORM\Column(length: 64)]
+    private string $scope;
+
     #[ORM\Column(name: 'expires_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $expiresAt;
 
     #[ORM\Column(name: 'used_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $usedAt = null;
 
-    public function __construct(string $codeHash, OAuthClient $client, User $user, string $redirectUri, string $codeChallenge, \DateTimeImmutable $expiresAt)
+    public function __construct(string $codeHash, OAuthClient $client, User $user, string $redirectUri, string $codeChallenge, \DateTimeImmutable $expiresAt, string $resource = '/mcp', string $scope = 'redaction')
     {
         $this->codeHash = $codeHash;
         $this->client = $client;
@@ -51,6 +57,8 @@ class OAuthAuthorizationCode
         $this->redirectUri = $redirectUri;
         $this->codeChallenge = $codeChallenge;
         $this->expiresAt = $expiresAt;
+        $this->resource = $resource;
+        $this->scope = $scope;
     }
 
     public function getId(): ?int { return $this->id; }
@@ -62,6 +70,10 @@ class OAuthAuthorizationCode
     public function getRedirectUri(): string { return $this->redirectUri; }
 
     public function getCodeChallenge(): string { return $this->codeChallenge; }
+
+    public function getResource(): string { return $this->resource; }
+
+    public function getScope(): string { return $this->scope; }
 
     public function isExpired(\DateTimeImmutable $now): bool { return $now >= $this->expiresAt; }
 

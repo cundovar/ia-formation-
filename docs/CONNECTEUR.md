@@ -1,6 +1,13 @@
-# Connecteur MCP de l'assistant de rédaction
+# Connecteurs MCP de Formation IA
 
-Le site expose un serveur MCP à l'adresse `https://<site>/mcp`. On l'ajoute comme **connecteur** dans claude.ai ou dans ChatGPT, puis on s'y connecte une fois avec un compte **administrateur** du back-office. Il n'y a pas de clé à copier.
+Le site expose deux serveurs MCP. Ils ont chacun leur adresse, leur autorisation OAuth et leurs droits. Il n'y a pas de clé à copier.
+
+| Usage | Adresse | Compte qui autorise | Droits |
+| --- | --- | --- | --- |
+| Rédaction | `https://<site>/mcp` | Administrateur du back-office | Outils éditoriaux décrits ci-dessous |
+| Apprenant | `https://<site>/mcp/apprenant` | Apprenant connecté | Lecture des parcours et cours publiés accessibles à ce compte |
+
+Un jeton donné pour une adresse est refusé par l'autre. Le connecteur apprenant ne reçoit ni adresse e-mail, ni brouillon, ni contenu attribué à une autre personne.
 
 Le connecteur prépare des cours conformes au référentiel [`regles/`](../regles/README.md), puis les **publie** avec `publier_cours`, seulement si aucun contrôle bloquant ne reste et si **un autre connecteur** a donné un avis **favorable**. Il peut aussi confier le cours à une personne (`soumettre_en_revue`). Il prépare et publie aussi des **QCM** selon la même règle (voir [QCM](#qcm)).
 
@@ -25,6 +32,18 @@ Le connecteur prépare des cours conformes au référentiel [`regles/`](../regle
 **ChatGPT** : activer le mode développeur (Paramètres → Applications et connecteurs → Paramètres avancés), puis Créer un connecteur → adresse `https://<site>/mcp`, authentification OAuth. Se connecter, puis accepter de la même façon.
 
 Les menus de ces services changent souvent : en cas de doute, chercher « connecteur personnalisé MCP » dans leur aide.
+
+### Connecteur apprenant
+
+Ajouter l'adresse `https://<site>/mcp/apprenant` comme connecteur personnalisé, puis se connecter avec le compte apprenant. Il propose trois outils en lecture seule :
+
+| Outil | Rôle |
+| --- | --- |
+| `lister_parcours` | Parcours publics ou attribués au compte, avec filtre facultatif par public |
+| `rechercher_cours` | Recherche parmi les seuls cours publiés accessibles au compte |
+| `lire_cours` | Contenu d'un cours accessible par son identifiant |
+
+Un contenu introuvable peut être absent, non publié ou réservé à une autre personne : le connecteur ne précise pas lequel de ces cas s'applique.
 
 ## Deux connecteurs, deux agents
 
@@ -175,7 +194,7 @@ Un contenu personnalisé suit les mêmes règles que les autres : jamais de nom,
 
 ## Sécurité
 
-- **Qui peut connecter un connecteur :** seuls les comptes `ROLE_ADMIN`. Un accès s'arrête dès que la personne perd ce rôle.
+- **Qui peut connecter un connecteur :** le connecteur de rédaction demande un compte `ROLE_ADMIN` et s'arrête dès que ce rôle est perdu. Le connecteur apprenant demande un compte connecté et ne peut lire que les contenus accessibles à ce compte.
 - **OAuth 2.1 :**
   - enregistrement dynamique (RFC 7591), limité aux adresses de retour de `OAUTH_REDIRECT_HOSTS`, et à 30 enregistrements par heure ;
   - code d'autorisation à usage unique, valable 5 minutes, avec PKCE S256 obligatoire ; un code rejoué coupe l'accès qu'il a ouvert ;

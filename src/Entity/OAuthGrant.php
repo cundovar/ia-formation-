@@ -33,6 +33,12 @@ class OAuthGrant
     #[ORM\JoinColumn(name: 'authorization_code_id', nullable: true, onDelete: 'SET NULL')]
     private ?OAuthAuthorizationCode $authorizationCode;
 
+    #[ORM\Column(length: 500)]
+    private string $resource;
+
+    #[ORM\Column(length: 64)]
+    private string $scope;
+
     #[ORM\Column(name: 'access_token_hash', length: 64, unique: true)]
     private string $accessTokenHash;
 
@@ -51,11 +57,13 @@ class OAuthGrant
     #[ORM\Column(name: 'revoked_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $revokedAt = null;
 
-    public function __construct(OAuthClient $client, User $user, ?OAuthAuthorizationCode $authorizationCode)
+    public function __construct(OAuthClient $client, User $user, ?OAuthAuthorizationCode $authorizationCode, string $resource = '/mcp', string $scope = 'redaction')
     {
         $this->client = $client;
         $this->user = $user;
         $this->authorizationCode = $authorizationCode;
+        $this->resource = $authorizationCode?->getResource() ?? $resource;
+        $this->scope = $authorizationCode?->getScope() ?? $scope;
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -66,6 +74,10 @@ class OAuthGrant
     public function getUser(): User { return $this->user; }
 
     public function getAuthorizationCode(): ?OAuthAuthorizationCode { return $this->authorizationCode; }
+
+    public function getResource(): string { return $this->resource; }
+
+    public function getScope(): string { return $this->scope; }
 
     public function rotate(string $accessTokenHash, \DateTimeImmutable $accessExpiresAt, string $refreshTokenHash, \DateTimeImmutable $refreshExpiresAt): void
     {
