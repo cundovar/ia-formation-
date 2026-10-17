@@ -43,9 +43,9 @@ final class LearnerMcpServer
             new CallbackTool(fn (array $args) => self::result($this->content->parcours($learner, isset($args['public']) ? (string) $args['public'] : null))),
         );
         $builder->add(
-            new Tool('rechercher_cours', 'Rechercher un cours accessible', self::schema([
+            new Tool('rechercher_cours', 'Rechercher des passages cités', self::schema([
                 'recherche' => ['type' => 'string', 'minLength' => 2, 'maxLength' => 120],
-            ], ['recherche']), 'Recherche parmi les cours publiés accessibles à la personne. Renvoie au plus dix résultats.', $readOnly),
+            ], ['recherche']), 'Recherche dans les passages des cours publiés accessibles à la personne. Chaque résultat contient une citation à utiliser dans la réponse. Renvoie au plus dix résultats.', $readOnly),
             new CallbackTool(fn (array $args) => self::result($this->content->rechercher($learner, (string) $args['recherche']))),
         );
         $builder->add(

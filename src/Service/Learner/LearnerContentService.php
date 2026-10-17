@@ -6,7 +6,9 @@ namespace App\Service\Learner;
 
 use App\Entity\Category;
 use App\Entity\PageContent;
+use App\Entity\RagPassage;
 use App\Entity\User;
+use App\Service\Rag\RagIndex;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -16,7 +18,7 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final class LearnerContentService
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(private EntityManagerInterface $entityManager, private RagIndex $ragIndex) {}
 
     /** @return list<array<string, mixed>> */
     public function parcours(User $learner, ?string $audience = null): array
@@ -45,17 +47,31 @@ final class LearnerContentService
         if ($query === '') {
             return [];
         }
-        $pages = $this->entityManager->getRepository(PageContent::class)->findBy(['status' => PageContent::STATUS_PUBLISHED], ['id' => 'DESC']);
+
+        $this->ragIndex->refresh();
+        $terms = self::booleanTerms($query);
+        if ($terms === '') {
+            return [];
+        }
+        $ids = $this->entityManager->getConnection()->fetchFirstColumn(
+            'SELECT id FROM rag_passage WHERE MATCH(content) AGAINST (:terms IN BOOLEAN MODE) ORDER BY MATCH(content) AGAINST (:terms IN BOOLEAN MODE) DESC LIMIT 30',
+            ['terms' => $terms],
+        );
         $result = [];
-        foreach ($pages as $page) {
-            if (!$page instanceof PageContent || !$this->canRead($page, $learner)) {
+        foreach ($ids as $id) {
+            $passage = $this->entityManager->getRepository(RagPassage::class)->find((int) $id);
+            if (!$passage instanceof RagPassage || !$this->canRead($passage->getCourse(), $learner)) {
                 continue;
             }
-            $haystack = self::text(($page->getTitle() ?? '').' '.($page->getContent() ?? ''));
-            if (mb_stripos($haystack, $query) === false) {
-                continue;
-            }
-            $result[] = $this->summary($page);
+            $page = $passage->getCourse();
+            $result[] = $this->summary($page) + [
+                'citation' => [
+                    'coursId' => $page->getId(),
+                    'passage' => $passage->getPosition(),
+                    'texte' => $passage->getContent(),
+                    'adresse' => $page->getPage()?->getSlug() === null ? null : '/spa/'.$page->getPage()->getSlug(),
+                ],
+            ];
             if (count($result) === 10) {
                 break;
             }
@@ -100,5 +116,13 @@ final class LearnerContentService
     private static function text(?string $html): string
     {
         return trim(preg_replace('/\s+/u', ' ', strip_tags($html ?? '')) ?? '');
+    }
+
+    private static function booleanTerms(string $query): string
+    {
+        $words = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($query), -1, \PREG_SPLIT_NO_EMPTY) ?: [];
+        $words = array_values(array_unique(array_filter($words, static fn (string $word) => mb_strlen($word) >= 3)));
+
+        return implode(' ', array_map(static fn (string $word) => '+'.$word.'*', array_slice($words, 0, 8)));
     }
 }

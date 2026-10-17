@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: RAG index and citations
@@ -7,9 +7,9 @@ status: pending
 ## Architecture projection
 
 ```txt
-✅ src/Service/Rag/*
+✅ src/Service/Rag/RagIndex.php
 ✅ migration for search passages
-✏️ learner MCP tools and publication synchronization
+✅ learner MCP cited search
 ```
 
 ## Tasks to do
@@ -24,3 +24,7 @@ status: pending
 | Task | Acceptance criteria |
 | --- | --- |
 | 1 | Search returns cited, authorised passages only. |
+
+## Delivery note
+
+The MySQL FULLTEXT index is refreshed locally before learner search. It indexes published courses only; access is checked again after the search result is loaded, before a passage is returned.

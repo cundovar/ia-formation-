@@ -17,7 +17,7 @@ status: in-progress
 | # | Phase | File |
 | --- | --- | --- |
 | 1 | Read-only learner MCP — delivered, functional tests pending | [`phase-1.md`](./phase-1.md) |
-| 2 | RAG index and citations | [`phase-2.md`](./phase-2.md) |
+| 2 | RAG index and citations — delivered, functional tests pending | [`phase-2.md`](./phase-2.md) |
 | 3 | QCM sessions | [`phase-3.md`](./phase-3.md) |
 | 4 | Consented progress | [`phase-4.md`](./phase-4.md) |
 | 5 | Laboratory guidance | [`phase-5.md`](./phase-5.md) |
