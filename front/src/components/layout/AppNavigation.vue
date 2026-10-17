@@ -43,21 +43,48 @@
         @close-menu="$emit('closeMenu')"
       />
       <!-- Les deux entrées de l'accueil -->
-      <router-link
+      <div
         v-for="audience in AUDIENCES"
         :key="audience.key"
-        :to="audience.path"
-        :class="[
-          audience.key === 'apprendre' ? 'bg-blue-200 hover:bg-blue-300' : 'bg-emerald-200 hover:bg-emerald-300',
-          'max-xl:hidden xl:w-full min-h-[3rem] cursor-pointer shadow-neutral-600 p-2 text-gray-900 font-bold hover:underline flex items-center gap-2'
-        ]"
+        class="audience-entry max-xl:hidden xl:w-full"
+        @mouseenter="openAudienceMenu = audience.key === 'apprendre'"
+        @mouseleave="openAudienceMenu = false"
+        @focusin="openAudienceMenu = audience.key === 'apprendre'"
+        @focusout="onAudienceFocusout"
       >
-        <i
-          :class="audience.icon"
-          aria-hidden="true"
-        />
-        {{ audience.title }}
-      </router-link>
+        <router-link
+          :to="audience.path"
+          :class="[
+            audience.key === 'apprendre' ? 'bg-blue-200 hover:bg-blue-300' : 'bg-emerald-200 hover:bg-emerald-300',
+            'xl:w-full min-h-[3rem] cursor-pointer shadow-neutral-600 p-2 text-gray-900 font-bold hover:underline flex items-center gap-2'
+          ]"
+          :aria-expanded="audience.key === 'apprendre' ? openAudienceMenu : undefined"
+          :aria-haspopup="audience.key === 'apprendre' ? 'true' : undefined"
+        >
+          <i :class="audience.icon" aria-hidden="true" />
+          {{ audience.title }}
+        </router-link>
+        <div
+          v-if="audience.key === 'apprendre' && openAudienceMenu && apprendreGroups.length"
+          class="audience-dropdown"
+          aria-label="Parcours pour apprendre l’IA"
+        >
+          <section
+            v-for="group in apprendreGroups"
+            :key="group.id ?? 'sans-rubrique'"
+            class="audience-dropdown-group"
+          >
+            <h3 v-if="group.name">{{ group.name }}</h3>
+            <ul>
+              <li v-for="cat in group.categories" :key="cat.id">
+                <router-link :to="`/category/${encodeURIComponent(cat.name)}`">
+                  {{ cat.name }}
+                </router-link>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
       <router-link
         to="/qcm"
         class=" max-xl:hidden xl:w-full h-[3rem] max-xl:w-[14rem] max-xl:ml-20 cursor-pointer shadow-neutral-600 bg-purple-300 p-2 hover:bg-purple-400 text-gray-600 font-bold hover:underline flex items-center gap-2"
@@ -89,40 +116,25 @@ import ButtonArrowMenu from '../ui/ButtonArrowMenu.vue';
 import CategoryMenu from '../navigation/CategoryMenu.vue';
 import MenuLinks from '../navigation/MenuLinks.vue';
 import { AUDIENCES } from '@/config/audiences';
-defineProps({
-  cats: {
-    type: Array,
-    required: true
-  },
-  menusByCategory: {
-    type: Object,
-    required: true
-  },
-  hoveredCategory: {
-    type: String,
-    default: null
-  },
-  clickMenu: {
-    type: String,
-    default: null
-  },
-  isMenuOpen: {
-    type: Boolean,
-    default: false
-  },
-  isXlOuPlus: {
-    type: Boolean,
-    default: false
-  },
-  islgOuPlus: {
-    type: Boolean,
-    default: false
-  },
-  isOpenMenuGauche: {
-    type: Boolean,
-    default: false
-  }
+import { computed, ref } from 'vue';
+import { groupByRubrique } from '@/utils/parcours';
+
+const props = defineProps({
+  cats: { type: Array, required: true },
+  menusByCategory: { type: Object, required: true },
+  hoveredCategory: { type: String, default: null },
+  clickMenu: { type: String, default: null },
+  isMenuOpen: { type: Boolean, default: false },
+  isXlOuPlus: { type: Boolean, default: false },
+  islgOuPlus: { type: Boolean, default: false },
+  isOpenMenuGauche: { type: Boolean, default: false }
 });
+
+const openAudienceMenu = ref(false);
+const apprendreGroups = computed(() => groupByRubrique(props.cats.filter((cat) => cat.audience === 'apprendre')));
+const onAudienceFocusout = (event) => {
+  if (!event.currentTarget.contains(event.relatedTarget)) openAudienceMenu.value = false;
+};
 
 defineEmits(['openMenu', 'hoverCategory', 'closeMenu', 'toggleMenuGauche']);
 </script>
@@ -150,5 +162,58 @@ defineEmits(['openMenu', 'hoverCategory', 'closeMenu', 'toggleMenuGauche']);
 
 .div-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #555;
+}
+
+.audience-entry {
+  position: relative;
+}
+
+.audience-dropdown {
+  position: absolute;
+  z-index: 70;
+  top: 100%;
+  left: 0;
+  width: min(24rem, calc(100vw - 2rem));
+  max-height: min(70vh, 34rem);
+  overflow-y: auto;
+  padding: 0.75rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 0 0 0.75rem 0.75rem;
+  background: #eff6ff;
+  box-shadow: 0 10px 24px rgb(15 23 42 / 18%);
+}
+
+.audience-dropdown-group + .audience-dropdown-group {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #bfdbfe;
+}
+
+.audience-dropdown h3 {
+  margin: 0 0 0.35rem;
+  color: #1e3a8a;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.audience-dropdown ul {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audience-dropdown a {
+  display: block;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  color: #1f2937;
+}
+
+.audience-dropdown a:hover,
+.audience-dropdown a:focus-visible {
+  background: #dbeafe;
+  text-decoration: underline;
 }
 </style>
