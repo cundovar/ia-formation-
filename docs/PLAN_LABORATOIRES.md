@@ -30,7 +30,7 @@ Faire manipuler un workflow fait de blocs (déclencheur, condition, agent, outil
   - Garde-fous : 200 étapes au plus, `structuredClone` à chaque étape, environ 50 Ko de données au maximum.
 - **Bloc** = `{ definition (ports, icône, couleur pastel, libellé), schemaConfig, executer({ entree, config, contexte }), explication }`. Les exécuteurs peuvent renvoyer une promesse, ce qui permettra de brancher un mode réel plus tard sans changer le moteur.
 - **Critères** :
-  - types : `contientBloc`, `lienEntre`, `blocAvant`, `sortieAttendue`, `blocExecute`, `blocNonExecute`, `outilNonAppele`, `sansErreur`, `nombreMaxBlocs` ;
+  - types : `contientBloc`, `lienEntre`, `blocAvant`, `sortieAttendue`, `blocExecute`, `blocNonExecute`, `outilAppele`, `outilNonAppele`, `outilNonPropose`, `mcpAvant`, `sansErreur`, `nombreMaxBlocs` ;
   - le workflow est vérifié sur **tous** les jeux de données.
 
 ## 4. Format d'un laboratoire
@@ -116,6 +116,15 @@ Décisions : la vue en étapes reste la vue par défaut ; la vue graphique est p
 - T2.3 (M) `blocs/api.js` et `simulateurs/apiFictive.js` (réponses 200, 404, 500), labos 3 et 6. Test : un espion vérifie que `fetch` n'est jamais appelé.
 
 ### Phase 3 — Agents, outils, MCP, sécurité (simulés)
+
+État au 17 octobre 2026 : T3.1 à T3.4 présents dans le code et testés localement (Vitest, ESLint, build, navigateur sur l'application Vue servie seule : labo 11 au clavier en 375 px, labo 7 en vue graphique, aucune requête hors de l'hôte local). Non vérifié : site complet, CI, relecture éditoriale des quatre labos.
+
+Décisions :
+- Le « modèle » simulé est commun au laboratoire (`simulateurs.agent` : règles `si / alors`, `parDefaut`). L'apprenant règle ce que l'agent voit (`contexte`), sa consigne et les outils proposés ; les règles sont affichées dans le panneau du bloc (« Comment le simulateur décide »). Une règle qui demande un outil non proposé est écartée et le journal le dit. Une règle marquée `injection` remplace l'option `suitInstructionsDansDonnees` prévue : le journal signale la consigne cachée suivie.
+- L'agent ne fait qu'une demande d'outil (`agent.appel`) ; le bloc Outil vérifie les arguments selon les paramètres déclarés et l'exécute. Pas de contrôle d'accès bloquant sur les outils en écriture : le journal avertit quand personne n'a validé, et la protection s'apprend dans le labo 11 (outil retiré + validation humaine).
+- Validation humaine : statut `attente_humaine`, `repondreValidation`. En vérification automatique, la décision vient du jeu de données (`decisionHumaine`, refus par défaut).
+- Le serveur MCP fictif est simplifié : `initialize` exigé avant les autres méthodes, erreurs JSON-RPC -32600, -32601 et -32602 ; pas de notification `initialized`. Les arguments JSON sont lus avant de remplir les `{{…}}`, pour qu'une donnée ne puisse pas en casser la forme.
+- Ordre du catalogue : intermédiaire 1 JSON et API, 2 premier agent, 3 outils, 4 MCP ; avancé 1 injection et permissions.
 - T3.1 (M) Agent par règles `si / alors`, option `suitInstructionsDansDonnees` pour la démonstration d'injection, explication « règle n° X appliquée ».
 - T3.2 (M) Outils fictifs (arguments vérifiés selon un schéma, permission lecture ou écriture) et validation humaine (Approuver / Refuser).
 - T3.3 (M) `mcpFictif.js` et `blocs/mcp.js`, panneau des messages JSON-RPC. Test : aucune référence à `/mcp`.

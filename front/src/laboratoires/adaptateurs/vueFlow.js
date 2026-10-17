@@ -7,7 +7,7 @@ import { accessiblesDepuis, nomDuNoeud } from '../moteur/workflow.js'
 
 export const ESPACEMENT = { x: 340, y: 180 }
 
-const TEXTES_ETAT = { attente: 'en attente', prochain: 'prochaine étape', ok: 'exécuté', ignore: 'ignoré, chemin non pris', erreur: 'erreur' }
+const TEXTES_ETAT = { attente: 'en attente', prochain: 'prochaine étape', decision: 'attend une décision humaine', ok: 'exécuté', ignore: 'ignoré, chemin non pris', erreur: 'erreur' }
 
 // Position par défaut d'un bloc sans position : en ligne, dans l'ordre du workflow
 const positionDe = (noeud, index) => noeud.position ?? { x: index * ESPACEMENT.x, y: 0 }

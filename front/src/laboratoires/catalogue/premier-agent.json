@@ -1,0 +1,282 @@
+{
+  "schema": 1,
+  "slug": "premier-agent",
+  "ordre": 2,
+  "titre": "Configurer un premier agent",
+  "niveau": "intermediaire",
+  "public": "apprendre",
+  "duree": "15 minutes",
+  "coursSlugs": [],
+  "prerequis": [
+    "conditions-et-branchements"
+  ],
+  "objectif": "Transmettre le bon contexte à un agent et cadrer son rôle par une consigne.",
+  "scenario": "La Médiathèque Exemple, une médiathèque imaginaire, teste un agent qui répond aux messages des lecteurs. Pour l'instant, il répond à côté : il ne reçoit pas la bonne donnée. Et quand on lui parle de météo, il invente une prévision.",
+  "simulation": "L'agent ne fait pas appel à une IA : il choisit sa réponse avec des règles écrites à l'avance, affichées dans ses réglages. Une vraie IA peut répondre autrement, ou se tromper.",
+  "instructions": [
+    "Exécutez le workflow avec chaque message : l'agent ne comprend jamais la question.",
+    "Ouvrez « Données transmises » du déclencheur : où se trouve le texte du message ?",
+    "Dans l'agent, changez « Donnée transmise à l'agent » pour lui donner le texte du message.",
+    "Exécutez avec le message sur la météo : l'agent invente une prévision.",
+    "Complétez la consigne : « Réponds uniquement aux questions sur la médiathèque. » Puis vérifiez votre workflow."
+  ],
+  "blocsDisponibles": [
+    "declencheur",
+    "agent",
+    "transformation",
+    "resultat"
+  ],
+  "simulateurs": {
+    "agent": {
+      "regles": [
+        {
+          "si": {
+            "toutes": [
+              {
+                "chemin": "contexte",
+                "operateur": "contient",
+                "valeur": "temps"
+              },
+              {
+                "chemin": "consigne",
+                "operateur": "contient",
+                "valeur": "uniquement"
+              }
+            ]
+          },
+          "alors": {
+            "reponse": "Je réponds uniquement aux questions sur la Médiathèque Exemple. Pour la météo, consultez un service de prévisions."
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte",
+            "operateur": "contient",
+            "valeur": "temps"
+          },
+          "alors": {
+            "reponse": "Demain, il fera beau et 25 °C !"
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte",
+            "operateur": "contient",
+            "valeur": "horaire"
+          },
+          "alors": {
+            "reponse": "La Médiathèque Exemple est ouverte du mardi au samedi, de 10 h à 18 h."
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte",
+            "operateur": "contient",
+            "valeur": "inscri"
+          },
+          "alors": {
+            "reponse": "L'inscription à la Médiathèque Exemple est gratuite. Venez à l'accueil avec un justificatif de domicile."
+          }
+        }
+      ],
+      "parDefaut": {
+        "reponse": "Je n'ai pas compris votre demande. Pouvez-vous la reformuler ?"
+      }
+    }
+  },
+  "workflowInitial": {
+    "noeuds": [
+      {
+        "id": "declencheur",
+        "type": "declencheur",
+        "libelle": "Un message arrive",
+        "config": {
+          "evenement": "Un lecteur écrit à la médiathèque"
+        },
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "assistant",
+        "type": "agent",
+        "libelle": "Assistant de la médiathèque",
+        "config": {
+          "consigne": "Tu es l'assistant de la Médiathèque Exemple. Réponds poliment.",
+          "contexte": "message.expediteur",
+          "outils": [],
+          "champ": "agent"
+        },
+        "position": {
+          "x": 340,
+          "y": 0
+        }
+      },
+      {
+        "id": "resultat",
+        "type": "resultat",
+        "libelle": "Réponse envoyée",
+        "config": {},
+        "position": {
+          "x": 680,
+          "y": 0
+        }
+      }
+    ],
+    "liens": [
+      {
+        "id": "l1",
+        "source": "declencheur",
+        "sortie": "sortie",
+        "cible": "assistant"
+      },
+      {
+        "id": "l2",
+        "source": "assistant",
+        "sortie": "reponse",
+        "cible": "resultat"
+      }
+    ]
+  },
+  "verrous": {
+    "noeuds": [
+      "declencheur",
+      "resultat"
+    ]
+  },
+  "jeuxDeDonnees": [
+    {
+      "id": "horaires",
+      "libelle": "Nadia demande les horaires",
+      "donnees": {
+        "message": {
+          "expediteur": "Nadia Exemple",
+          "texte": "Bonjour, quels sont vos horaires d'ouverture ?"
+        }
+      }
+    },
+    {
+      "id": "inscription",
+      "libelle": "Paul veut s'inscrire",
+      "donnees": {
+        "message": {
+          "expediteur": "Paul Exemple",
+          "texte": "Comment faire pour m'inscrire à la médiathèque ?"
+        }
+      }
+    },
+    {
+      "id": "meteo",
+      "libelle": "Inès parle de météo",
+      "donnees": {
+        "message": {
+          "expediteur": "Inès Exemple",
+          "texte": "Quel temps fera-t-il demain pour la sortie au parc ?"
+        }
+      }
+    }
+  ],
+  "criteres": [
+    {
+      "id": "horaires",
+      "type": "sortieAttendue",
+      "jeu": "horaires",
+      "chemin": "agent.reponse",
+      "egal": "La Médiathèque Exemple est ouverte du mardi au samedi, de 10 h à 18 h.",
+      "message": "Nadia reçoit les horaires d'ouverture."
+    },
+    {
+      "id": "inscription",
+      "type": "sortieAttendue",
+      "jeu": "inscription",
+      "chemin": "agent.reponse",
+      "egal": "L'inscription à la Médiathèque Exemple est gratuite. Venez à l'accueil avec un justificatif de domicile.",
+      "message": "Paul sait comment s'inscrire."
+    },
+    {
+      "id": "meteo",
+      "type": "sortieAttendue",
+      "jeu": "meteo",
+      "chemin": "agent.reponse",
+      "egal": "Je réponds uniquement aux questions sur la Médiathèque Exemple. Pour la météo, consultez un service de prévisions.",
+      "message": "Pour la météo, l'agent n'invente rien : il rappelle son rôle."
+    },
+    {
+      "id": "sans-erreur",
+      "type": "sansErreur",
+      "message": "L'agent répond sans erreur aux trois messages."
+    }
+  ],
+  "indices": [
+    "L'agent ne voit que la donnée que vous lui transmettez. Le nom de la personne ne lui dit rien de sa question.",
+    "Donnée transmise à l'agent : « message.texte ».",
+    "Le simulateur cherche le mot « uniquement » dans la consigne. Écrivez par exemple : « Réponds uniquement aux questions sur la médiathèque. »"
+  ],
+  "correction": {
+    "explication": "Un agent ne sait que ce qu'on lui transmet : avec le nom de l'expéditeur, il ne pouvait pas comprendre la question. Avec « message.texte », il reçoit la demande. La consigne cadre son rôle : sans elle, il invente une prévision météo qu'il ne connaît pas. Ici, le simulateur repère seulement le mot « uniquement » ; une vraie IA interprète toute la consigne, et peut quand même s'en écarter.",
+    "workflow": {
+      "noeuds": [
+        {
+          "id": "declencheur",
+          "type": "declencheur",
+          "libelle": "Un message arrive",
+          "config": {
+            "evenement": "Un lecteur écrit à la médiathèque"
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": "assistant",
+          "type": "agent",
+          "libelle": "Assistant de la médiathèque",
+          "config": {
+            "consigne": "Tu es l'assistant de la Médiathèque Exemple. Réponds poliment. Réponds uniquement aux questions sur la médiathèque.",
+            "contexte": "message.texte",
+            "outils": [],
+            "champ": "agent"
+          },
+          "position": {
+            "x": 340,
+            "y": 0
+          }
+        },
+        {
+          "id": "resultat",
+          "type": "resultat",
+          "libelle": "Réponse envoyée",
+          "config": {},
+          "position": {
+            "x": 680,
+            "y": 0
+          }
+        }
+      ],
+      "liens": [
+        {
+          "id": "l1",
+          "source": "declencheur",
+          "sortie": "sortie",
+          "cible": "assistant"
+        },
+        {
+          "id": "l2",
+          "source": "assistant",
+          "sortie": "reponse",
+          "cible": "resultat"
+        }
+      ]
+    }
+  },
+  "aRetenir": [
+    "Un agent ne voit que le contexte qu'on lui donne : vérifiez ce qu'il reçoit vraiment.",
+    "La consigne fixe son rôle et ses limites. Sans limite, une IA peut inventer une réponse plausible mais fausse.",
+    "Une vraie IA ne suit pas des règles fixes : relisez toujours ses réponses avant de les envoyer."
+  ],
+  "animation": "En atelier : avant de corriger, demandez au groupe pourquoi l'agent annonce 25 °C. Faites remarquer qu'une vraie IA aurait pu répondre la même chose avec assurance.",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}

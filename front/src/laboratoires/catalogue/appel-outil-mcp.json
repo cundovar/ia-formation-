@@ -1,0 +1,391 @@
+{
+  "schema": 1,
+  "slug": "appel-outil-mcp",
+  "ordre": 4,
+  "titre": "Observer un appel d'outil MCP",
+  "niveau": "intermediaire",
+  "public": "apprendre",
+  "duree": "20 minutes",
+  "coursSlugs": [],
+  "prerequis": [
+    "outils-agent"
+  ],
+  "objectif": "Lire les messages JSON-RPC échangés avec un serveur MCP et appeler un outil dans le bon ordre.",
+  "scenario": "Le club de randonnée Exemple dispose d'un serveur MCP fictif qui propose des outils : la liste des sorties, la météo… Son automatisation appelle directement un outil « meteo ». Le serveur refuse : la session n'est pas ouverte, et cet outil n'existe pas sous ce nom.",
+  "simulation": "Le serveur MCP est fictif et simplifié : ses réponses sont calculées dans votre navigateur, d'après le laboratoire. Aucun serveur n'est contacté.",
+  "instructions": [
+    "Exécutez le workflow et ouvrez « Messages MCP échangés » : lisez l'erreur du serveur.",
+    "Ajoutez avant l'appel un bloc Client MCP qui envoie « initialize », et reliez-le.",
+    "Ajoutez ensuite un bloc qui envoie « tools/list » et lisez la liste des outils.",
+    "Corrigez le nom de l'outil dans « Appeler l'outil météo ».",
+    "Vérifiez votre workflow avec les deux demandes."
+  ],
+  "blocsDisponibles": [
+    "declencheur",
+    "mcp",
+    "condition",
+    "transformation",
+    "resultat"
+  ],
+  "simulateurs": {
+    "outils": [
+      {
+        "nom": "lister_sorties",
+        "description": "Donne la liste des prochaines sorties du club.",
+        "permission": "lecture",
+        "parametres": {},
+        "reponses": [
+          {
+            "resultat": {
+              "sorties": [
+                {
+                  "date": "samedi",
+                  "lieu": "Ville-sur-Exemple"
+                },
+                {
+                  "date": "dimanche",
+                  "lieu": "Port-Exemple"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "nom": "prevoir_meteo",
+        "description": "Donne la météo prévue dans une ville.",
+        "permission": "lecture",
+        "parametres": {
+          "ville": {
+            "type": "texte",
+            "description": "Nom de la ville",
+            "obligatoire": true
+          }
+        },
+        "reponses": [
+          {
+            "si": {
+              "chemin": "arguments.ville",
+              "operateur": "egal",
+              "valeur": "Ville-sur-Exemple"
+            },
+            "resultat": {
+              "ville": "Ville-sur-Exemple",
+              "temperature": 18,
+              "ciel": "ensoleillé"
+            }
+          },
+          {
+            "si": {
+              "chemin": "arguments.ville",
+              "operateur": "egal",
+              "valeur": "Port-Exemple"
+            },
+            "resultat": {
+              "ville": "Port-Exemple",
+              "temperature": 12,
+              "ciel": "pluvieux"
+            }
+          },
+          {
+            "resultat": {
+              "ville": "inconnue",
+              "temperature": "?",
+              "ciel": "inconnu"
+            }
+          }
+        ]
+      }
+    ],
+    "mcp": {
+      "nom": "Serveur MCP fictif du club de randonnée Exemple",
+      "version": "1.0.0",
+      "outils": [
+        "lister_sorties",
+        "prevoir_meteo"
+      ]
+    }
+  },
+  "workflowInitial": {
+    "noeuds": [
+      {
+        "id": "declencheur",
+        "type": "declencheur",
+        "libelle": "Une demande arrive",
+        "config": {
+          "evenement": "Un membre demande la météo de la prochaine sortie"
+        },
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "appel",
+        "type": "mcp",
+        "libelle": "Appeler l'outil météo",
+        "config": {
+          "methode": "tools/call",
+          "outil": "meteo",
+          "arguments": "{\"ville\": \"{{demande.ville}}\"}",
+          "champ": "meteo"
+        },
+        "position": {
+          "x": 340,
+          "y": 0
+        }
+      },
+      {
+        "id": "message",
+        "type": "transformation",
+        "libelle": "Préparer la réponse",
+        "config": {
+          "operation": "definir",
+          "champ": "message",
+          "source": "",
+          "valeur": "À {{demande.ville}}, il fera {{meteo.reponse.result.structuredContent.temperature}} °C, ciel {{meteo.reponse.result.structuredContent.ciel}}."
+        },
+        "position": {
+          "x": 680,
+          "y": 0
+        }
+      },
+      {
+        "id": "resultat",
+        "type": "resultat",
+        "libelle": "Réponse au membre",
+        "config": {},
+        "position": {
+          "x": 1020,
+          "y": 0
+        }
+      }
+    ],
+    "liens": [
+      {
+        "id": "l1",
+        "source": "declencheur",
+        "sortie": "sortie",
+        "cible": "appel"
+      },
+      {
+        "id": "l2",
+        "source": "appel",
+        "sortie": "sortie",
+        "cible": "message"
+      },
+      {
+        "id": "l3",
+        "source": "message",
+        "sortie": "sortie",
+        "cible": "resultat"
+      }
+    ]
+  },
+  "verrous": {
+    "noeuds": [
+      "declencheur",
+      "message",
+      "resultat"
+    ]
+  },
+  "jeuxDeDonnees": [
+    {
+      "id": "ville",
+      "libelle": "Sortie à Ville-sur-Exemple",
+      "donnees": {
+        "demande": {
+          "membre": "Nadia Exemple",
+          "ville": "Ville-sur-Exemple"
+        }
+      }
+    },
+    {
+      "id": "port",
+      "libelle": "Sortie à Port-Exemple",
+      "donnees": {
+        "demande": {
+          "membre": "Paul Exemple",
+          "ville": "Port-Exemple"
+        }
+      }
+    }
+  ],
+  "criteres": [
+    {
+      "id": "initialize",
+      "type": "mcpAvant",
+      "methode": "initialize",
+      "avant": "tools/call",
+      "message": "La session est ouverte (« initialize ») avant d'appeler un outil."
+    },
+    {
+      "id": "liste",
+      "type": "mcpAvant",
+      "methode": "tools/list",
+      "avant": "tools/call",
+      "message": "Le client consulte la liste des outils (« tools/list ») avant d'en appeler un."
+    },
+    {
+      "id": "outil",
+      "type": "outilAppele",
+      "outil": "prevoir_meteo",
+      "message": "L'outil météo du serveur est bien appelé."
+    },
+    {
+      "id": "ville",
+      "type": "sortieAttendue",
+      "jeu": "ville",
+      "chemin": "message",
+      "egal": "À Ville-sur-Exemple, il fera 18 °C, ciel ensoleillé.",
+      "message": "La météo de Ville-sur-Exemple est annoncée."
+    },
+    {
+      "id": "port",
+      "type": "sortieAttendue",
+      "jeu": "port",
+      "chemin": "message",
+      "egal": "À Port-Exemple, il fera 12 °C, ciel pluvieux.",
+      "message": "La météo de Port-Exemple est annoncée."
+    },
+    {
+      "id": "sans-erreur",
+      "type": "sansErreur",
+      "message": "Le workflow fonctionne sans erreur pour les deux demandes."
+    }
+  ],
+  "indices": [
+    "Un message JSON-RPC a une méthode (« method ») et un numéro (« id ») ; la réponse reprend le même numéro, avec « result » ou « error ».",
+    "Ordre des messages : « initialize », puis « tools/list », puis « tools/call ». Les deux nouveaux blocs se placent entre le déclencheur et l'appel.",
+    "La liste des outils donne le nom exact : « prevoir_meteo », avec un paramètre « ville » obligatoire."
+  ],
+  "correction": {
+    "explication": "Un client MCP ouvre d'abord la session avec « initialize ». Il demande ensuite la liste des outils avec « tools/list » : il y lit le nom exact de chaque outil et ses paramètres. Il appelle enfin « prevoir_meteo » avec « tools/call ». Chaque réponse reprend le numéro (« id ») de la question : c'est ainsi qu'on suit l'échange. Le vrai protocole compte d'autres messages, omis ici pour rester simple.",
+    "workflow": {
+      "noeuds": [
+        {
+          "id": "declencheur",
+          "type": "declencheur",
+          "libelle": "Une demande arrive",
+          "config": {
+            "evenement": "Un membre demande la météo de la prochaine sortie"
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": "session",
+          "type": "mcp",
+          "libelle": "Ouvrir la session",
+          "config": {
+            "methode": "initialize",
+            "outil": "",
+            "arguments": "",
+            "champ": "session"
+          },
+          "position": {
+            "x": 340,
+            "y": 0
+          }
+        },
+        {
+          "id": "liste",
+          "type": "mcp",
+          "libelle": "Lister les outils",
+          "config": {
+            "methode": "tools/list",
+            "outil": "",
+            "arguments": "",
+            "champ": "catalogue"
+          },
+          "position": {
+            "x": 680,
+            "y": 0
+          }
+        },
+        {
+          "id": "appel",
+          "type": "mcp",
+          "libelle": "Appeler l'outil météo",
+          "config": {
+            "methode": "tools/call",
+            "outil": "prevoir_meteo",
+            "arguments": "{\"ville\": \"{{demande.ville}}\"}",
+            "champ": "meteo"
+          },
+          "position": {
+            "x": 1020,
+            "y": 0
+          }
+        },
+        {
+          "id": "message",
+          "type": "transformation",
+          "libelle": "Préparer la réponse",
+          "config": {
+            "operation": "definir",
+            "champ": "message",
+            "source": "",
+            "valeur": "À {{demande.ville}}, il fera {{meteo.reponse.result.structuredContent.temperature}} °C, ciel {{meteo.reponse.result.structuredContent.ciel}}."
+          },
+          "position": {
+            "x": 1360,
+            "y": 0
+          }
+        },
+        {
+          "id": "resultat",
+          "type": "resultat",
+          "libelle": "Réponse au membre",
+          "config": {},
+          "position": {
+            "x": 1700,
+            "y": 0
+          }
+        }
+      ],
+      "liens": [
+        {
+          "id": "l1",
+          "source": "declencheur",
+          "sortie": "sortie",
+          "cible": "session"
+        },
+        {
+          "id": "l4",
+          "source": "session",
+          "sortie": "sortie",
+          "cible": "liste"
+        },
+        {
+          "id": "l5",
+          "source": "liste",
+          "sortie": "sortie",
+          "cible": "appel"
+        },
+        {
+          "id": "l2",
+          "source": "appel",
+          "sortie": "sortie",
+          "cible": "message"
+        },
+        {
+          "id": "l3",
+          "source": "message",
+          "sortie": "sortie",
+          "cible": "resultat"
+        }
+      ]
+    }
+  },
+  "aRetenir": [
+    "MCP est un protocole : un client et un serveur échangent des messages JSON-RPC (méthode, numéro, résultat ou erreur).",
+    "Le client découvre les outils avec « tools/list » avant d'en appeler un : il n'a pas à deviner leurs noms.",
+    "Un serveur MCP donne accès à des outils réels : n'en connectez que de confiance, et vérifiez ce que chaque outil peut faire."
+  ],
+  "animation": "En atelier : projetez les messages échangés et faites retrouver, pour chaque réponse, la question qui porte le même numéro (« id »).",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}

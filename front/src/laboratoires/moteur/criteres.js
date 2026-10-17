@@ -20,6 +20,12 @@ const blocAvant = (workflow, { bloc, avant }) => {
 const executionsVisees = (critere, executions) =>
   critere.jeu ? [executions[critere.jeu]].filter(Boolean) : Object.values(executions)
 
+// Outils réellement exécutés (bloc Outil ou appel MCP réussi)
+const outilsAppeles = (execution) => execution.evenements.filter((evenement) => evenement.type === 'outil').map((evenement) => evenement.outil)
+
+// Position du premier message MCP d'une méthode dans une exécution (-1 s'il n'y en a pas)
+const rangMcp = (execution, methode) => execution.evenements.findIndex((evenement) => evenement.type === 'mcp' && evenement.requete.method === methode)
+
 const blocExecuteDans = (execution, type) =>
   execution.workflow.noeuds.some((noeud) => noeud.type === type && execution.etats[noeud.id] === 'ok')
 
@@ -49,7 +55,28 @@ export const EVALUATEURS = {
   },
   blocNonExecute: (critere, workflow, executions) =>
     executionsVisees(critere, executions).every((execution) => !blocExecuteDans(execution, critere.bloc)),
+  outilAppele: (critere, workflow, executions) => {
+    const visees = executionsVisees(critere, executions)
+    return visees.length > 0 && visees.every((execution) => outilsAppeles(execution).includes(critere.outil))
+  },
+  outilNonAppele: (critere, workflow, executions) =>
+    executionsVisees(critere, executions).every((execution) => !outilsAppeles(execution).includes(critere.outil)),
+  // Aucun agent du workflow ne se voit proposer cet outil (moindre privilège)
+  outilNonPropose: (critere, workflow) =>
+    typesDe(workflow, 'agent').every((noeud) => !(noeud.config?.outils ?? []).includes(critere.outil)),
+  // Dans chaque exécution, un message `methode` part avant le premier message `avant`
+  mcpAvant: (critere, workflow, executions) => {
+    const visees = executionsVisees(critere, executions)
+    return visees.length > 0 && visees.every((execution) => {
+      const rangAvant = rangMcp(execution, critere.avant)
+      const rang = rangMcp(execution, critere.methode)
+      return rangAvant >= 0 && rang >= 0 && rang < rangAvant
+    })
+  },
 }
+
+// Décision de la personne fictive pendant la vérification : celle du jeu de données, sinon un refus
+export const deciderPourVerification = (attente, jeu) => jeu?.decisionHumaine ?? 'refuser'
 
 /**
  * Évalue les critères d'un laboratoire pour un workflow.
@@ -57,7 +84,12 @@ export const EVALUATEURS = {
  */
 export async function evaluerCriteres(laboratoire, definition, { registre = BLOCS } = {}) {
   const workflow = normaliser(definition)
-  const options = { registre, blocsDisponibles: laboratoire.blocsDisponibles ?? null, simulateurs: laboratoire.simulateurs ?? {} }
+  const options = {
+    registre,
+    blocsDisponibles: laboratoire.blocsDisponibles ?? null,
+    simulateurs: laboratoire.simulateurs ?? {},
+    decider: deciderPourVerification,
+  }
   const executions = {}
   for (const jeu of laboratoire.jeuxDeDonnees) {
     executions[jeu.id] = await executerTout(workflow, jeu, options)

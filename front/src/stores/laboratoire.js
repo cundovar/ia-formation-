@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { BLOCS, trouverBloc } from '@/laboratoires/blocs'
 import { evaluerCriteres } from '@/laboratoires/moteur/criteres'
-import { creerExecution, estTerminee, etapeSuivante, executerTout } from '@/laboratoires/moteur/execution'
+import { creerExecution, estTerminee, etapeSuivante, executerTout, poursuivre, repondreValidation } from '@/laboratoires/moteur/execution'
 import { normaliser, valider } from '@/laboratoires/moteur/workflow'
 
 // Séance d'un laboratoire : rien n'est persisté (LAB-07), tout disparaît en quittant la page
@@ -42,10 +42,12 @@ export const useLaboratoireStore = defineStore('laboratoire', {
     peutRetablir: (state) => state.historique.futur.length > 0,
     verrouille: (state) => (noeudId) => (state.lab?.verrous?.noeuds ?? []).includes(noeudId),
     terminee: (state) => Boolean(state.execution && estTerminee(state.execution)),
+    // Une validation humaine attend la décision de l'apprenant
+    enAttente: (state) => state.execution?.statut === 'attente_humaine',
     // Bloc qui s'exécutera à la prochaine étape
     prochainNoeud: (state) => {
       const execution = state.execution
-      if (!execution || estTerminee(execution)) return null
+      if (!execution || estTerminee(execution) || execution.statut === 'attente_humaine') return null
       return execution.ordre[execution.index] ?? null
     },
     // Types que l'apprenant peut ajouter (un seul déclencheur par workflow)
@@ -203,6 +205,7 @@ export const useLaboratoireStore = defineStore('laboratoire', {
     },
 
     async pas() {
+      if (this.enAttente) return this.execution
       if (!this.execution || estTerminee(this.execution)) {
         this.execution = this.nouvelleExecution()
         if (this.execution.statut === 'invalide') return this.execution
@@ -218,7 +221,7 @@ export const useLaboratoireStore = defineStore('laboratoire', {
       const avancer = async () => {
         if (!this.lecture) return
         await this.pas()
-        if (estTerminee(this.execution)) {
+        if (estTerminee(this.execution) || this.enAttente) {
           this.lecture = false
           return
         }
@@ -232,9 +235,19 @@ export const useLaboratoireStore = defineStore('laboratoire', {
       arreterMinuteur()
     },
 
+    // Exécute jusqu'au bout (ou jusqu'à une validation humaine), en reprenant l'exécution en cours
     async toutExecuter() {
       this.pause()
-      this.execution = await executerTout(this.workflow, this.jeu, this.options)
+      this.execution = this.execution && !estTerminee(this.execution)
+        ? await poursuivre(this.execution)
+        : await executerTout(this.workflow, this.jeu, this.options)
+    },
+
+    // Décision de l'apprenant pour la validation humaine en attente ; le bloc s'exécute aussitôt
+    async decider(decision) {
+      if (!this.enAttente) return this.execution
+      this.execution = repondreValidation(this.execution, this.execution.attente.noeudId, decision)
+      return this.pas()
     },
 
     reinitialiser() {

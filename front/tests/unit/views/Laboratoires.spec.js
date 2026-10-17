@@ -34,7 +34,7 @@ describe('pages des laboratoires', () => {
     expect(wrapper.findAll('h1')).toHaveLength(1)
 
     await wrapper.get('[data-testid="filtre-niveau"]').setValue('avance')
-    expect(wrapper.find('[data-testid="laboratoires-vide"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="laboratoires"] h2 a').map((lien) => lien.attributes('href'))).toEqual(['/laboratoires/injection-et-permissions'])
   })
 
   it('ouvre un laboratoire avec ses prérequis', async () => {

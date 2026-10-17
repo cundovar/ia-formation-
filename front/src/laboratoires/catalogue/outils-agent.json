@@ -1,0 +1,418 @@
+{
+  "schema": 1,
+  "slug": "outils-agent",
+  "ordre": 3,
+  "titre": "Donner un outil à un agent",
+  "niveau": "intermediaire",
+  "public": "apprendre",
+  "duree": "25 minutes",
+  "coursSlugs": [],
+  "prerequis": [
+    "premier-agent"
+  ],
+  "objectif": "Donner à un agent le seul outil utile, faire exécuter son appel et réutiliser le résultat.",
+  "scenario": "Les lecteurs de la Médiathèque Exemple demandent si un livre est disponible. L'agent ne peut pas le savoir seul : il lui faut l'outil qui consulte le catalogue. Deux outils fictifs existent : « chercher_livre » (lecture seule) et « reserver_livre » (il modifie des données).",
+  "simulation": "L'agent et les outils sont simulés par des règles et des réponses écrites à l'avance. Aucun catalogue réel n'est consulté, aucune réservation n'est faite.",
+  "instructions": [
+    "Exécutez le workflow : l'agent répond qu'il ne peut pas vérifier le catalogue.",
+    "Dans « Comprendre la demande », proposez-lui l'outil dont il a besoin, et seulement celui-là.",
+    "Ajoutez un bloc Outil relié à la sortie « S'il demande un outil » de l'agent.",
+    "Ajoutez un deuxième agent qui reçoit « resultatOutil » et range sa décision dans « redaction ».",
+    "Reliez sa sortie « S'il répond » au Résultat, puis vérifiez votre workflow."
+  ],
+  "blocsDisponibles": [
+    "declencheur",
+    "agent",
+    "outil",
+    "condition",
+    "transformation",
+    "resultat"
+  ],
+  "simulateurs": {
+    "outils": [
+      {
+        "nom": "chercher_livre",
+        "description": "Cherche un livre dans le catalogue de la Médiathèque Exemple et donne sa disponibilité.",
+        "permission": "lecture",
+        "parametres": {
+          "titre": {
+            "type": "texte",
+            "description": "Titre exact du livre",
+            "obligatoire": true
+          }
+        },
+        "reponses": [
+          {
+            "si": {
+              "chemin": "arguments.titre",
+              "operateur": "egal",
+              "valeur": "Le Petit Exemple"
+            },
+            "resultat": {
+              "titre": "Le Petit Exemple",
+              "statut": "disponible",
+              "rayon": "Romans jeunesse"
+            }
+          },
+          {
+            "si": {
+              "chemin": "arguments.titre",
+              "operateur": "egal",
+              "valeur": "Voyage au pays d'Exemple"
+            },
+            "resultat": {
+              "titre": "Voyage au pays d'Exemple",
+              "statut": "emprunte",
+              "retour": "12 novembre"
+            }
+          },
+          {
+            "resultat": {
+              "statut": "inconnu"
+            }
+          }
+        ]
+      },
+      {
+        "nom": "reserver_livre",
+        "description": "Réserve un livre au nom d'un lecteur.",
+        "permission": "ecriture",
+        "parametres": {
+          "titre": {
+            "type": "texte",
+            "description": "Titre exact du livre",
+            "obligatoire": true
+          }
+        },
+        "reponses": [
+          {
+            "resultat": {
+              "reservation": "confirmée"
+            }
+          }
+        ]
+      }
+    ],
+    "agent": {
+      "regles": [
+        {
+          "si": {
+            "chemin": "contexte.statut",
+            "operateur": "egal",
+            "valeur": "disponible"
+          },
+          "alors": {
+            "reponse": "Bonne nouvelle : « {{contexte.titre}} » est disponible, au rayon {{contexte.rayon}}."
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.statut",
+            "operateur": "egal",
+            "valeur": "emprunte"
+          },
+          "alors": {
+            "reponse": "« {{contexte.titre}} » est emprunté. Il doit revenir le {{contexte.retour}}."
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.statut",
+            "operateur": "egal",
+            "valeur": "inconnu"
+          },
+          "alors": {
+            "reponse": "Je ne trouve pas ce livre dans le catalogue de la Médiathèque Exemple."
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.texte",
+            "operateur": "contient",
+            "valeur": "disponible"
+          },
+          "alors": {
+            "outil": "reserver_livre",
+            "arguments": {
+              "titre": "{{contexte.titre}}"
+            }
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.texte",
+            "operateur": "contient",
+            "valeur": "disponible"
+          },
+          "alors": {
+            "outil": "chercher_livre",
+            "arguments": {
+              "titre": "{{contexte.titre}}"
+            }
+          }
+        }
+      ],
+      "parDefaut": {
+        "reponse": "Je ne peux pas vérifier le catalogue : aucun outil ne me le permet."
+      }
+    }
+  },
+  "workflowInitial": {
+    "noeuds": [
+      {
+        "id": "declencheur",
+        "type": "declencheur",
+        "libelle": "Une demande arrive",
+        "config": {
+          "evenement": "Un lecteur demande si un livre est disponible"
+        },
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "comprendre",
+        "type": "agent",
+        "libelle": "Comprendre la demande",
+        "config": {
+          "consigne": "Tu aides les lecteurs de la Médiathèque Exemple à trouver un livre.",
+          "contexte": "demande",
+          "outils": [],
+          "champ": "agent"
+        },
+        "position": {
+          "x": 340,
+          "y": 0
+        }
+      },
+      {
+        "id": "resultat",
+        "type": "resultat",
+        "libelle": "Réponse au lecteur",
+        "config": {},
+        "position": {
+          "x": 680,
+          "y": 0
+        }
+      }
+    ],
+    "liens": [
+      {
+        "id": "l1",
+        "source": "declencheur",
+        "sortie": "sortie",
+        "cible": "comprendre"
+      },
+      {
+        "id": "l2",
+        "source": "comprendre",
+        "sortie": "reponse",
+        "cible": "resultat"
+      }
+    ]
+  },
+  "verrous": {
+    "noeuds": [
+      "declencheur",
+      "resultat"
+    ]
+  },
+  "jeuxDeDonnees": [
+    {
+      "id": "disponible",
+      "libelle": "Paul demande « Le Petit Exemple »",
+      "donnees": {
+        "demande": {
+          "lecteur": "Paul Exemple",
+          "texte": "Le livre « Le Petit Exemple » est-il disponible ?",
+          "titre": "Le Petit Exemple"
+        }
+      }
+    },
+    {
+      "id": "emprunte",
+      "libelle": "Nadia demande « Voyage au pays d'Exemple »",
+      "donnees": {
+        "demande": {
+          "lecteur": "Nadia Exemple",
+          "texte": "Est-ce que « Voyage au pays d'Exemple » est disponible ?",
+          "titre": "Voyage au pays d'Exemple"
+        }
+      }
+    },
+    {
+      "id": "inconnu",
+      "libelle": "Inès demande un titre mal orthographié",
+      "donnees": {
+        "demande": {
+          "lecteur": "Inès Exemple",
+          "texte": "Le livre « Le Grand Exempel » est-il disponible ?",
+          "titre": "Le Grand Exempel"
+        }
+      }
+    }
+  ],
+  "criteres": [
+    {
+      "id": "chercher",
+      "type": "outilAppele",
+      "outil": "chercher_livre",
+      "message": "L'agent consulte le catalogue pour chaque demande."
+    },
+    {
+      "id": "pas-de-reservation",
+      "type": "outilNonAppele",
+      "outil": "reserver_livre",
+      "message": "Aucun livre n'est réservé : le lecteur a seulement demandé s'il est disponible."
+    },
+    {
+      "id": "disponible",
+      "type": "sortieAttendue",
+      "jeu": "disponible",
+      "chemin": "redaction.reponse",
+      "egal": "Bonne nouvelle : « Le Petit Exemple » est disponible, au rayon Romans jeunesse.",
+      "message": "Paul apprend que son livre est disponible et où le trouver."
+    },
+    {
+      "id": "emprunte",
+      "type": "sortieAttendue",
+      "jeu": "emprunte",
+      "chemin": "redaction.reponse",
+      "egal": "« Voyage au pays d'Exemple » est emprunté. Il doit revenir le 12 novembre.",
+      "message": "Nadia apprend quand son livre revient."
+    },
+    {
+      "id": "inconnu",
+      "type": "sortieAttendue",
+      "jeu": "inconnu",
+      "chemin": "redaction.reponse",
+      "egal": "Je ne trouve pas ce livre dans le catalogue de la Médiathèque Exemple.",
+      "message": "Inès apprend que le titre est introuvable."
+    },
+    {
+      "id": "sans-erreur",
+      "type": "sansErreur",
+      "message": "Le workflow fonctionne sans erreur pour les trois demandes."
+    }
+  ],
+  "indices": [
+    "Un agent ne fait qu'une demande d'outil ; c'est le bloc Outil qui l'exécute, puis il faut un agent pour rédiger la réponse.",
+    "Proposez seulement « chercher_livre » : avec « reserver_livre », l'agent réserve le livre sans qu'on le lui demande.",
+    "Bloc Outil : demande « agent.appel », résultat dans « resultatOutil ». Deuxième agent : donnée transmise « resultatOutil », décision rangée dans « redaction »."
+  ],
+  "correction": {
+    "explication": "L'agent « Comprendre la demande » reçoit la demande et demande l'outil « chercher_livre ». Le bloc Outil vérifie les arguments (le titre est obligatoire) et exécute l'appel. Le deuxième agent lit le résultat (« resultatOutil ») et rédige la réponse. Si on propose aussi « reserver_livre », l'agent réserve le livre sans que personne l'ait demandé : on ne donne à un agent que les outils dont il a besoin.",
+    "workflow": {
+      "noeuds": [
+        {
+          "id": "declencheur",
+          "type": "declencheur",
+          "libelle": "Une demande arrive",
+          "config": {
+            "evenement": "Un lecteur demande si un livre est disponible"
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": "comprendre",
+          "type": "agent",
+          "libelle": "Comprendre la demande",
+          "config": {
+            "consigne": "Tu aides les lecteurs de la Médiathèque Exemple à trouver un livre.",
+            "contexte": "demande",
+            "outils": [
+              "chercher_livre"
+            ],
+            "champ": "agent"
+          },
+          "position": {
+            "x": 340,
+            "y": 0
+          }
+        },
+        {
+          "id": "catalogue",
+          "type": "outil",
+          "libelle": "Consulter le catalogue",
+          "config": {
+            "appel": "agent.appel",
+            "champ": "resultatOutil"
+          },
+          "position": {
+            "x": 680,
+            "y": -180
+          }
+        },
+        {
+          "id": "rediger",
+          "type": "agent",
+          "libelle": "Rédiger la réponse",
+          "config": {
+            "consigne": "Tu rédiges une réponse courte au lecteur.",
+            "contexte": "resultatOutil",
+            "outils": [],
+            "champ": "redaction"
+          },
+          "position": {
+            "x": 1020,
+            "y": -180
+          }
+        },
+        {
+          "id": "resultat",
+          "type": "resultat",
+          "libelle": "Réponse au lecteur",
+          "config": {},
+          "position": {
+            "x": 1360,
+            "y": 0
+          }
+        }
+      ],
+      "liens": [
+        {
+          "id": "l1",
+          "source": "declencheur",
+          "sortie": "sortie",
+          "cible": "comprendre"
+        },
+        {
+          "id": "l2",
+          "source": "comprendre",
+          "sortie": "reponse",
+          "cible": "resultat"
+        },
+        {
+          "id": "l3",
+          "source": "comprendre",
+          "sortie": "outil",
+          "cible": "catalogue"
+        },
+        {
+          "id": "l4",
+          "source": "catalogue",
+          "sortie": "sortie",
+          "cible": "rediger"
+        },
+        {
+          "id": "l5",
+          "source": "rediger",
+          "sortie": "reponse",
+          "cible": "resultat"
+        }
+      ]
+    }
+  },
+  "aRetenir": [
+    "Un agent ne fait que demander un outil : c'est le workflow qui exécute l'appel et lui renvoie le résultat.",
+    "Les arguments d'un appel sont vérifiés : un paramètre obligatoire manquant fait échouer l'outil.",
+    "Moindre privilège : proposez seulement les outils utiles, surtout ceux qui modifient des données."
+  ],
+  "animation": "En atelier : faites cocher les deux outils et exécuter le workflow. Discutez de la réservation faite sans accord, puis cherchez ensemble comment l'empêcher.",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}
