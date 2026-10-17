@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "slug": "injection-et-permissions",
-  "ordre": 1,
+  "ordre": 4,
   "titre": "Se protéger d'une injection de consignes",
   "niveau": "avance",
   "public": "apprendre",

@@ -64,6 +64,15 @@ export const EVALUATEURS = {
   // Aucun agent du workflow ne se voit proposer cet outil (moindre privilège)
   outilNonPropose: (critere, workflow) =>
     typesDe(workflow, 'agent').every((noeud) => !(noeud.config?.outils ?? []).includes(critere.outil)),
+  // Une donnée du jeu (téléphone…) n'est jamais retenue par un bloc Mémoire, même en partie
+  donneeNonMemorisee: (critere, workflow, executions) => Object.values(executions).every((execution) => {
+    const { trouve, valeur } = lireChemin(execution.jeu.donnees, critere.chemin)
+    if (!trouve) return true
+    const cherche = typeof valeur === 'string' ? valeur : JSON.stringify(valeur)
+    return execution.evenements
+      .filter((evenement) => evenement.type === 'memoire')
+      .every((evenement) => !JSON.stringify(evenement.valeur).includes(cherche))
+  }),
   // Dans chaque exécution, un message `methode` part avant le premier message `avant`
   mcpAvant: (critere, workflow, executions) => {
     const visees = executionsVisees(critere, executions)

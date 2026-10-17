@@ -1,0 +1,357 @@
+{
+  "schema": 1,
+  "slug": "memoire-et-contexte",
+  "ordre": 2,
+  "titre": "Donner une mémoire à un agent",
+  "niveau": "avance",
+  "public": "apprendre",
+  "duree": "20 minutes",
+  "coursSlugs": [],
+  "prerequis": [
+    "premier-agent"
+  ],
+  "objectif": "Retenir une information utile d'un message à l'autre, sans mémoriser de donnée sensible.",
+  "scenario": "Un lecteur de la Médiathèque Exemple donne son prénom et son numéro de téléphone au premier message. Au troisième message, ce premier message est sorti du contexte de l'agent : il ne sait plus à qui il parle. Une mémoire peut l'aider, à condition de ne retenir que l'utile.",
+  "simulation": "La conversation est fictive et rejouée en une seule exécution. La mémoire disparaît à la fin de l'exécution, et le site n'enregistre rien.",
+  "instructions": [
+    "Exécutez le workflow : l'agent redemande le prénom du lecteur.",
+    "Ouvrez « Retenir du premier message » : que garde la mémoire ?",
+    "Ne retenez que le prénom, sous le nom « prenom ».",
+    "Ajoutez avant l'agent un bloc Mémoire qui relit la mémoire dans « conversation.memoire ».",
+    "Vérifiez votre workflow avec les deux conversations."
+  ],
+  "blocsDisponibles": [
+    "declencheur",
+    "memoire",
+    "agent",
+    "condition",
+    "transformation",
+    "resultat"
+  ],
+  "simulateurs": {
+    "agent": {
+      "regles": [
+        {
+          "si": {
+            "chemin": "contexte.memoire.prenom",
+            "operateur": "existe"
+          },
+          "alors": {
+            "reponse": "Bien sûr, {{contexte.memoire.prenom}} : votre réservation est prolongée de deux semaines."
+          }
+        }
+      ],
+      "parDefaut": {
+        "reponse": "Bien sûr. Pouvez-vous me rappeler votre prénom ?"
+      }
+    }
+  },
+  "workflowInitial": {
+    "noeuds": [
+      {
+        "id": "declencheur",
+        "type": "declencheur",
+        "libelle": "La conversation commence",
+        "config": {
+          "evenement": "Un lecteur écrit à l'assistant de la médiathèque"
+        },
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "retenir",
+        "type": "memoire",
+        "libelle": "Retenir du premier message",
+        "config": {
+          "action": "enregistrer",
+          "cle": "utilisateur",
+          "source": "conversation.tour1",
+          "champ": "memoire"
+        },
+        "position": {
+          "x": 340,
+          "y": 0
+        }
+      },
+      {
+        "id": "oubli",
+        "type": "transformation",
+        "libelle": "Le premier message sort du contexte",
+        "config": {
+          "operation": "supprimer",
+          "champ": "conversation.tour1",
+          "source": "",
+          "valeur": ""
+        },
+        "position": {
+          "x": 680,
+          "y": 0
+        }
+      },
+      {
+        "id": "assistant",
+        "type": "agent",
+        "libelle": "Répondre au troisième message",
+        "config": {
+          "consigne": "Tu es l'assistant de la Médiathèque Exemple. Appelle le lecteur par son prénom si tu le connais.",
+          "contexte": "conversation",
+          "outils": [],
+          "champ": "agent"
+        },
+        "position": {
+          "x": 1360,
+          "y": 0
+        }
+      },
+      {
+        "id": "resultat",
+        "type": "resultat",
+        "libelle": "Réponse au lecteur",
+        "config": {},
+        "position": {
+          "x": 1700,
+          "y": 0
+        }
+      }
+    ],
+    "liens": [
+      {
+        "id": "l1",
+        "source": "declencheur",
+        "sortie": "sortie",
+        "cible": "retenir"
+      },
+      {
+        "id": "l2",
+        "source": "retenir",
+        "sortie": "sortie",
+        "cible": "oubli"
+      },
+      {
+        "id": "l3",
+        "source": "oubli",
+        "sortie": "sortie",
+        "cible": "assistant"
+      },
+      {
+        "id": "l4",
+        "source": "assistant",
+        "sortie": "reponse",
+        "cible": "resultat"
+      }
+    ]
+  },
+  "verrous": {
+    "noeuds": [
+      "declencheur",
+      "oubli",
+      "assistant",
+      "resultat"
+    ]
+  },
+  "jeuxDeDonnees": [
+    {
+      "id": "nadia",
+      "libelle": "Conversation avec Nadia",
+      "donnees": {
+        "conversation": {
+          "tour1": {
+            "texte": "Bonjour, je m'appelle Nadia. Mon numéro de téléphone est le 06 XX XX XX 12.",
+            "prenom": "Nadia",
+            "telephone": "06 XX XX XX 12"
+          },
+          "tour2": {
+            "texte": "J'ai réservé « Le Petit Exemple »."
+          },
+          "tour3": {
+            "texte": "Pouvez-vous prolonger ma réservation ?"
+          }
+        }
+      }
+    },
+    {
+      "id": "paul",
+      "libelle": "Conversation avec Paul",
+      "donnees": {
+        "conversation": {
+          "tour1": {
+            "texte": "Bonjour, je m'appelle Paul. Mon numéro de téléphone est le 07 XX XX XX 34.",
+            "prenom": "Paul",
+            "telephone": "07 XX XX XX 34"
+          },
+          "tour2": {
+            "texte": "J'ai réservé « Le Petit Exemple »."
+          },
+          "tour3": {
+            "texte": "Est-ce possible de garder le livre plus longtemps ?"
+          }
+        }
+      }
+    }
+  ],
+  "criteres": [
+    {
+      "id": "nadia",
+      "type": "sortieAttendue",
+      "jeu": "nadia",
+      "chemin": "agent.reponse",
+      "egal": "Bien sûr, Nadia : votre réservation est prolongée de deux semaines.",
+      "message": "Au troisième message, l'agent se souvient du prénom de Nadia."
+    },
+    {
+      "id": "paul",
+      "type": "sortieAttendue",
+      "jeu": "paul",
+      "chemin": "agent.reponse",
+      "egal": "Bien sûr, Paul : votre réservation est prolongée de deux semaines.",
+      "message": "Au troisième message, l'agent se souvient du prénom de Paul."
+    },
+    {
+      "id": "telephone",
+      "type": "donneeNonMemorisee",
+      "chemin": "conversation.tour1.telephone",
+      "message": "Le numéro de téléphone n'est jamais mis en mémoire : l'agent n'en a pas besoin."
+    },
+    {
+      "id": "sans-erreur",
+      "type": "sansErreur",
+      "message": "Le workflow fonctionne sans erreur pour les deux conversations."
+    }
+  ],
+  "indices": [
+    "Un bloc Mémoire peut retenir, relire ou oublier. Ici, il faut retenir au début, puis relire avant l'agent.",
+    "Bloc « Retenir du premier message » : nom du souvenir « prenom », donnée à retenir « conversation.tour1.prenom ».",
+    "Nouveau bloc Mémoire, action « Relire la mémoire », rangée dans « conversation.memoire », placé entre « Le premier message sort du contexte » et l'agent."
+  ],
+  "correction": {
+    "explication": "Un agent ne voit qu'une fenêtre de la conversation : les premiers messages finissent par en sortir. La mémoire garde une information d'un moment à l'autre ; il faut l'écrire, puis la relire pour la donner à l'agent. On n'y met que l'utile : le prénom, pas le numéro de téléphone (minimisation des données). Ici, la mémoire disparaît à la fin de l'exécution ; dans un vrai outil, elle peut durer bien plus longtemps, d'où l'importance de ce qu'on y met.",
+    "workflow": {
+      "noeuds": [
+        {
+          "id": "declencheur",
+          "type": "declencheur",
+          "libelle": "La conversation commence",
+          "config": {
+            "evenement": "Un lecteur écrit à l'assistant de la médiathèque"
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": "retenir",
+          "type": "memoire",
+          "libelle": "Retenir du premier message",
+          "config": {
+            "action": "enregistrer",
+            "cle": "prenom",
+            "source": "conversation.tour1.prenom",
+            "champ": "memoire"
+          },
+          "position": {
+            "x": 340,
+            "y": 0
+          }
+        },
+        {
+          "id": "oubli",
+          "type": "transformation",
+          "libelle": "Le premier message sort du contexte",
+          "config": {
+            "operation": "supprimer",
+            "champ": "conversation.tour1",
+            "source": "",
+            "valeur": ""
+          },
+          "position": {
+            "x": 680,
+            "y": 0
+          }
+        },
+        {
+          "id": "relire",
+          "type": "memoire",
+          "libelle": "Relire la mémoire",
+          "config": {
+            "action": "lire",
+            "cle": "",
+            "source": "",
+            "champ": "conversation.memoire"
+          },
+          "position": {
+            "x": 1020,
+            "y": 0
+          }
+        },
+        {
+          "id": "assistant",
+          "type": "agent",
+          "libelle": "Répondre au troisième message",
+          "config": {
+            "consigne": "Tu es l'assistant de la Médiathèque Exemple. Appelle le lecteur par son prénom si tu le connais.",
+            "contexte": "conversation",
+            "outils": [],
+            "champ": "agent"
+          },
+          "position": {
+            "x": 1360,
+            "y": 0
+          }
+        },
+        {
+          "id": "resultat",
+          "type": "resultat",
+          "libelle": "Réponse au lecteur",
+          "config": {},
+          "position": {
+            "x": 1700,
+            "y": 0
+          }
+        }
+      ],
+      "liens": [
+        {
+          "id": "l1",
+          "source": "declencheur",
+          "sortie": "sortie",
+          "cible": "retenir"
+        },
+        {
+          "id": "l2",
+          "source": "retenir",
+          "sortie": "sortie",
+          "cible": "oubli"
+        },
+        {
+          "id": "l5",
+          "source": "oubli",
+          "sortie": "sortie",
+          "cible": "relire"
+        },
+        {
+          "id": "l6",
+          "source": "relire",
+          "sortie": "sortie",
+          "cible": "assistant"
+        },
+        {
+          "id": "l4",
+          "source": "assistant",
+          "sortie": "reponse",
+          "cible": "resultat"
+        }
+      ]
+    }
+  },
+  "aRetenir": [
+    "Un agent oublie les premiers messages d'une longue conversation : sa fenêtre de contexte est limitée.",
+    "Une mémoire garde des informations d'un échange à l'autre. Elle s'écrit et se relit.",
+    "Ne mémorisez que l'utile, jamais une donnée sensible : vérifiez ce que garde un outil d'IA et comment l'effacer."
+  ],
+  "animation": "En atelier : demandez au groupe ce qu'un assistant devrait retenir d'une conversation, et ce qu'il ne devrait jamais garder. Comparez avec les réglages de mémoire d'un vrai outil.",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}

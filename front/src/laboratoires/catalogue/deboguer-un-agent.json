@@ -1,0 +1,517 @@
+{
+  "schema": 1,
+  "slug": "deboguer-un-agent",
+  "ordre": 3,
+  "titre": "Déboguer un agent",
+  "niveau": "avance",
+  "public": "apprendre",
+  "duree": "25 minutes",
+  "coursSlugs": [],
+  "prerequis": [
+    "assistant-documentaire-rag"
+  ],
+  "objectif": "Lire le journal d'exécution pour trouver et corriger trois défauts d'un workflow d'agent.",
+  "scenario": "Un collègue a monté l'assistant documentaire de la Médiathèque Exemple. Il répond aux questions avec les documents de la médiathèque, sinon il transmet la question à l'équipe. Rien ne marche : le workflow s'arrête, puis l'agent ne sait rien, puis les réponses partent au mauvais endroit.",
+  "simulation": "Les documents, les lecteurs et l'agent sont simulés par des règles fixes. Aucune question n'est envoyée.",
+  "instructions": [
+    "Exécutez le workflow pas à pas et lisez le message d'erreur du journal.",
+    "Comparez le chemin de la question aux « Données reçues » de la recherche, et corrigez-le.",
+    "Exécutez de nouveau : regardez ce que l'agent reçoit vraiment, puis corrigez la donnée qui lui est transmise.",
+    "Avec la question sur les ateliers, suivez le chemin pris après la condition.",
+    "Corrigez les liens de la condition, puis vérifiez votre workflow."
+  ],
+  "blocsDisponibles": [
+    "declencheur",
+    "rag",
+    "agent",
+    "condition",
+    "transformation",
+    "resultat"
+  ],
+  "simulateurs": {
+    "documents": [
+      {
+        "id": "reglement",
+        "titre": "Règlement de prêt",
+        "source": "Règlement de la Médiathèque Exemple (document fictif)",
+        "passages": [
+          {
+            "id": "pret-livres",
+            "reference": "article 2",
+            "texte": "Chaque lecteur peut emprunter 5 livres à la fois, pendant trois semaines."
+          },
+          {
+            "id": "pret-dvd",
+            "reference": "article 3",
+            "texte": "Les DVD et les jeux de société s'empruntent pour deux semaines, 2 par carte."
+          },
+          {
+            "id": "retard",
+            "reference": "article 5",
+            "texte": "En cas de retard, le prêt est suspendu autant de jours que le retard."
+          }
+        ]
+      },
+      {
+        "id": "acces",
+        "titre": "Horaires et accès",
+        "source": "Page d'accueil de la Médiathèque Exemple (document fictif)",
+        "passages": [
+          {
+            "id": "horaires-ete",
+            "reference": "été",
+            "texte": "Horaires d'été : en juillet et en août, ouverture du mardi au vendredi, de 14 h à 18 h."
+          },
+          {
+            "id": "horaires-annee",
+            "reference": "reste de l'année",
+            "texte": "Horaires du reste de l'année : ouverture du mardi au samedi, de 10 h à 18 h."
+          },
+          {
+            "id": "inscription",
+            "reference": "inscription",
+            "texte": "L'inscription est gratuite pour les habitants de la commune."
+          }
+        ]
+      }
+    ],
+    "agent": {
+      "regles": [
+        {
+          "si": {
+            "chemin": "contexte.sources",
+            "operateur": "contient",
+            "valeur": "pret-livres"
+          },
+          "alors": {
+            "reponse": "Vous pouvez emprunter 5 livres à la fois, pendant trois semaines. (Source : {{contexte.citations}})"
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.sources",
+            "operateur": "contient",
+            "valeur": "horaires-ete"
+          },
+          "alors": {
+            "reponse": "En juillet et en août, la médiathèque est ouverte du mardi au vendredi, de 14 h à 18 h. (Source : {{contexte.citations}})"
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.sources",
+            "operateur": "contient",
+            "valeur": "horaires-annee"
+          },
+          "alors": {
+            "reponse": "La médiathèque est ouverte du mardi au samedi, de 10 h à 18 h. (Source : {{contexte.citations}})"
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.sources",
+            "operateur": "contient",
+            "valeur": "pret-dvd"
+          },
+          "alors": {
+            "reponse": "Les DVD et les jeux de société s'empruntent pour deux semaines. (Source : {{contexte.citations}})"
+          }
+        }
+      ],
+      "parDefaut": {
+        "reponse": "Je ne trouve pas cette information dans les documents de la médiathèque. Je transmets votre question à l'équipe."
+      }
+    }
+  },
+  "workflowInitial": {
+    "noeuds": [
+      {
+        "id": "declencheur",
+        "type": "declencheur",
+        "libelle": "Une demande arrive",
+        "config": {
+          "evenement": "Un lecteur envoie une question par le formulaire"
+        },
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "recherche",
+        "type": "rag",
+        "libelle": "Chercher dans les documents",
+        "config": {
+          "question": "demande.questoin",
+          "topK": "1",
+          "scoreMin": "0.5",
+          "champ": "recherche"
+        },
+        "position": {
+          "x": 340,
+          "y": 0
+        }
+      },
+      {
+        "id": "assistant",
+        "type": "agent",
+        "libelle": "Rédiger la réponse",
+        "config": {
+          "consigne": "Tu réponds aux lecteurs de la Médiathèque Exemple uniquement à partir des passages fournis, en citant leur source.",
+          "contexte": "resultat",
+          "outils": [],
+          "champ": "agent"
+        },
+        "position": {
+          "x": 680,
+          "y": 0
+        }
+      },
+      {
+        "id": "trouvee",
+        "type": "condition",
+        "libelle": "L'agent a-t-il trouvé ?",
+        "config": {
+          "chemin": "agent.reponse",
+          "operateur": "contient",
+          "valeur": "Je ne trouve pas",
+          "liaison": "",
+          "chemin2": "",
+          "operateur2": "egal",
+          "valeur2": ""
+        },
+        "position": {
+          "x": 1020,
+          "y": 0
+        }
+      },
+      {
+        "id": "envoyer",
+        "type": "transformation",
+        "libelle": "Envoyer la réponse au lecteur",
+        "config": {
+          "operation": "definir",
+          "champ": "statut",
+          "source": "",
+          "valeur": "Réponse envoyée au lecteur"
+        },
+        "position": {
+          "x": 1360,
+          "y": -180
+        }
+      },
+      {
+        "id": "transmettre",
+        "type": "transformation",
+        "libelle": "Transmettre à l'équipe",
+        "config": {
+          "operation": "definir",
+          "champ": "statut",
+          "source": "",
+          "valeur": "Question transmise à un bibliothécaire"
+        },
+        "position": {
+          "x": 1360,
+          "y": 180
+        }
+      },
+      {
+        "id": "resultat",
+        "type": "resultat",
+        "libelle": "Suite donnée",
+        "config": {},
+        "position": {
+          "x": 1700,
+          "y": 0
+        }
+      }
+    ],
+    "liens": [
+      {
+        "id": "l1",
+        "source": "declencheur",
+        "sortie": "sortie",
+        "cible": "recherche"
+      },
+      {
+        "id": "l2",
+        "source": "recherche",
+        "sortie": "sortie",
+        "cible": "assistant"
+      },
+      {
+        "id": "l3",
+        "source": "assistant",
+        "sortie": "reponse",
+        "cible": "trouvee"
+      },
+      {
+        "id": "l4",
+        "source": "trouvee",
+        "sortie": "vrai",
+        "cible": "envoyer"
+      },
+      {
+        "id": "l5",
+        "source": "trouvee",
+        "sortie": "faux",
+        "cible": "transmettre"
+      },
+      {
+        "id": "l6",
+        "source": "envoyer",
+        "sortie": "sortie",
+        "cible": "resultat"
+      },
+      {
+        "id": "l7",
+        "source": "transmettre",
+        "sortie": "sortie",
+        "cible": "resultat"
+      }
+    ]
+  },
+  "verrous": {
+    "noeuds": [
+      "declencheur",
+      "envoyer",
+      "transmettre",
+      "resultat"
+    ]
+  },
+  "jeuxDeDonnees": [
+    {
+      "id": "livres",
+      "libelle": "Combien de livres emprunter ?",
+      "donnees": {
+        "demande": {
+          "lecteur": "Paul Exemple",
+          "question": "Combien de livres puis-je emprunter à la fois ?"
+        }
+      }
+    },
+    {
+      "id": "ete",
+      "libelle": "Horaires du mois d'août",
+      "donnees": {
+        "demande": {
+          "lecteur": "Nadia Exemple",
+          "question": "Quels sont vos horaires d'ouverture en août ?"
+        }
+      }
+    },
+    {
+      "id": "ateliers",
+      "libelle": "Ateliers d'écriture (absents des documents)",
+      "donnees": {
+        "demande": {
+          "lecteur": "Inès Exemple",
+          "question": "Organisez-vous des ateliers d'écriture ?"
+        }
+      }
+    }
+  ],
+  "criteres": [
+    {
+      "id": "livres",
+      "type": "sortieAttendue",
+      "jeu": "livres",
+      "chemin": "agent.reponse",
+      "egal": "Vous pouvez emprunter 5 livres à la fois, pendant trois semaines. (Source : Règlement de prêt, article 2)",
+      "message": "Paul reçoit la règle de prêt, avec sa source."
+    },
+    {
+      "id": "livres-envoye",
+      "type": "sortieAttendue",
+      "jeu": "livres",
+      "chemin": "statut",
+      "egal": "Réponse envoyée au lecteur",
+      "message": "Une réponse trouvée part au lecteur."
+    },
+    {
+      "id": "ete-envoye",
+      "type": "sortieAttendue",
+      "jeu": "ete",
+      "chemin": "statut",
+      "egal": "Réponse envoyée au lecteur",
+      "message": "Les horaires d'été partent à Nadia."
+    },
+    {
+      "id": "ateliers",
+      "type": "sortieAttendue",
+      "jeu": "ateliers",
+      "chemin": "statut",
+      "egal": "Question transmise à un bibliothécaire",
+      "message": "Une question sans réponse dans les documents est transmise à l'équipe."
+    },
+    {
+      "id": "sans-erreur",
+      "type": "sansErreur",
+      "message": "Le workflow fonctionne sans erreur pour les trois questions."
+    }
+  ],
+  "indices": [
+    "Premier défaut : une faute de frappe dans un chemin. Le journal dit quelle donnée manque.",
+    "Deuxième défaut : l'agent lit « resultat », qui n'existe pas encore. Il doit lire ce que la recherche a rangé dans « recherche ».",
+    "Troisième défaut : la condition teste « Je ne trouve pas ». Si c'est vrai, la question doit aller à l'équipe ; si c'est faux, la réponse part au lecteur."
+  ],
+  "correction": {
+    "explication": "Trois défauts : la recherche lisait « demande.questoin » (faute de frappe), l'agent recevait « resultat » au lieu de « recherche », et les deux sorties de la condition étaient inversées. Déboguer, c'est suivre les données étape par étape : ce que chaque bloc reçoit, ce qu'il transmet, et le chemin pris. Un message d'erreur clair indique souvent le bloc et la donnée en cause.",
+    "workflow": {
+      "noeuds": [
+        {
+          "id": "declencheur",
+          "type": "declencheur",
+          "libelle": "Une demande arrive",
+          "config": {
+            "evenement": "Un lecteur envoie une question par le formulaire"
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": "recherche",
+          "type": "rag",
+          "libelle": "Chercher dans les documents",
+          "config": {
+            "question": "demande.question",
+            "topK": "1",
+            "scoreMin": "0.5",
+            "champ": "recherche"
+          },
+          "position": {
+            "x": 340,
+            "y": 0
+          }
+        },
+        {
+          "id": "assistant",
+          "type": "agent",
+          "libelle": "Rédiger la réponse",
+          "config": {
+            "consigne": "Tu réponds aux lecteurs de la Médiathèque Exemple uniquement à partir des passages fournis, en citant leur source.",
+            "contexte": "recherche",
+            "outils": [],
+            "champ": "agent"
+          },
+          "position": {
+            "x": 680,
+            "y": 0
+          }
+        },
+        {
+          "id": "trouvee",
+          "type": "condition",
+          "libelle": "L'agent a-t-il trouvé ?",
+          "config": {
+            "chemin": "agent.reponse",
+            "operateur": "contient",
+            "valeur": "Je ne trouve pas",
+            "liaison": "",
+            "chemin2": "",
+            "operateur2": "egal",
+            "valeur2": ""
+          },
+          "position": {
+            "x": 1020,
+            "y": 0
+          }
+        },
+        {
+          "id": "envoyer",
+          "type": "transformation",
+          "libelle": "Envoyer la réponse au lecteur",
+          "config": {
+            "operation": "definir",
+            "champ": "statut",
+            "source": "",
+            "valeur": "Réponse envoyée au lecteur"
+          },
+          "position": {
+            "x": 1360,
+            "y": -180
+          }
+        },
+        {
+          "id": "transmettre",
+          "type": "transformation",
+          "libelle": "Transmettre à l'équipe",
+          "config": {
+            "operation": "definir",
+            "champ": "statut",
+            "source": "",
+            "valeur": "Question transmise à un bibliothécaire"
+          },
+          "position": {
+            "x": 1360,
+            "y": 180
+          }
+        },
+        {
+          "id": "resultat",
+          "type": "resultat",
+          "libelle": "Suite donnée",
+          "config": {},
+          "position": {
+            "x": 1700,
+            "y": 0
+          }
+        }
+      ],
+      "liens": [
+        {
+          "id": "l1",
+          "source": "declencheur",
+          "sortie": "sortie",
+          "cible": "recherche"
+        },
+        {
+          "id": "l2",
+          "source": "recherche",
+          "sortie": "sortie",
+          "cible": "assistant"
+        },
+        {
+          "id": "l3",
+          "source": "assistant",
+          "sortie": "reponse",
+          "cible": "trouvee"
+        },
+        {
+          "id": "l4",
+          "source": "trouvee",
+          "sortie": "vrai",
+          "cible": "transmettre"
+        },
+        {
+          "id": "l5",
+          "source": "trouvee",
+          "sortie": "faux",
+          "cible": "envoyer"
+        },
+        {
+          "id": "l6",
+          "source": "envoyer",
+          "sortie": "sortie",
+          "cible": "resultat"
+        },
+        {
+          "id": "l7",
+          "source": "transmettre",
+          "sortie": "sortie",
+          "cible": "resultat"
+        }
+      ]
+    }
+  },
+  "aRetenir": [
+    "Déboguer, c'est vérifier chaque étape : données reçues, données transmises, chemin pris.",
+    "Un agent qui « ne sait rien » ne reçoit souvent pas le bon contexte.",
+    "Testez avec plusieurs cas, dont un cas où la réponse n'existe pas."
+  ],
+  "animation": "En atelier : faites deviner le défaut avant chaque nouvelle exécution, puis vérifiez ensemble dans le journal.",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}

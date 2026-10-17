@@ -1,0 +1,367 @@
+{
+  "schema": 1,
+  "slug": "assistant-documentaire-rag",
+  "ordre": 1,
+  "titre": "Construire un assistant documentaire (RAG)",
+  "niveau": "avance",
+  "public": "apprendre",
+  "duree": "25 minutes",
+  "coursSlugs": [],
+  "prerequis": [
+    "premier-agent"
+  ],
+  "objectif": "Régler une recherche documentaire pour que l'agent réponde à partir du bon passage et cite sa source.",
+  "scenario": "La Médiathèque Exemple veut un assistant qui répond à partir de ses propres documents : le règlement de prêt et la page des horaires. L'assistant cherche d'abord les passages utiles, puis l'agent rédige sa réponse avec la source. Pour l'instant, la recherche ne trouve rien, ou trop de choses.",
+  "simulation": "Les documents sont fictifs. La recherche compare les mots de la question à ceux des passages et donne un score de 0 à 1 ; l'agent répond avec des règles fixes. Une vraie recherche documentaire comprend mieux le sens des phrases.",
+  "instructions": [
+    "Exécutez le workflow avec chaque question et lisez le journal de la recherche.",
+    "Dans « Chercher dans les documents », cherchez le texte de la question, pas son objet.",
+    "Avec la question sur les horaires, regardez les passages retenus : l'un d'eux ne répond pas à la question.",
+    "Réglez le nombre de passages (topK) et le score minimal pour ne garder que le passage utile.",
+    "Vérifiez que la question sur les jeux vidéo, absente des documents, est transmise à l'équipe."
+  ],
+  "blocsDisponibles": [
+    "declencheur",
+    "rag",
+    "agent",
+    "condition",
+    "transformation",
+    "resultat"
+  ],
+  "simulateurs": {
+    "documents": [
+      {
+        "id": "reglement",
+        "titre": "Règlement de prêt",
+        "source": "Règlement de la Médiathèque Exemple (document fictif)",
+        "passages": [
+          {
+            "id": "pret-livres",
+            "reference": "article 2",
+            "texte": "Chaque lecteur peut emprunter 5 livres à la fois, pendant trois semaines."
+          },
+          {
+            "id": "pret-dvd",
+            "reference": "article 3",
+            "texte": "Les DVD et les jeux de société s'empruntent pour deux semaines, 2 par carte."
+          },
+          {
+            "id": "retard",
+            "reference": "article 5",
+            "texte": "En cas de retard, le prêt est suspendu autant de jours que le retard."
+          }
+        ]
+      },
+      {
+        "id": "acces",
+        "titre": "Horaires et accès",
+        "source": "Page d'accueil de la Médiathèque Exemple (document fictif)",
+        "passages": [
+          {
+            "id": "horaires-ete",
+            "reference": "été",
+            "texte": "Horaires d'été : en juillet et en août, ouverture du mardi au vendredi, de 14 h à 18 h."
+          },
+          {
+            "id": "horaires-annee",
+            "reference": "reste de l'année",
+            "texte": "Horaires du reste de l'année : ouverture du mardi au samedi, de 10 h à 18 h."
+          },
+          {
+            "id": "inscription",
+            "reference": "inscription",
+            "texte": "L'inscription est gratuite pour les habitants de la commune."
+          }
+        ]
+      }
+    ],
+    "agent": {
+      "regles": [
+        {
+          "si": {
+            "chemin": "contexte.sources",
+            "operateur": "contient",
+            "valeur": "pret-livres"
+          },
+          "alors": {
+            "reponse": "Vous pouvez emprunter 5 livres à la fois, pendant trois semaines. (Source : {{contexte.citations}})"
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.sources",
+            "operateur": "contient",
+            "valeur": "horaires-ete"
+          },
+          "alors": {
+            "reponse": "En juillet et en août, la médiathèque est ouverte du mardi au vendredi, de 14 h à 18 h. (Source : {{contexte.citations}})"
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.sources",
+            "operateur": "contient",
+            "valeur": "horaires-annee"
+          },
+          "alors": {
+            "reponse": "La médiathèque est ouverte du mardi au samedi, de 10 h à 18 h. (Source : {{contexte.citations}})"
+          }
+        },
+        {
+          "si": {
+            "chemin": "contexte.sources",
+            "operateur": "contient",
+            "valeur": "pret-dvd"
+          },
+          "alors": {
+            "reponse": "Les DVD et les jeux de société s'empruntent pour deux semaines. (Source : {{contexte.citations}})"
+          }
+        }
+      ],
+      "parDefaut": {
+        "reponse": "Je ne trouve pas cette information dans les documents de la médiathèque. Je transmets votre question à l'équipe."
+      }
+    }
+  },
+  "workflowInitial": {
+    "noeuds": [
+      {
+        "id": "declencheur",
+        "type": "declencheur",
+        "libelle": "Une question arrive",
+        "config": {
+          "evenement": "Un lecteur pose une question sur le site de la médiathèque"
+        },
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "recherche",
+        "type": "rag",
+        "libelle": "Chercher dans les documents",
+        "config": {
+          "question": "message.objet",
+          "topK": "3",
+          "scoreMin": "0",
+          "champ": "recherche"
+        },
+        "position": {
+          "x": 340,
+          "y": 0
+        }
+      },
+      {
+        "id": "assistant",
+        "type": "agent",
+        "libelle": "Répondre avec les sources",
+        "config": {
+          "consigne": "Tu réponds aux lecteurs de la Médiathèque Exemple uniquement à partir des passages fournis, en citant leur source.",
+          "contexte": "recherche",
+          "outils": [],
+          "champ": "agent"
+        },
+        "position": {
+          "x": 680,
+          "y": 0
+        }
+      },
+      {
+        "id": "resultat",
+        "type": "resultat",
+        "libelle": "Réponse au lecteur",
+        "config": {},
+        "position": {
+          "x": 1020,
+          "y": 0
+        }
+      }
+    ],
+    "liens": [
+      {
+        "id": "l1",
+        "source": "declencheur",
+        "sortie": "sortie",
+        "cible": "recherche"
+      },
+      {
+        "id": "l2",
+        "source": "recherche",
+        "sortie": "sortie",
+        "cible": "assistant"
+      },
+      {
+        "id": "l3",
+        "source": "assistant",
+        "sortie": "reponse",
+        "cible": "resultat"
+      }
+    ]
+  },
+  "verrous": {
+    "noeuds": [
+      "declencheur",
+      "assistant",
+      "resultat"
+    ]
+  },
+  "jeuxDeDonnees": [
+    {
+      "id": "livres",
+      "libelle": "Combien de livres emprunter ?",
+      "donnees": {
+        "message": {
+          "lecteur": "Paul Exemple",
+          "objet": "Question",
+          "texte": "Combien de livres puis-je emprunter à la fois ?"
+        }
+      }
+    },
+    {
+      "id": "ete",
+      "libelle": "Horaires du mois d'août",
+      "donnees": {
+        "message": {
+          "lecteur": "Nadia Exemple",
+          "objet": "Question",
+          "texte": "Quels sont vos horaires d'ouverture en août ?"
+        }
+      }
+    },
+    {
+      "id": "jeux-video",
+      "libelle": "Emprunter un jeu vidéo (absent des documents)",
+      "donnees": {
+        "message": {
+          "lecteur": "Inès Exemple",
+          "objet": "Question",
+          "texte": "Puis-je emprunter un jeu vidéo ?"
+        }
+      }
+    }
+  ],
+  "criteres": [
+    {
+      "id": "livres",
+      "type": "sortieAttendue",
+      "jeu": "livres",
+      "chemin": "agent.reponse",
+      "egal": "Vous pouvez emprunter 5 livres à la fois, pendant trois semaines. (Source : Règlement de prêt, article 2)",
+      "message": "Paul reçoit la règle de prêt des livres, avec sa source."
+    },
+    {
+      "id": "ete",
+      "type": "sortieAttendue",
+      "jeu": "ete",
+      "chemin": "agent.reponse",
+      "egal": "En juillet et en août, la médiathèque est ouverte du mardi au vendredi, de 14 h à 18 h. (Source : Horaires et accès, été)",
+      "message": "Nadia reçoit les horaires d'été, et seulement cette source."
+    },
+    {
+      "id": "jeux-video",
+      "type": "sortieAttendue",
+      "jeu": "jeux-video",
+      "chemin": "agent.reponse",
+      "egal": "Je ne trouve pas cette information dans les documents de la médiathèque. Je transmets votre question à l'équipe.",
+      "message": "Pour une information absente des documents, l'assistant ne devine pas : il transmet la question."
+    },
+    {
+      "id": "sans-erreur",
+      "type": "sansErreur",
+      "message": "Le workflow fonctionne sans erreur pour les trois questions."
+    }
+  ],
+  "indices": [
+    "La recherche compare des mots : « Question » (l'objet du message) ne ressemble à aucun passage. Cherchez « message.texte ».",
+    "Pour les horaires d'août, le passage « reste de l'année » partage des mots avec la question mais ne répond pas. Un seul passage suffit : topK = 1.",
+    "La question sur les jeux vidéo n'obtient qu'un score de 0,33 avec des passages hors sujet. Un score minimal de 0,5 les écarte."
+  ],
+  "correction": {
+    "explication": "La recherche porte sur le texte de la question (« message.texte »). Avec topK = 1, l'agent ne reçoit que le passage le plus proche : il ne mélange plus les horaires d'été et ceux du reste de l'année. Avec un score minimal de 0,5, les passages qui ne partagent qu'un mot avec la question sont écartés : faute de passage, l'agent dit qu'il ne sait pas au lieu de répondre à côté. Un vrai RAG se règle de la même façon : nombre de passages, seuil de pertinence, et des sources toujours citées.",
+    "workflow": {
+      "noeuds": [
+        {
+          "id": "declencheur",
+          "type": "declencheur",
+          "libelle": "Une question arrive",
+          "config": {
+            "evenement": "Un lecteur pose une question sur le site de la médiathèque"
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": "recherche",
+          "type": "rag",
+          "libelle": "Chercher dans les documents",
+          "config": {
+            "question": "message.texte",
+            "topK": "1",
+            "scoreMin": "0.5",
+            "champ": "recherche"
+          },
+          "position": {
+            "x": 340,
+            "y": 0
+          }
+        },
+        {
+          "id": "assistant",
+          "type": "agent",
+          "libelle": "Répondre avec les sources",
+          "config": {
+            "consigne": "Tu réponds aux lecteurs de la Médiathèque Exemple uniquement à partir des passages fournis, en citant leur source.",
+            "contexte": "recherche",
+            "outils": [],
+            "champ": "agent"
+          },
+          "position": {
+            "x": 680,
+            "y": 0
+          }
+        },
+        {
+          "id": "resultat",
+          "type": "resultat",
+          "libelle": "Réponse au lecteur",
+          "config": {},
+          "position": {
+            "x": 1020,
+            "y": 0
+          }
+        }
+      ],
+      "liens": [
+        {
+          "id": "l1",
+          "source": "declencheur",
+          "sortie": "sortie",
+          "cible": "recherche"
+        },
+        {
+          "id": "l2",
+          "source": "recherche",
+          "sortie": "sortie",
+          "cible": "assistant"
+        },
+        {
+          "id": "l3",
+          "source": "assistant",
+          "sortie": "reponse",
+          "cible": "resultat"
+        }
+      ]
+    }
+  },
+  "aRetenir": [
+    "Un RAG cherche d'abord des passages dans des documents, puis l'IA rédige sa réponse à partir d'eux.",
+    "Trop de passages ajoutent du bruit ; un seuil de pertinence évite de répondre à côté.",
+    "Exigez toujours la source de la réponse, et vérifiez-la : un passage retrouvé peut être hors sujet."
+  ],
+  "animation": "En atelier : affichez les scores de la recherche pour la question sur les horaires et faites dire au groupe quel passage répond vraiment.",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}
