@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "slug": "comprendre-un-workflow",
+  "ordre": 1,
+  "titre": "Comprendre un workflow",
+  "niveau": "debutant",
+  "public": "apprendre",
+  "duree": "10 minutes",
+  "coursSlugs": [],
+  "prerequis": [],
+  "objectif": "Suivre les données d'un bloc à l'autre dans une automatisation simple.",
+  "scenario": "La Médiathèque Exemple, un lieu imaginaire, reçoit des messages par son formulaire de contact. Une automatisation prépare un accusé de réception pour chaque message. Elle n'est pas terminée : à vous de la compléter.",
+  "simulation": "Cette automatisation est simulée dans votre navigateur. Aucun message n'est envoyé et aucune IA n'est utilisée.",
+  "instructions": [
+    "Lisez les trois blocs dans l'ordre : le déclencheur, la transformation et le résultat.",
+    "Le bloc Résultat ne reçoit rien. Reliez la sortie « Préparer l'accusé de réception » au bloc Résultat.",
+    "Cliquez sur « Pas à pas » et regardez les données reçues et transmises par chaque bloc.",
+    "Choisissez l'autre message fictif et recommencez.",
+    "Cliquez sur « Vérifier mon workflow »."
+  ],
+  "blocsDisponibles": ["declencheur", "donnees", "transformation", "resultat"],
+  "workflowInitial": {
+    "noeuds": [
+      { "id": "declencheur", "type": "declencheur", "libelle": "Un message arrive", "config": { "evenement": "Un message arrive par le formulaire de contact" }, "position": { "x": 0, "y": 0 } },
+      { "id": "accuse", "type": "transformation", "libelle": "Préparer l'accusé de réception", "config": { "operation": "definir", "champ": "accuse", "source": "", "valeur": "Bonjour {{contact.prenom}}, nous avons bien reçu votre message." }, "position": { "x": 260, "y": 0 } },
+      { "id": "resultat", "type": "resultat", "libelle": "Résultat", "config": {}, "position": { "x": 520, "y": 0 } }
+    ],
+    "liens": [
+      { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "accuse" }
+    ]
+  },
+  "verrous": { "noeuds": ["declencheur"] },
+  "jeuxDeDonnees": [
+    {
+      "id": "lea",
+      "libelle": "Message de Léa Exemple",
+      "donnees": {
+        "contact": { "prenom": "Léa", "nom": "Exemple", "courriel": "lea@exemple.fr" },
+        "message": { "texte": "Bonjour, avez-vous le livre « Le Jardin Exemple » ?" }
+      }
+    },
+    {
+      "id": "karim",
+      "libelle": "Message de Karim Exemple",
+      "donnees": {
+        "contact": { "prenom": "Karim", "nom": "Exemple", "courriel": "karim@exemple.fr" },
+        "message": { "texte": "À quelle heure ouvre la médiathèque le samedi ?" }
+      }
+    }
+  ],
+  "criteres": [
+    { "id": "lien", "type": "lienEntre", "depuis": "transformation", "vers": "resultat", "message": "La transformation transmet ses données au bloc Résultat." },
+    { "id": "lea", "type": "sortieAttendue", "jeu": "lea", "chemin": "accuse", "egal": "Bonjour Léa, nous avons bien reçu votre message.", "message": "Léa reçoit un accusé de réception à son prénom." },
+    { "id": "karim", "type": "sortieAttendue", "jeu": "karim", "chemin": "accuse", "egal": "Bonjour Karim, nous avons bien reçu votre message.", "message": "Karim reçoit un accusé de réception à son prénom." },
+    { "id": "sans-erreur", "type": "sansErreur", "message": "L'automatisation fonctionne sans erreur pour les deux messages." }
+  ],
+  "indices": [
+    "Un bloc ne reçoit des données que s'il est relié au bloc précédent.",
+    "Ouvrez le bloc « Préparer l'accusé de réception » et, dans « Envoyer vers », choisissez « Résultat »."
+  ],
+  "correction": {
+    "explication": "Le déclencheur transmet le message reçu. La transformation lit le prénom (contact.prenom) et écrit l'accusé de réception dans « accuse ». Une fois reliée au Résultat, elle lui transmet toutes les données : le message d'origine et l'accusé de réception.",
+    "workflow": {
+      "noeuds": [
+        { "id": "declencheur", "type": "declencheur", "libelle": "Un message arrive", "config": { "evenement": "Un message arrive par le formulaire de contact" }, "position": { "x": 0, "y": 0 } },
+        { "id": "accuse", "type": "transformation", "libelle": "Préparer l'accusé de réception", "config": { "operation": "definir", "champ": "accuse", "source": "", "valeur": "Bonjour {{contact.prenom}}, nous avons bien reçu votre message." }, "position": { "x": 260, "y": 0 } },
+        { "id": "resultat", "type": "resultat", "libelle": "Résultat", "config": {}, "position": { "x": 520, "y": 0 } }
+      ],
+      "liens": [
+        { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "accuse" },
+        { "id": "l2", "source": "accuse", "sortie": "sortie", "cible": "resultat" }
+      ]
+    }
+  },
+  "aRetenir": [
+    "Un workflow est une suite de blocs : chacun reçoit des données, les traite et les transmet au suivant.",
+    "Un bloc qui n'est relié à rien ne reçoit rien et ne fait rien.",
+    "Le même workflow traite chaque message de la même façon : c'est l'intérêt d'une automatisation."
+  ],
+  "animation": "En atelier : projetez le laboratoire et faites deviner ce que contiendra le Résultat avant de cliquer sur « Pas à pas ». Comptez 10 minutes.",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}

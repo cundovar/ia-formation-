@@ -1,9 +1,9 @@
 # Référentiel de la formation à l'IA
 
-**Statut : premier jet du 16 octobre 2026, adapté du référentiel de la médiation numérique, à valider par le responsable éditorial.**
+**Statut : premier jet du 16 octobre 2026, adapté du référentiel de la médiation numérique, complété le 17 octobre 2026 (laboratoires), à valider par le responsable éditorial.**
 Tant qu'il n'est pas validé, il sert de base de travail ; une règle contestée se corrige ici avant d'être appliquée.
 
-Ce référentiel dit ce qu'un cours ou un QCM du site doit respecter. Il est lu par les personnes qui rédigent et par l'assistant de rédaction (MCP), et les contrôles automatiques renvoient à ses identifiants.
+Ce référentiel dit ce qu'un cours, un QCM ou un laboratoire du site doit respecter. Il est lu par les personnes qui rédigent et par l'assistant de rédaction (MCP), et les contrôles automatiques renvoient à ses identifiants.
 
 ## Organisation
 
@@ -15,6 +15,7 @@ Ce référentiel dit ce qu'un cours ou un QCM du site doit respecter. Il est lu 
 | [04-redaction-et-accessibilite.md](04-redaction-et-accessibilite.md) | Langage clair, structure d'un cours, accessibilité | `RED`, `ACC` |
 | [05-captures.md](05-captures.md) | Captures d'écran des outils d'IA | `CAP` |
 | [06-qcm.md](06-qcm.md) | Questions à choix multiples : question, réponses, correction | `QCM` |
+| [07-laboratoires.md](07-laboratoires.md) | Laboratoires : simulation annoncée, données fictives, critères, sécurité | `LAB` |
 | [controles.md](controles.md) | Contrôles automatiques et leur état | — |
 | [modeles/](modeles/) | Gabarits : cours « apprendre », cours « former », fiche d'outil | — |
 | [sources.md](sources.md) | Documents de référence, avec leur date de consultation | — |

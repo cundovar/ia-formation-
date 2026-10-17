@@ -1,7 +1,7 @@
 <template>
   <footer
     ref="footerRef"
-    class="min-w-[320px] p-3 md:p-4 rounded-t-2xl fixed bottom-0 left-0 right-0 h-20 md:h-24 bg-sky-50 z-50 flex items-center justify-around xl:hidden gap-2 md:gap-4 nav-footer"
+    class="min-w-[320px] p-3 md:p-4 rounded-t-2xl fixed bottom-0 left-0 right-0 h-20 md:h-24 bg-sky-50 z-50 flex items-center justify-around xl:hidden gap-1 sm:gap-2 md:gap-4 nav-footer"
   >
     <nav
       aria-label="Navigation principale"
@@ -40,6 +40,7 @@ const links = [
   { to: '/apprendre', label: 'Apprendre', icon: 'fas fa-robot', color: 'green' },
   { to: '/former', label: 'Former', icon: 'fas fa-chalkboard-user', color: 'amber' },
   { to: '/qcm', label: 'QCM', icon: 'fas fa-brain', color: 'purple' },
+  { to: '/laboratoires', label: 'Labos', icon: 'fas fa-flask', color: 'rose' },
 ];
 
 onMounted(() => {
@@ -129,6 +130,16 @@ onUnmounted(() => {
 .nav-btn--amber:active,
 .nav-btn--amber:focus-visible {
   background: #fde68a;
+}
+
+.nav-btn--rose {
+  background: #ffe4e6;
+}
+
+.nav-btn--rose:hover,
+.nav-btn--rose:active,
+.nav-btn--rose:focus-visible {
+  background: #fecdd3;
 }
 
 .footer-mobil{

@@ -117,6 +117,7 @@ final class PublishedContentApiTest extends WebTestCase
         self::assertStringContainsString('/pages/envoyer-un-courriel', $xml);
         self::assertStringNotContainsString('brouillon-secret', $xml);
         self::assertStringContainsString('/apprendre', $xml);
+        self::assertStringContainsString('/laboratoires', $xml);
     }
 
     /**

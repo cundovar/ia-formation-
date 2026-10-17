@@ -24,6 +24,17 @@
       <i class="fas fa-brain" />
       QCM
     </router-link>
+    <router-link
+      to="/laboratoires"
+      class="text-lg min-h-[3rem] cursor-pointer mt-4 shadow-neutral-600 bg-rose-200 p-2 hover:bg-rose-300 text-gray-900 font-bold hover:underline flex items-center gap-2"
+      @click="$emit('closeMenu')"
+    >
+      <i
+        class="fas fa-flask"
+        aria-hidden="true"
+      />
+      Laboratoires
+    </router-link>
   </div>
 </template>
 

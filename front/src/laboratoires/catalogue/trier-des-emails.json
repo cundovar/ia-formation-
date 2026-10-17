@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "slug": "trier-des-emails",
+  "ordre": 2,
+  "titre": "Trier automatiquement des e-mails fictifs",
+  "niveau": "debutant",
+  "public": "apprendre",
+  "duree": "15 minutes",
+  "coursSlugs": [],
+  "prerequis": ["comprendre-un-workflow"],
+  "objectif": "Utiliser une condition pour envoyer chaque e-mail dans le bon dossier.",
+  "scenario": "L'association Exemple reçoit beaucoup d'e-mails. Une automatisation les range, mais elle met tout dans le dossier « À lire ». Les factures doivent aller dans le dossier « Comptabilité ».",
+  "simulation": "Les e-mails et l'association sont imaginaires. Le tri est calculé par des règles fixes, sans IA et sans vraie boîte mail.",
+  "instructions": [
+    "Exécutez le workflow avec chaque e-mail : tout arrive dans « À lire ».",
+    "Ajoutez un bloc Condition qui teste si l'objet de l'e-mail (email.objet) contient le mot « facture ».",
+    "Si c'est vrai, l'e-mail passe par une transformation qui écrit « Comptabilité » dans « dossier ».",
+    "Si c'est faux, il passe par le bloc « Classer dans À lire ».",
+    "Reliez les deux chemins au Résultat, puis vérifiez avec les trois e-mails."
+  ],
+  "blocsDisponibles": ["declencheur", "condition", "transformation", "resultat"],
+  "workflowInitial": {
+    "noeuds": [
+      { "id": "declencheur", "type": "declencheur", "libelle": "Un e-mail arrive", "config": { "evenement": "Un e-mail arrive dans la boîte de l'association" }, "position": { "x": 0, "y": 0 } },
+      { "id": "a-lire", "type": "transformation", "libelle": "Classer dans À lire", "config": { "operation": "definir", "champ": "dossier", "source": "", "valeur": "À lire" }, "position": { "x": 520, "y": 120 } },
+      { "id": "resultat", "type": "resultat", "libelle": "Dossier choisi", "config": {}, "position": { "x": 780, "y": 0 } }
+    ],
+    "liens": [
+      { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "a-lire" },
+      { "id": "l2", "source": "a-lire", "sortie": "sortie", "cible": "resultat" }
+    ]
+  },
+  "verrous": { "noeuds": ["declencheur", "resultat"] },
+  "jeuxDeDonnees": [
+    {
+      "id": "facture",
+      "libelle": "Facture d'un fournisseur",
+      "donnees": { "email": { "de": "compta@fournisseur-exemple.fr", "objet": "Facture n° 2026-104", "texte": "Bonjour, veuillez trouver la facture de septembre." } }
+    },
+    {
+      "id": "invitation",
+      "libelle": "Invitation à un atelier",
+      "donnees": { "email": { "de": "atelier@exemple.fr", "objet": "Invitation à l'atelier du samedi", "texte": "Venez découvrir l'atelier de réparation samedi à 14 h." } }
+    },
+    {
+      "id": "rappel",
+      "libelle": "Rappel de paiement",
+      "donnees": { "email": { "de": "service@imprimerie-exemple.fr", "objet": "Rappel : votre FACTURE d'octobre", "texte": "Nous n'avons pas encore reçu votre paiement." } }
+    }
+  ],
+  "criteres": [
+    { "id": "condition", "type": "contientBloc", "bloc": "condition", "message": "Le workflow contient une condition." },
+    { "id": "facture", "type": "sortieAttendue", "jeu": "facture", "chemin": "dossier", "egal": "Comptabilité", "message": "La facture du fournisseur arrive dans « Comptabilité »." },
+    { "id": "rappel", "type": "sortieAttendue", "jeu": "rappel", "chemin": "dossier", "egal": "Comptabilité", "message": "Le rappel de paiement, écrit en majuscules, arrive aussi dans « Comptabilité »." },
+    { "id": "invitation", "type": "sortieAttendue", "jeu": "invitation", "chemin": "dossier", "egal": "À lire", "message": "L'invitation reste dans « À lire »." },
+    { "id": "sans-erreur", "type": "sansErreur", "message": "Le tri fonctionne sans erreur pour les trois e-mails." }
+  ],
+  "indices": [
+    "La condition se place juste après le déclencheur : reliez le déclencheur à la condition, et non plus à « Classer dans À lire ».",
+    "Dans la condition : donnée à tester « email.objet », test « contient », valeur « facture ».",
+    "Ajoutez une transformation « Écrire une valeur » : donnée « dossier », valeur « Comptabilité ». Reliez-la à la sortie « Si vrai »."
+  ],
+  "correction": {
+    "explication": "La condition lit l'objet de chaque e-mail. Le test « contient » ne tient pas compte des majuscules : « FACTURE » est reconnu. Si l'objet contient « facture », l'e-mail passe par « Classer dans Comptabilité » ; sinon, par « Classer dans À lire ». Les deux chemins mènent au même Résultat, mais un seul est pris pour chaque e-mail.",
+    "workflow": {
+      "noeuds": [
+        { "id": "declencheur", "type": "declencheur", "libelle": "Un e-mail arrive", "config": { "evenement": "Un e-mail arrive dans la boîte de l'association" }, "position": { "x": 0, "y": 0 } },
+        { "id": "est-facture", "type": "condition", "libelle": "L'objet parle-t-il d'une facture ?", "config": { "chemin": "email.objet", "operateur": "contient", "valeur": "facture" }, "position": { "x": 260, "y": 0 } },
+        { "id": "comptabilite", "type": "transformation", "libelle": "Classer dans Comptabilité", "config": { "operation": "definir", "champ": "dossier", "source": "", "valeur": "Comptabilité" }, "position": { "x": 520, "y": -120 } },
+        { "id": "a-lire", "type": "transformation", "libelle": "Classer dans À lire", "config": { "operation": "definir", "champ": "dossier", "source": "", "valeur": "À lire" }, "position": { "x": 520, "y": 120 } },
+        { "id": "resultat", "type": "resultat", "libelle": "Dossier choisi", "config": {}, "position": { "x": 780, "y": 0 } }
+      ],
+      "liens": [
+        { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "est-facture" },
+        { "id": "l3", "source": "est-facture", "sortie": "vrai", "cible": "comptabilite" },
+        { "id": "l4", "source": "est-facture", "sortie": "faux", "cible": "a-lire" },
+        { "id": "l5", "source": "comptabilite", "sortie": "sortie", "cible": "resultat" },
+        { "id": "l2", "source": "a-lire", "sortie": "sortie", "cible": "resultat" }
+      ]
+    }
+  },
+  "aRetenir": [
+    "Une condition pose une question sur les données et choisit un seul chemin.",
+    "Testez une automatisation avec plusieurs exemples : un seul ne suffit pas à repérer les erreurs.",
+    "Une règle fixe trie de la même façon à chaque fois, mais seulement ce qu'elle a prévu : un e-mail de facture sans le mot « facture » dans l'objet resterait dans « À lire »."
+  ],
+  "animation": "En atelier : avant d'ajouter la condition, demandez au groupe quel mot permet de reconnaître une facture, puis cherchez ensemble un e-mail qui tromperait la règle.",
+  "source": "Règle du projet (regles/07-laboratoires.md).",
+  "verifieLe": "2026-10-17"
+}

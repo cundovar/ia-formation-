@@ -65,6 +65,16 @@
         <i class="fas fa-brain" />
         QCM
       </router-link>
+      <router-link
+        to="/laboratoires"
+        class="max-xl:hidden xl:w-full min-h-[3rem] cursor-pointer shadow-neutral-600 bg-rose-200 p-2 hover:bg-rose-300 text-gray-900 font-bold hover:underline flex items-center gap-2"
+      >
+        <i
+          class="fas fa-flask"
+          aria-hidden="true"
+        />
+        Laboratoires
+      </router-link>
 
 
 
