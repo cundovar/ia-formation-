@@ -54,28 +54,20 @@
           {{ audience.title }}
         </router-link>
         <div
-          v-if="audience.key === 'apprendre' && openAudienceMenu && apprendreGroups.length"
+          v-if="audience.key === 'apprendre' && openAudienceMenu && apprendreCats.length"
           class="audience-dropdown"
           aria-label="Parcours pour apprendre l’IA"
         >
-          <details
-            v-for="(group, index) in apprendreGroups"
-            :key="group.id ?? 'sans-rubrique'"
-            class="audience-dropdown-group"
-            :open="index === 0"
-          >
-            <summary>
-              {{ group.name ?? 'Autres parcours' }}
-              <i class="fas fa-chevron-down" aria-hidden="true" />
-            </summary>
-            <ul>
-              <li v-for="cat in group.categories" :key="cat.id">
-                <router-link :to="`/category/${encodeURIComponent(cat.name)}`">
-                  {{ cat.name }}
-                </router-link>
-              </li>
-            </ul>
-          </details>
+          <CategoryMenu
+            :cats="apprendreCats"
+            :menus-by-category="menusByCategory"
+            :hovered-category="hoveredCategory"
+            :click-menu="clickMenu"
+            :is-xl-ou-plus="isXlOuPlus"
+            @open-menu="$emit('openMenu', $event)"
+            @hover-category="$emit('hoverCategory', $event)"
+            @close-menu="$emit('closeMenu')"
+          />
         </div>
       </div>
       <router-link
@@ -106,10 +98,10 @@
 
 <script setup>
 import ButtonArrowMenu from '../ui/ButtonArrowMenu.vue';
+import CategoryMenu from '../navigation/CategoryMenu.vue';
 import MenuLinks from '../navigation/MenuLinks.vue';
 import { AUDIENCES } from '@/config/audiences';
 import { computed, ref } from 'vue';
-import { groupByRubrique } from '@/utils/parcours';
 
 const props = defineProps({
   cats: { type: Array, required: true },
@@ -123,7 +115,7 @@ const props = defineProps({
 });
 
 const openAudienceMenu = ref(false);
-const apprendreGroups = computed(() => groupByRubrique(props.cats.filter((cat) => cat.audience === 'apprendre')));
+const apprendreCats = computed(() => props.cats.filter((cat) => cat.audience === 'apprendre'));
 const onAudienceFocusout = (event) => {
   if (!event.currentTarget.contains(event.relatedTarget)) openAudienceMenu.value = false;
 };
@@ -168,66 +160,11 @@ defineEmits(['openMenu', 'hoverCategory', 'closeMenu', 'toggleMenuGauche']);
   width: min(24rem, calc(100vw - 2rem));
   max-height: min(70vh, 34rem);
   overflow-y: auto;
-  padding: 0.75rem;
+  padding: 0.5rem;
   border: 1px solid #bfdbfe;
   border-radius: 0 0 0.75rem 0.75rem;
   background: #eff6ff;
   box-shadow: 0 10px 24px rgb(15 23 42 / 18%);
 }
 
-.audience-dropdown-group {
-  border-radius: 0.65rem;
-  background: #dbeafe;
-}
-
-.audience-dropdown-group + .audience-dropdown-group {
-  margin-top: 0.45rem;
-}
-
-.audience-dropdown summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  cursor: pointer;
-  padding: 0.7rem 0.8rem;
-  color: #1f2937;
-  font-weight: 700;
-  list-style: none;
-}
-
-.audience-dropdown summary::-webkit-details-marker {
-  display: none;
-}
-
-.audience-dropdown summary .fa-chevron-down {
-  transition: transform 150ms ease-in-out;
-}
-
-.audience-dropdown details[open] summary .fa-chevron-down {
-  transform: rotate(180deg);
-}
-
-.audience-dropdown ul {
-  display: grid;
-  gap: 0.15rem;
-  margin: 0 0.45rem 0.45rem;
-  padding: 0.3rem;
-  list-style: none;
-  border-radius: 0.45rem;
-  background: #eff6ff;
-}
-
-.audience-dropdown a {
-  display: block;
-  border-radius: 0.4rem;
-  padding: 0.4rem 0.5rem;
-  color: #1f2937;
-}
-
-.audience-dropdown a:hover,
-.audience-dropdown a:focus-visible {
-  background: #bfdbfe;
-  text-decoration: underline;
-}
 </style>
