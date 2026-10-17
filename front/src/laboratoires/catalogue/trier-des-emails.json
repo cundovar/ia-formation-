@@ -22,8 +22,8 @@
   "workflowInitial": {
     "noeuds": [
       { "id": "declencheur", "type": "declencheur", "libelle": "Un e-mail arrive", "config": { "evenement": "Un e-mail arrive dans la boîte de l'association" }, "position": { "x": 0, "y": 0 } },
-      { "id": "a-lire", "type": "transformation", "libelle": "Classer dans À lire", "config": { "operation": "definir", "champ": "dossier", "source": "", "valeur": "À lire" }, "position": { "x": 520, "y": 120 } },
-      { "id": "resultat", "type": "resultat", "libelle": "Dossier choisi", "config": {}, "position": { "x": 780, "y": 0 } }
+      { "id": "a-lire", "type": "transformation", "libelle": "Classer dans À lire", "config": { "operation": "definir", "champ": "dossier", "source": "", "valeur": "À lire" }, "position": { "x": 680, "y": 180 } },
+      { "id": "resultat", "type": "resultat", "libelle": "Dossier choisi", "config": {}, "position": { "x": 1020, "y": 0 } }
     ],
     "liens": [
       { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "a-lire" },
@@ -65,10 +65,10 @@
     "workflow": {
       "noeuds": [
         { "id": "declencheur", "type": "declencheur", "libelle": "Un e-mail arrive", "config": { "evenement": "Un e-mail arrive dans la boîte de l'association" }, "position": { "x": 0, "y": 0 } },
-        { "id": "est-facture", "type": "condition", "libelle": "L'objet parle-t-il d'une facture ?", "config": { "chemin": "email.objet", "operateur": "contient", "valeur": "facture" }, "position": { "x": 260, "y": 0 } },
-        { "id": "comptabilite", "type": "transformation", "libelle": "Classer dans Comptabilité", "config": { "operation": "definir", "champ": "dossier", "source": "", "valeur": "Comptabilité" }, "position": { "x": 520, "y": -120 } },
-        { "id": "a-lire", "type": "transformation", "libelle": "Classer dans À lire", "config": { "operation": "definir", "champ": "dossier", "source": "", "valeur": "À lire" }, "position": { "x": 520, "y": 120 } },
-        { "id": "resultat", "type": "resultat", "libelle": "Dossier choisi", "config": {}, "position": { "x": 780, "y": 0 } }
+        { "id": "est-facture", "type": "condition", "libelle": "L'objet parle-t-il d'une facture ?", "config": { "chemin": "email.objet", "operateur": "contient", "valeur": "facture" }, "position": { "x": 340, "y": 0 } },
+        { "id": "comptabilite", "type": "transformation", "libelle": "Classer dans Comptabilité", "config": { "operation": "definir", "champ": "dossier", "source": "", "valeur": "Comptabilité" }, "position": { "x": 680, "y": -180 } },
+        { "id": "a-lire", "type": "transformation", "libelle": "Classer dans À lire", "config": { "operation": "definir", "champ": "dossier", "source": "", "valeur": "À lire" }, "position": { "x": 680, "y": 180 } },
+        { "id": "resultat", "type": "resultat", "libelle": "Dossier choisi", "config": {}, "position": { "x": 1020, "y": 0 } }
       ],
       "liens": [
         { "id": "l1", "source": "declencheur", "sortie": "sortie", "cible": "est-facture" },

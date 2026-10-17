@@ -6,6 +6,7 @@ import { BLOCS } from '../blocs/index.js'
 import { EVALUATEURS } from '../moteur/criteres.js'
 import { normaliser, valider } from '../moteur/workflow.js'
 import { NIVEAUX, PUBLICS } from './niveaux.js'
+import { analyserUrl, METHODES } from '../simulateurs/apiFictive.js'
 
 export const VERSION_SCHEMA = 1
 
@@ -44,6 +45,18 @@ export function validerLaboratoire(lab) {
     if (criteres.has(critere.id)) ajouter(`critère en double « ${critere.id} ».`)
     criteres.add(critere.id)
     if (critere.jeu && !jeux.has(critere.jeu)) ajouter(`le critère « ${critere.id} » cite un jeu inconnu « ${critere.jeu} ».`)
+  })
+
+  ;(lab.simulateurs?.api ?? []).forEach((service) => {
+    if (!METHODES.includes(service.methode)) ajouter(`API fictive : méthode inconnue « ${service.methode} ».`)
+    const analyse = analyserUrl(service.url)
+    if (analyse.erreur) ajouter(`API fictive : ${analyse.erreur}`)
+    else if (analyse.adresse !== service.url) ajouter(`API fictive : l'adresse « ${service.url} » ne doit contenir ni paramètres ni fragment.`)
+    if (!Array.isArray(service.reponses) || service.reponses.length === 0) ajouter(`API fictive ${service.url} : prévoyez au moins une réponse.`)
+    ;(service.reponses ?? []).forEach((reponse) => {
+      if (!Number.isInteger(reponse.statut) || reponse.statut < 100 || reponse.statut > 599) ajouter(`API fictive ${service.url} : code de statut invalide.`)
+    })
+    if ((service.reponses ?? []).length && service.reponses.at(-1).si) ajouter(`API fictive ${service.url} : la dernière réponse doit être sans condition (réponse par défaut).`)
   })
 
   const initial = normaliser(lab.workflowInitial)

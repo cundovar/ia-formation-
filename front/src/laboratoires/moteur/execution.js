@@ -15,13 +15,15 @@ import { cloner } from './cloner.js'
 
 export const STATUTS_FINAUX = ['termine', 'erreur', 'invalide']
 
-export function creerExecution(definition, jeu = { donnees: {} }, { registre = BLOCS, blocsDisponibles = null } = {}) {
+export function creerExecution(definition, jeu = { donnees: {} }, { registre = BLOCS, blocsDisponibles = null, simulateurs = {} } = {}) {
   const workflow = normaliser(definition)
   const erreursValidation = valider(workflow, { registre, blocsDisponibles })
   const { ordre } = ordreTopologique(workflow)
   return {
     workflow,
     jeu: cloner(jeu),
+    // Services fictifs du laboratoire (API, outils…) : décrits dans sa définition, jamais appelés en vrai
+    simulateurs: cloner(simulateurs ?? {}),
     statut: erreursValidation.length > 0 ? 'invalide' : 'pret',
     erreursValidation,
     ordre,
@@ -78,7 +80,7 @@ export async function etapeSuivante(execution, { registre = BLOCS } = {}) {
       const reponse = await bloc.executer({
         entree,
         config: cloner(noeud.config ?? {}),
-        contexte: { jeu: suivante.jeu },
+        contexte: { jeu: suivante.jeu, simulateurs: suivante.simulateurs },
       })
       const donnees = reponse.donnees ?? {}
       if (tailleJson(donnees) > LIMITES.tailleDonnees) {

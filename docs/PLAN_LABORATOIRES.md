@@ -87,7 +87,7 @@ Complexité : S ≤ ½ jour, M = 1–2 jours, L = 3–5 jours.
 ### Phase 0 — Cadrage
 - [x] T0.1 (S) Mettre à jour le périmètre : `PLAN_APP_FORMATION_IA.md`, `AGENTS.md`, ce document.
 - [x] T0.2 (S) Écrire la règle `regles/07-laboratoires.md` et l'ajouter à `README.md` et `sources.md`. **Reste à faire valider par le responsable éditorial.**
-- [ ] T0.3 (S) Essai de Vue Flow sur une branche jetable : taille du chunk, tactile, clavier, `npm run check` (build PWA). Résultat à noter ici. Repli : un SVG en lecture seule et l'édition par la vue séquentielle.
+- [x] T0.3 (S) Essai de Vue Flow. Résultat (17 octobre 2026) : `@vue-flow/core` 1.48.2 (MIT) ; chunk séparé de 164 Ko (54 Ko compressé), chargé seulement à l'ouverture de la vue graphique ; le chunk principal ne prend que 2,3 Ko (`defineAsyncComponent`) ; build PWA correct. Clavier : un bloc a le focus avec Tab, Entrée le sélectionne, les flèches le déplacent ; la création de lien au clavier reste dans les réglages du bloc (vue en étapes ou panneau sous le graphe).
 
 ### Phase 1 — MVP (moteur, lecteur séquentiel, labos 1 et 2)
 
@@ -107,6 +107,10 @@ Complexité : S ≤ ½ jour, M = 1–2 jours, L = 3–5 jours.
 | T1.8 Vérification (S) | — | lint, Vitest, build ; `composer test` et `composer analyse` si du PHP a changé ; navigateur sur bureau, mobile 375 px, clavier, hors ligne | Compte rendu qui sépare code, local, CI et site déployé |
 
 ### Phase 2 — Éditeur graphique
+
+État au 17 octobre 2026 : T2.1 à T2.3 présents dans le code et testés localement (Vitest, ESLint, build, navigateur sur l'application Vue servie seule). Non vérifié : site complet, tactile réel (seulement la souris et le clavier), CI.
+
+Décisions : la vue en étapes reste la vue par défaut ; la vue graphique est proposée à partir de 1024 px et prend alors toute la largeur (contrôles et journal dessous). Vue Flow est une projection du store : chaque geste (relier, déplacer, supprimer) devient une action du store, avec le même historique et les mêmes contrôles. Si la vue graphique ne se charge pas (hors ligne avant toute visite), un message renvoie vers la vue en étapes. Les liens empruntés sont en trait plein vert, les chemins non pris en pointillés gris, sans animation. La condition accepte un deuxième test (« et » / « ou »).
 - T2.1 (L) `editeur/GrapheVueFlow.vue` (import dynamique) et `adaptateurs/vueFlow.js` (pur, avec un test d'aller-retour sans perte). Le chunk principal ne doit pas grossir.
 - T2.2 (M) Annuler/rétablir (20 états), suppression au clavier, duplication. Chaque action a son équivalent dans la vue séquentielle.
 - T2.3 (M) `blocs/api.js` et `simulateurs/apiFictive.js` (réponses 200, 404, 500), labos 3 et 6. Test : un espion vérifie que `fetch` n'est jamais appelé.
