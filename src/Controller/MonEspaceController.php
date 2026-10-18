@@ -8,6 +8,7 @@ use App\Entity\Category;
 use App\Entity\PageContent;
 use App\Entity\QCM;
 use App\Entity\User;
+use App\Entity\LearnerProgressPreference;
 use App\Form\RegistrationForm;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -67,6 +68,20 @@ final class MonEspaceController extends AbstractController
                 'niveau' => $qcm->getNiveauQCM()?->getTitre(),
             ], $this->reservedTo($user, QCM::class)),
         ]);
+    }
+
+    #[Route('/progression', name: 'mon_espace_progression_consentement', methods: ['POST'])]
+    public function progressionConsent(Request $request): JsonResponse
+    {
+        $user = $this->learner();
+        $payload = $this->payload($request);
+        if ($payload instanceof JsonResponse) return $payload;
+        if (($payload['consentementExplicite'] ?? false) !== true) return $this->json(['message' => 'Confirmez explicitement votre accord.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        $preference = $this->entityManager->getRepository(LearnerProgressPreference::class)->findOneBy(['user' => $user]) ?? new LearnerProgressPreference($user);
+        $enabled = (bool) ($payload['activer'] ?? false);
+        $enabled ? $preference->enable() : $preference->disable();
+        $this->entityManager->persist($preference); $this->entityManager->flush();
+        return $this->json(['progressionActivee' => $enabled]);
     }
 
     #[Route('/mot-de-passe', name: 'mon_espace_mot_de_passe', methods: ['POST'])]

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: laboratory guidance
@@ -7,8 +7,8 @@ status: pending
 ## Architecture projection
 
 ```txt
-✏️ learner MCP tools
-✅ laboratory catalogue adapter and tests
+✅ learner MCP tools
+✅ laboratory catalogue adapter
 ```
 
 ## Tasks to do

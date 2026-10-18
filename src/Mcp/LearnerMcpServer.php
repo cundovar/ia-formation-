@@ -7,6 +7,7 @@ namespace App\Mcp;
 use App\Entity\User;
 use App\Service\Learner\LearnerContentService;
 use App\Service\Learner\LearnerQcmSessionService;
+use App\Service\Learner\LaboratoryCatalogue;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use Mcp\Schema\Tool;
@@ -25,6 +26,7 @@ final class LearnerMcpServer
     public function __construct(
         private LearnerContentService $content,
         private LearnerQcmSessionService $qcm,
+        private LaboratoryCatalogue $laboratories,
         private LoggerInterface $logger,
         #[Autowire('%kernel.project_dir%/var/mcp-sessions')] private string $sessionDir,
     ) {}
@@ -44,6 +46,8 @@ final class LearnerMcpServer
             ]), 'Parcours visibles pour ce compte, publics ou attribués à la personne.', $readOnly),
             new CallbackTool(fn (array $args) => self::result($this->content->parcours($learner, isset($args['public']) ? (string) $args['public'] : null))),
         );
+        $builder->add(new Tool('lister_laboratoires', 'Lister les laboratoires locaux', self::schema(['niveau'=>['type'=>'string','enum'=>['debutant','intermediaire','avance']]]), 'Propose des simulations locales. Elles ne contactent pas de service d’IA et n’enregistrent aucun résultat.', $readOnly), new CallbackTool(fn(array $args)=>self::result($this->laboratories->list(isset($args['niveau'])?(string)$args['niveau']:null))));
+        $builder->add(new Tool('voir_laboratoire', 'Voir les consignes d’un laboratoire', self::schema(['slug'=>['type'=>'string','minLength'=>1]], ['slug']), 'Retourne les objectifs et consignes d’un laboratoire local, sans exécuter de workflow.', $readOnly), new CallbackTool(fn(array $args)=>self::result($this->laboratories->find((string)$args['slug'])??['erreur'=>'Laboratoire introuvable.'])));
         $builder->add(
             new Tool('demarrer_qcm', 'Démarrer un QCM', self::schema(['id' => ['type' => 'integer', 'minimum' => 1]], ['id']), 'Retourne la question et les choix d’un QCM accessible. Les corrections restent cachées jusqu’à la réponse.', $readOnly),
             new CallbackTool(fn (array $args) => self::result($this->qcm->start($learner, (int) $args['id']) ?? ['erreur' => 'QCM introuvable.'])),
