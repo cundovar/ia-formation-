@@ -8,8 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 /** Passage de recherche extrait d'un cours ; il n'est jamais une ressource publique directe. */
 #[ORM\Entity]
-#[ORM\Table(name: 'rag_passage')]
-#[ORM\UniqueConstraint(name: 'uniq_rag_course_position', columns: ['page_content_id', 'position'])]
+#[ORM\Table(name: 'rag_passage', uniqueConstraints: [new ORM\UniqueConstraint(name: 'uniq_rag_course_position', columns: ['page_content_id', 'position'])], indexes: [new ORM\Index(name: 'rag_passage_content_fulltext', columns: ['content'], flags: ['fulltext'])])]
 class RagPassage
 {
     #[ORM\Id]

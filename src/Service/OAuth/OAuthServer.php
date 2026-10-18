@@ -209,6 +209,10 @@ final class OAuthServer
 
     public static function sameResource(string $given, string $expected): bool
     {
+        if (str_starts_with($given, '/') || str_starts_with($expected, '/')) {
+            return rtrim((string) parse_url($given, \PHP_URL_PATH) ?: $given, '/') === rtrim((string) parse_url($expected, \PHP_URL_PATH) ?: $expected, '/');
+        }
+
         return rtrim($given, '/') === rtrim($expected, '/');
     }
 
