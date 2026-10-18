@@ -40,3 +40,7 @@ def search(request: SearchRequest, authorization: str | None = Header(default=No
     auth(authorization); collection(); vector = next(model().embed([request.query])).tolist()
     points = store().query_points(COLLECTION, query=vector, limit=request.limit).points
     return {"results":[{"course_id":p.payload["course_id"],"position":p.payload["position"],"text":p.payload["text"],"score":p.score} for p in points]}
+@app.delete("/courses/{course_id}")
+def delete_course(course_id: int, authorization: str | None = Header(default=None)):
+    auth(authorization); collection(); store().delete(COLLECTION, points_selector=[f"{course_id}-{position}" for position in range(1, 101)])
+    return {"deleted": course_id}
