@@ -1,6 +1,6 @@
 ---
 objective: "Replace the learner MCP keyword retrieval with a self-hosted semantic vector search that returns only cited courses accessible to the OAuth learner."
-status: in-progress
+status: implemented
 ---
 
 # Plan: RAG vectoriel apprenant
