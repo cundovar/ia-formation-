@@ -121,7 +121,10 @@ jobs:
       - name: Migrate, validate, roll back and migrate again
         run: |
           php bin/console doctrine:migrations:migrate --no-interaction
-          php bin/console doctrine:schema:validate
+          if ! php bin/console doctrine:schema:validate; then
+            php bin/console doctrine:schema:update --dump-sql --complete
+            exit 1
+          fi
           php bin/console doctrine:migrations:migrate first --no-interaction
           php bin/console doctrine:migrations:migrate --no-interaction
 

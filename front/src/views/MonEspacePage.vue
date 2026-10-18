@@ -251,6 +251,13 @@
             </p>
           </form>
 
+          <section class="mt-8 max-w-md rounded-2xl border border-green-200 bg-green-50 p-5">
+            <h3 class="text-xl font-semibold text-gray-900">Suivi de mes cours</h3>
+            <p class="mt-2 text-lg text-gray-700">{{ espace.progressionActivee ? 'Vos cours terminés sont enregistrés. Vous pouvez effacer ce suivi à tout moment.' : 'Activez ce suivi si vous souhaitez enregistrer les cours terminés.' }}</p>
+            <button type="button" class="mt-4 rounded-xl border-2 border-green-300 bg-white px-5 py-2 text-lg font-semibold text-gray-900 hover:bg-green-100" @click="setProgression(!espace.progressionActivee)">{{ espace.progressionActivee ? 'Effacer et désactiver' : 'Activer le suivi' }}</button>
+            <p v-if="progression.message" class="mt-2 text-green-800" role="status">{{ progression.message }}</p>
+          </section>
+
           <form
             class="mt-10 max-w-md space-y-3 rounded-2xl border border-red-200 bg-red-50 p-5"
             @submit.prevent="deleteAccount"
@@ -300,7 +307,8 @@ import { useData } from '../utils/fetchDataPwa'
 
 const { clearUser } = useData()
 const state = ref('loading')
-const espace = ref({ pseudo: '', email: null, cours: [], parcours: [], exercices: [] })
+const espace = ref({ pseudo: '', email: null, cours: [], parcours: [], exercices: [], progressionActivee: false })
+const progression = reactive({ message: '' })
 const password = reactive({ current: '', next: '', message: '', ok: false })
 const deletion = reactive({ password: '', message: '' })
 
@@ -329,6 +337,15 @@ const changePassword = async () => {
   } catch (error) {
     Object.assign(password, { message: errorMessage(error, 'Le mot de passe n’a pas pu être modifié.'), ok: false })
   }
+}
+
+const setProgression = async (activer) => {
+  progression.message = ''
+  try {
+    await axios.post('/user-api/mon-espace/progression', { consentementExplicite: true, activer })
+    espace.value.progressionActivee = activer
+    progression.message = activer ? 'Le suivi est activé.' : 'Le suivi et les cours enregistrés sont effacés.'
+  } catch (error) { progression.message = errorMessage(error, 'Le suivi n’a pas pu être modifié.') }
 }
 
 const deleteAccount = async () => {

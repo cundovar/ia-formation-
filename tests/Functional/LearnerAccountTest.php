@@ -56,7 +56,7 @@ final class LearnerAccountTest extends WebTestCase
 
         $this->client->request('GET', '/user-api/mon-espace');
         self::assertResponseIsSuccessful();
-        self::assertSame(['pseudo' => 'mamie_jo', 'email' => 'jo@exemple.fr', 'cours' => [], 'parcours' => [], 'exercices' => []], $this->json());
+        self::assertSame(['pseudo' => 'mamie_jo', 'email' => 'jo@exemple.fr', 'progressionActivee' => false, 'cours' => [], 'parcours' => [], 'exercices' => []], $this->json());
     }
 
     public function testRegistrationRejectsAFullNameOrAShortPassword(): void

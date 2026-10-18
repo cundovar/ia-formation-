@@ -25,7 +25,7 @@ L'accueil propose deux entrées : **« J'apprends à utiliser l'IA »** (`/appre
 
 Modèle : **parcours → modules → cours → QCM**, plus **fiches d'outil** (cours avec page officielle de référence) et **captures pédagogiques**. Chaque contenu a un niveau, un statut (brouillon, en revue, publié, à réviser), une source et une date de vérification.
 
-Compte apprenant **facultatif** : adresse e-mail (connexion, jamais affichée ni transmise au connecteur), pseudo et mot de passe. Il sert uniquement aux cours, parcours et QCM personnalisés qu'un administrateur réserve à une personne par le connecteur. Les cours publics restent ouverts sans compte ; aucune progression, note ni visite n'est enregistrée.
+Compte apprenant **facultatif** : adresse e-mail (connexion, jamais affichée ni transmise au connecteur), pseudo et mot de passe. Il sert aux cours, parcours et QCM personnalisés qu'un administrateur réserve à une personne par le connecteur. Les cours publics restent ouverts sans compte. Un suivi minimal peut être activé seulement après un accord explicite de la personne ; elle peut l'effacer ou le désactiver à tout moment. Sans accord, aucune progression, note ni visite n'est enregistrée.
 
 ## 3. Principes de contenu
 
@@ -46,4 +46,4 @@ Compte apprenant **facultatif** : adresse e-mail (connexion, jamais affichée ni
 
 6. Laboratoires IA (décision du 17 octobre 2026) : simulateur local de workflows et d'agents, définitions en JSON dans le code, règle `regles/07-laboratoires.md`. Phases et tâches : `docs/PLAN_LABORATOIRES.md`.
 
-Hors du premier périmètre : suivi de progression, attestations, réservations, statistiques, exercices interactifs autres que les laboratoires, mode « IA réelle » des laboratoires (appels à un modèle, même côté serveur). Si une demande les rend nécessaires, mettre à jour ce plan avant de les introduire.
+Hors du premier périmètre : attestations, réservations, statistiques, exercices interactifs autres que les laboratoires, mode « IA réelle » des laboratoires (appels à un modèle, même côté serveur). Le suivi de progression minimal sur consentement fait partie de la phase MCP apprenant ; il ne contient ni score ni historique de visite détaillé. Si une demande rend une autre fonction nécessaire, mettre à jour ce plan avant de l'introduire.

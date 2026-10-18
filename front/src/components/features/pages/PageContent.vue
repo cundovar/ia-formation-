@@ -47,6 +47,16 @@
             :target="contentRef"
           />
 
+          <section
+            v-if="progressionActive && pageContent.status === 'publie'"
+            class="mx-5 mt-6 rounded-2xl border border-green-200 bg-green-50 p-5"
+          >
+            <h2 class="text-xl font-bold text-gray-900">Votre progression</h2>
+            <p class="mt-1 text-lg text-gray-700">Vous pouvez marquer ce cours comme terminé.</p>
+            <button class="mt-3 rounded-xl border-2 border-green-300 bg-white px-5 py-2 text-lg font-semibold text-gray-900 hover:bg-green-100" type="button" @click="completeCourse">Marquer comme terminé</button>
+            <p v-if="completionMessage" class="mt-2 text-green-800" role="status">{{ completionMessage }}</p>
+          </section>
+
           <!-- Contenu de la page -->
           <div
             v-if="renderedCode"
@@ -143,6 +153,7 @@
 
 <script setup>
 import { computed, ref, watch, onMounted, nextTick } from 'vue'
+import axios from 'axios'
 import Prism from 'prismjs'
 import api from '@/services/api'
 import SidebarToc from './toc/SidebarToc.vue'
@@ -179,6 +190,8 @@ const renderedCode = ref('')
 const previousPage = ref(null)
 const nextPage = ref(null)
 const allPages = ref([])
+const progressionActive = ref(false)
+const completionMessage = ref('')
 
 // Methods
 function getPageId(page) {
@@ -243,6 +256,24 @@ async function fetchPageContent() {
     console.error('Erreur API:', err)
   }
 }
+
+async function completeCourse() {
+  try {
+    await axios.post(`/user-api/mon-espace/progression/cours/${pageContent.value.id}`)
+    completionMessage.value = 'Ce cours est enregistré comme terminé.'
+  } catch {
+    completionMessage.value = 'Le cours ne peut pas être enregistré pour le moment.'
+  }
+}
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('/user-api/mon-espace')
+    progressionActive.value = data.progressionActivee === true
+  } catch {
+    progressionActive.value = false
+  }
+})
 
 async function fetchCaptures(ids) {
   const query = ids.map((id) => `id[]=${encodeURIComponent(id)}`).join('&')

@@ -21,7 +21,10 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  */
 final class OAuthServer
 {
-    public const SCOPE = 'redaction';
+    public const SCOPE_REDACTION = 'redaction';
+    public const SCOPE_LEARNER_READ = 'apprenant.read';
+    /** @deprecated Use SCOPE_REDACTION. */
+    public const SCOPE = self::SCOPE_REDACTION;
     public const REQUIRED_ROLE = 'ROLE_ADMIN';
 
     private const CODE_TTL = 'PT5M';
@@ -89,9 +92,10 @@ final class OAuthServer
      * être renvoyées vers cette adresse (`$redirectable` faux) : elles s'affichent sur le site.
      *
      * @param array<string, mixed> $query
-     * @return array{client: OAuthClient, redirectUri: string, codeChallenge: string, state: ?string}
+     * @param array<string, string> $resources resource URL => scope
+     * @return array{client: OAuthClient, redirectUri: string, codeChallenge: string, state: ?string, resource: string, scope: string}
      */
-    public function validateAuthorizationRequest(array $query, string $resourceUrl): array
+    public function validateAuthorizationRequest(array $query, array $resources): array
     {
         $client = $this->findClient((string) ($query['client_id'] ?? ''));
         if ($client === null) {
@@ -110,12 +114,21 @@ final class OAuthServer
         if (($query['code_challenge_method'] ?? '') !== 'S256' || preg_match('/^[A-Za-z0-9_-]{43}$/', $challenge) !== 1) {
             throw new RedirectableOAuthError('invalid_request', 'PKCE obligatoire : code_challenge en S256.');
         }
-        $scope = trim((string) ($query['scope'] ?? ''));
-        if ($scope !== '' && !\in_array(self::SCOPE, explode(' ', $scope), true)) {
-            throw new RedirectableOAuthError('invalid_scope', 'Portée acceptée : '.self::SCOPE.'.');
+        $resource = (string) ($query['resource'] ?? array_key_first($resources));
+        $scopeForResource = null;
+        foreach ($resources as $url => $allowedScope) {
+            if (self::sameResource($resource, $url)) {
+                $resource = $url;
+                $scopeForResource = $allowedScope;
+                break;
+            }
         }
-        if (isset($query['resource']) && !self::sameResource((string) $query['resource'], $resourceUrl)) {
-            throw new RedirectableOAuthError('invalid_target', 'Ressource inconnue : seul '.$resourceUrl.' est servi.');
+        if ($scopeForResource === null) {
+            throw new RedirectableOAuthError('invalid_target', 'Ressource inconnue.');
+        }
+        $scope = trim((string) ($query['scope'] ?? ''));
+        if ($scope !== '' && $scope !== $scopeForResource) {
+            throw new RedirectableOAuthError('invalid_scope', 'Portée acceptée : '.$scopeForResource.'.');
         }
 
         return [
@@ -123,13 +136,15 @@ final class OAuthServer
             'redirectUri' => $redirectUri,
             'codeChallenge' => $challenge,
             'state' => isset($query['state']) ? (string) $query['state'] : null,
+            'resource' => $resource,
+            'scope' => $scopeForResource,
         ];
     }
 
-    public function issueCode(OAuthClient $client, User $user, string $redirectUri, string $codeChallenge): string
+    public function issueCode(OAuthClient $client, User $user, string $redirectUri, string $codeChallenge, string $resource = '/mcp', string $scope = self::SCOPE_REDACTION): string
     {
         $code = self::randomToken();
-        $this->entityManager->persist(new OAuthAuthorizationCode(self::hash($code), $client, $user, $redirectUri, $codeChallenge, (new \DateTimeImmutable())->add(new \DateInterval(self::CODE_TTL))));
+        $this->entityManager->persist(new OAuthAuthorizationCode(self::hash($code), $client, $user, $redirectUri, $codeChallenge, (new \DateTimeImmutable())->add(new \DateInterval(self::CODE_TTL)), $resource, $scope));
         $this->entityManager->flush();
 
         return $code;
@@ -141,10 +156,10 @@ final class OAuthServer
      * @param array<string, mixed> $params
      * @return array<string, mixed>
      */
-    public function token(array $params, string $resourceUrl): array
+    public function token(array $params, array $resources): array
     {
-        if (isset($params['resource']) && !self::sameResource((string) $params['resource'], $resourceUrl)) {
-            throw new OAuthError('invalid_target', 'Ressource inconnue : seul '.$resourceUrl.' est servi.');
+        if (isset($params['resource']) && !$this->isKnownResource((string) $params['resource'], $resources)) {
+            throw new OAuthError('invalid_target', 'Ressource inconnue.');
         }
 
         return match ($params['grant_type'] ?? null) {
@@ -172,10 +187,10 @@ final class OAuthServer
      * Accès en cours pour un jeton présenté au point MCP, ou null s'il est inconnu, expiré, révoqué,
      * ou si la personne n'est plus administrateur.
      */
-    public function authenticate(string $accessToken): ?OAuthGrant
+    public function authenticate(string $accessToken, string $resource): ?OAuthGrant
     {
         $grant = $this->entityManager->getRepository(OAuthGrant::class)->findOneBy(['accessTokenHash' => self::hash($accessToken)]);
-        if ($grant === null || !$grant->isAccessValid(new \DateTimeImmutable()) || !self::canAuthorize($grant->getUser())) {
+        if ($grant === null || !$grant->isAccessValid(new \DateTimeImmutable()) || !self::sameResource($grant->getResource(), $resource) || !$this->canUseGrant($grant)) {
             return null;
         }
 
@@ -194,6 +209,10 @@ final class OAuthServer
 
     public static function sameResource(string $given, string $expected): bool
     {
+        if (str_starts_with($given, '/') || str_starts_with($expected, '/')) {
+            return rtrim((string) parse_url($given, \PHP_URL_PATH) ?: $given, '/') === rtrim((string) parse_url($expected, \PHP_URL_PATH) ?: $expected, '/');
+        }
+
         return rtrim($given, '/') === rtrim($expected, '/');
     }
 
@@ -207,6 +226,9 @@ final class OAuthServer
         $code = $this->entityManager->getRepository(OAuthAuthorizationCode::class)->findOneBy(['codeHash' => self::hash((string) ($params['code'] ?? ''))]);
         if ($code === null || $code->getClient() !== $client) {
             throw new OAuthError('invalid_grant', 'Code d\'autorisation inconnu.');
+        }
+        if (isset($params['resource']) && !self::sameResource((string) $params['resource'], $code->getResource())) {
+            throw new OAuthError('invalid_grant', 'La ressource ne correspond pas au code d’autorisation.');
         }
         if ($code->isUsed()) {
             // Code rejoué : l'accès qu'il a ouvert est peut-être compromis
@@ -230,8 +252,8 @@ final class OAuthServer
         if (preg_match('/^[A-Za-z0-9._~-]{43,128}$/', $verifier) !== 1 || !hash_equals($code->getCodeChallenge(), self::base64Url(hash('sha256', $verifier, true)))) {
             throw new OAuthError('invalid_grant', 'Vérification PKCE échouée.');
         }
-        if (!self::canAuthorize($code->getUser())) {
-            throw new OAuthError('invalid_grant', 'Ce compte n\'est plus administrateur.');
+        if (!$this->canUseScope($code->getUser(), $code->getScope())) {
+            throw new OAuthError('invalid_grant', 'Ce compte ne peut plus utiliser ce connecteur.');
         }
 
         $grant = new OAuthGrant($client, $code->getUser(), $code);
@@ -248,8 +270,11 @@ final class OAuthServer
     {
         $client = $this->requireClient($params);
         $grant = $this->entityManager->getRepository(OAuthGrant::class)->findOneBy(['refreshTokenHash' => self::hash((string) ($params['refresh_token'] ?? ''))]);
-        if ($grant === null || $grant->getClient() !== $client || !$grant->isRefreshValid(new \DateTimeImmutable()) || !self::canAuthorize($grant->getUser())) {
+        if ($grant === null || $grant->getClient() !== $client || !$grant->isRefreshValid(new \DateTimeImmutable()) || !$this->canUseGrant($grant)) {
             throw new OAuthError('invalid_grant', 'Jeton de rafraîchissement invalide, expiré ou révoqué : reconnectez le connecteur.');
+        }
+        if (isset($params['resource']) && !self::sameResource((string) $params['resource'], $grant->getResource())) {
+            throw new OAuthError('invalid_grant', 'La ressource ne correspond pas au jeton de rafraîchissement.');
         }
 
         return $this->issueTokens($grant);
@@ -285,8 +310,34 @@ final class OAuthServer
             'token_type' => 'Bearer',
             'expires_in' => self::ACCESS_TTL,
             'refresh_token' => $refresh,
-            'scope' => self::SCOPE,
+            'scope' => $grant->getScope(),
         ];
+    }
+
+    /** @param array<string, string> $resources */
+    private function isKnownResource(string $given, array $resources): bool
+    {
+        foreach (array_keys($resources) as $resource) {
+            if (self::sameResource($given, $resource)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function canUseGrant(OAuthGrant $grant): bool
+    {
+        return $this->canUseScope($grant->getUser(), $grant->getScope());
+    }
+
+    private function canUseScope(User $user, string $scope): bool
+    {
+        return match ($scope) {
+            self::SCOPE_REDACTION => self::canAuthorize($user),
+            self::SCOPE_LEARNER_READ => \in_array('ROLE_USER', $user->getRoles(), true),
+            default => false,
+        };
     }
 
     private function isAllowedRedirectUri(string $uri): bool
