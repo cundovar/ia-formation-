@@ -19,9 +19,6 @@ final class RagIndex
     public function refresh(): void
     {
         foreach ($this->entityManager->getRepository(PageContent::class)->findAll() as $course) {
-            if (!$course instanceof PageContent) {
-                continue;
-            }
             $this->sync($course);
         }
         $this->entityManager->flush();

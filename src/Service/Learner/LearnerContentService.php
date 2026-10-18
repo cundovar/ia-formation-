@@ -26,7 +26,7 @@ final class LearnerContentService
         $categories = $this->entityManager->getRepository(Category::class)->findBy(['visible' => true], ['ordre' => 'ASC', 'name' => 'ASC']);
         $result = [];
         foreach ($categories as $category) {
-            if (!$category instanceof Category || !$category->isAccessibleTo($learner) || ($audience !== null && $category->getAudience() !== $audience)) {
+            if (!$category->isAccessibleTo($learner) || ($audience !== null && $category->getAudience() !== $audience)) {
                 continue;
             }
             $result[] = [

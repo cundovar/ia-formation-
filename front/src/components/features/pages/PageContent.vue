@@ -270,7 +270,9 @@ onMounted(async () => {
   try {
     const { data } = await axios.get('/user-api/mon-espace')
     progressionActive.value = data.progressionActivee === true
-  } catch {}
+  } catch {
+    progressionActive.value = false
+  }
 })
 
 async function fetchCaptures(ids) {
