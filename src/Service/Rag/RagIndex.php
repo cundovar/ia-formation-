@@ -27,7 +27,8 @@ final class RagIndex
     private function sync(PageContent $course): void
     {
         $existing = $this->entityManager->getRepository(RagPassage::class)->findBy(['course' => $course], ['position' => 'ASC']);
-        $text = self::text($course->getContent());
+        // Le texte d'un cours rédigé par le connecteur est dans `code` ; `content` sert aux anciens cours.
+        $text = self::text(($course->getCode() ?: null) ?? $course->getContent());
         $checksum = hash('sha256', $course->getStatus().'\0'.$text);
         if ($course->isPublished() && $existing !== [] && $existing[0]->getChecksum() === $checksum) {
             return;

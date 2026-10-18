@@ -69,7 +69,7 @@ final class LearnerContentService
                     'coursId' => $page->getId(),
                     'passage' => $passage->getPosition(),
                     'texte' => $passage->getContent(),
-                    'adresse' => $page->getPage()?->getSlug() === null ? null : '/spa/'.$page->getPage()->getSlug(),
+                    'adresse' => self::address($page),
                 ],
             ];
             if (count($result) === 10) {
@@ -88,7 +88,7 @@ final class LearnerContentService
             return null;
         }
 
-        return $this->summary($page) + ['contenu' => self::text($page->getContent())];
+        return $this->summary($page) + ['contenu' => self::text(self::body($page))];
     }
 
     private function canRead(PageContent $page, User $learner): bool
@@ -107,10 +107,23 @@ final class LearnerContentService
             'parcours' => $page->getCategory()?->getName(),
             'module' => $page->getMenu()?->getLabel(),
             'duree' => $page->getDuration(),
-            'extrait' => mb_substr(self::text($page->getContent()), 0, 500),
+            'extrait' => mb_substr(self::text(self::body($page)), 0, 500),
             'sourceOfficielle' => $page->getSourceUrl(),
-            'adresse' => $page->getPage()?->getSlug() === null ? null : '/spa/'.$page->getPage()->getSlug(),
+            'adresse' => self::address($page),
         ];
+    }
+
+    /** Le texte d'un cours rédigé par le connecteur est dans `code` ; `content` sert aux anciens cours. */
+    private static function body(PageContent $page): ?string
+    {
+        return ($page->getCode() ?: null) ?? $page->getContent();
+    }
+
+    private static function address(PageContent $page): ?string
+    {
+        $slug = $page->getPage()?->getSlug();
+
+        return $slug === null ? null : '/spa/'.ltrim($slug, '/');
     }
 
     private static function text(?string $html): string
