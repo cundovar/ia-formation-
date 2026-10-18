@@ -1,6 +1,6 @@
 # Laboratoires
 
-Un laboratoire fait manipuler un workflow (déclencheur, conditions, agent, outils, API, recherche documentaire…) dans un simulateur du site. Tout s'exécute dans le navigateur, avec des règles fixes : aucune IA réelle, aucun service extérieur, aucun compte ni clé d'API. Le site ne garde ni le workflow de la personne ni sa réussite.
+Un laboratoire fait manipuler un workflow (déclencheur, conditions, agent, outils, API, recherche documentaire…) dans un simulateur du site. Tout s'exécute dans le navigateur, avec des règles fixes : aucune IA réelle, aucun service extérieur, aucun compte ni clé d'API. Le site ne garde ni le workflow de la personne ni sa réussite. Seule exception, facultative : le mode IA réelle avec la clé de la personne (`LAB-08`).
 
 ## LAB-01 — Dire que c'est une simulation
 
@@ -10,6 +10,7 @@ Un laboratoire fait manipuler un workflow (déclencheur, conditions, agent, outi
 - Le champ `simulation` explique en une phrase ce qui est simulé (« L'agent choisit sa réponse d'après des règles écrites à l'avance »).
 - Quand un bloc simule une décision d'IA, le journal dit quelle règle a été appliquée.
 - Le laboratoire rappelle qu'une vraie IA peut se tromper ou répondre autrement (`LIM-01`).
+- En mode IA réelle (`LAB-08`), le bandeau et chaque étape du journal disent quel bloc a été confié à un vrai modèle, chez quel fournisseur, et que le reste du laboratoire reste simulé.
 
 **Source.** [PLAN] : laboratoires en simulation locale ; [AI-ACT] : transparence sur l'usage de l'IA.
 
@@ -22,6 +23,7 @@ Un laboratoire fait manipuler un workflow (déclencheur, conditions, agent, outi
 - Adresses web et courriels en `exemple.fr`, `example.com` ou `.test` ; numéros écrits avec des X.
 - Aucune clé, aucun jeton, aucun mot de passe, même d'apparence réaliste (`DON-05`).
 - Les blocs restent génériques : « Agent IA », « Serveur MCP fictif », « API météo fictive ».
+- En mode IA réelle (`LAB-08`), seuls la consigne et les données fictives du laboratoire partent chez le fournisseur ; la page rappelle de n'y écrire rien de personnel ni de confidentiel. Le nom du fournisseur n'apparaît que dans le panneau de ce mode, sans logo ni mise en avant.
 
 **Source.** [PLAN] et `DON-04` : données fictives ; `AGENTS.md` : aucune affiliation à un éditeur d'IA.
 
@@ -77,3 +79,16 @@ Un laboratoire fait manipuler un workflow (déclencheur, conditions, agent, outi
 **Dans un laboratoire.** Ne pas promettre de sauvegarde, de score ou d'attestation.
 
 **Source.** [PLAN] : aucun suivi de progression ni score enregistré.
+
+## LAB-08 — Mode IA réelle avec sa propre clé
+
+**Règle.** Dans un laboratoire qui le prévoit, la personne peut confier le bloc Agent à un vrai modèle avec **sa propre clé d'API**. Ce mode est facultatif et désactivé par défaut. La clé ne quitte le navigateur que vers le fournisseur choisi : le site ne la reçoit pas, ne la garde pas et ne finance aucun appel. *Règle du projet.*
+
+**Dans un laboratoire.**
+- Le laboratoire déclare ce mode (`"modeReel": true`) seulement si son bloc Agent a du sens face à un vrai modèle. Les outils, API, serveurs MCP, documents et mémoires restent simulés.
+- Avant l'activation, la page explique : le coût est facturé par le fournisseur sur le compte de la personne ; la consigne et la donnée transmise à l'agent partent chez lui ; la clé est un mot de passe (`DON-05`), gardée en mémoire seulement et effacée en quittant la page, avec un bouton pour l'oublier ; un plafond de dépense se règle sur la page officielle du fournisseur.
+- La vérification des objectifs reste calculée en simulation : une vraie IA ne répond pas deux fois pareil.
+- Si l'appel échoue (clé refusée, crédit épuisé, service indisponible, appel bloqué par le navigateur, hors ligne), l'étape s'arrête avec un message clair et la simulation reste disponible.
+- Seuls sont proposés les fournisseurs qui acceptent l'appel direct depuis un navigateur ; leur choix tient à cette contrainte technique, pas à une préférence ni à un partenariat.
+
+**Source.** [PLAN] : phase 6 de `docs/PLAN_LABORATOIRES.md` ; `DON-05` : une clé d'API est un mot de passe ; [ANSSI-IAG] : clés d'API et fuite de données ; [ANTHROPIC-CORS] : appel direct depuis un navigateur.

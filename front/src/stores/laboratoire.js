@@ -3,6 +3,7 @@ import { BLOCS, trouverBloc } from '@/laboratoires/blocs'
 import { evaluerCriteres } from '@/laboratoires/moteur/criteres'
 import { creerExecution, estTerminee, etapeSuivante, executerTout, poursuivre, repondreValidation } from '@/laboratoires/moteur/execution'
 import { normaliser, valider } from '@/laboratoires/moteur/workflow'
+import { useIaReelleStore } from '@/stores/iaReelle'
 
 // Séance d'un laboratoire : rien n'est persisté (LAB-07), tout disparaît en quittant la page
 let minuteur = null
@@ -37,6 +38,11 @@ export const useLaboratoireStore = defineStore('laboratoire', {
     options: (state) => ({ blocsDisponibles: state.lab?.blocsDisponibles ?? null, simulateurs: state.lab?.simulateurs ?? {} }),
     erreursValidation() {
       return this.lab ? valider(this.workflow, this.options) : []
+    },
+    // Bloc Agent confié à une vraie IA (LAB-08) : seulement dans un labo qui le prévoit, clé saisie
+    agentReel: (state) => (state.lab?.modeReel ? useIaReelleStore().agentReel : null),
+    modeIaReelle() {
+      return Boolean(this.agentReel)
     },
     peutAnnuler: (state) => state.historique.passe.length > 0,
     peutRetablir: (state) => state.historique.futur.length > 0,
@@ -210,7 +216,7 @@ export const useLaboratoireStore = defineStore('laboratoire', {
         this.execution = this.nouvelleExecution()
         if (this.execution.statut === 'invalide') return this.execution
       }
-      this.execution = await etapeSuivante(this.execution)
+      this.execution = await etapeSuivante(this.execution, { agentReel: this.agentReel })
       return this.execution
     },
 
@@ -239,8 +245,8 @@ export const useLaboratoireStore = defineStore('laboratoire', {
     async toutExecuter() {
       this.pause()
       this.execution = this.execution && !estTerminee(this.execution)
-        ? await poursuivre(this.execution)
-        : await executerTout(this.workflow, this.jeu, this.options)
+        ? await poursuivre(this.execution, { agentReel: this.agentReel })
+        : await executerTout(this.workflow, this.jeu, { ...this.options, agentReel: this.agentReel })
     },
 
     // Décision de l'apprenant pour la validation humaine en attente ; le bloc s'exécute aussitôt

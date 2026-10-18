@@ -110,6 +110,11 @@ export function validerLaboratoire(lab) {
   lab.criteres.filter((critere) => /^outil/.test(critere.type) && !outils.has(critere.outil))
     .forEach((critere) => ajouter(`le critère « ${critere.id} » cite un outil inconnu « ${critere.outil} ».`))
 
+  if (lab.modeReel !== undefined) {
+    if (typeof lab.modeReel !== 'boolean') ajouter('le champ « modeReel » vaut true ou false.')
+    else if (lab.modeReel && !lab.blocsDisponibles.includes('agent')) ajouter('le mode IA réelle demande le bloc agent.')
+  }
+
   const initial = normaliser(lab.workflowInitial)
   const ids = new Set(initial.noeuds.map((noeud) => noeud.id))
   ;(lab.verrous?.noeuds ?? []).filter((id) => !ids.has(id)).forEach((id) => ajouter(`le verrou cite un bloc inconnu « ${id} ».`))
