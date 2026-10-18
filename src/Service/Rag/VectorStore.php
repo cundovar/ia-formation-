@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Rag;
 
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\HttpClient\Exception\TransportExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /** Client du service vectoriel privé ; null signifie que le repli MySQL doit être utilisé. */
