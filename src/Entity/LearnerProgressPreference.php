@@ -3,7 +3,8 @@ declare(strict_types=1);
 namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity]
-#[ORM\Table(name: 'learner_progress_preference', uniqueConstraints: [new ORM\UniqueConstraint(name: 'UNIQ_LEARNER_PROGRESS_USER', columns: ['user_id'])])]
+#[ORM\Table(name: 'learner_progress_preference')]
+#[ORM\UniqueConstraint(name: 'UNIQ_LEARNER_PROGRESS_USER', columns: ['user_id'])]
 class LearnerProgressPreference {
  #[ORM\Id] #[ORM\GeneratedValue] #[ORM\Column] private ?int $id=null;
  #[ORM\ManyToOne] #[ORM\JoinColumn(nullable:false,onDelete:'CASCADE')] private User $user;
