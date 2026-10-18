@@ -49,6 +49,7 @@ final class MonEspaceController extends AbstractController
         return $this->json([
             'pseudo' => $user->getUsername(),
             'email' => $user->getEmail(),
+            'progressionActivee' => $this->entityManager->getRepository(LearnerProgressPreference::class)->findOneBy(['user' => $user])?->isEnabled() ?? false,
             'cours' => array_map(static fn (PageContent $course) => [
                 'id' => $course->getId(),
                 'titre' => $course->getTitle(),
