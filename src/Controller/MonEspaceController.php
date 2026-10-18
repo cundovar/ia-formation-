@@ -9,6 +9,7 @@ use App\Entity\PageContent;
 use App\Entity\QCM;
 use App\Entity\User;
 use App\Entity\LearnerProgressPreference;
+use App\Entity\LearnerCourseProgress;
 use App\Form\RegistrationForm;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -79,9 +80,25 @@ final class MonEspaceController extends AbstractController
         if (($payload['consentementExplicite'] ?? false) !== true) return $this->json(['message' => 'Confirmez explicitement votre accord.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         $preference = $this->entityManager->getRepository(LearnerProgressPreference::class)->findOneBy(['user' => $user]) ?? new LearnerProgressPreference($user);
         $enabled = (bool) ($payload['activer'] ?? false);
-        $enabled ? $preference->enable() : $preference->disable();
+        if ($enabled) {
+            $preference->enable();
+        } else {
+            $preference->disable();
+            $this->entityManager->createQuery('DELETE FROM '.LearnerCourseProgress::class.' p WHERE p.user = :user')->setParameter('user', $user)->execute();
+        }
         $this->entityManager->persist($preference); $this->entityManager->flush();
         return $this->json(['progressionActivee' => $enabled]);
+    }
+
+    #[Route('/progression/cours/{id}', name: 'mon_espace_progression_cours', methods: ['POST'])]
+    public function completeCourse(int $id): JsonResponse
+    {
+        $user = $this->learner();
+        $preference = $this->entityManager->getRepository(LearnerProgressPreference::class)->findOneBy(['user' => $user]);
+        $course = $this->entityManager->find(PageContent::class, $id);
+        if (!$preference?->isEnabled() || !$course instanceof PageContent || !$course->isPublished() || !$course->isAccessibleTo($user) || !($course->getCategory()?->isAccessibleTo($user) ?? true)) return $this->json(['message' => 'Progression indisponible.'], Response::HTTP_FORBIDDEN);
+        if ($this->entityManager->getRepository(LearnerCourseProgress::class)->findOneBy(['user' => $user, 'course' => $course]) === null) $this->entityManager->persist(new LearnerCourseProgress($user, $course));
+        $this->entityManager->flush(); return $this->json(['coursTermine' => $id]);
     }
 
     #[Route('/mot-de-passe', name: 'mon_espace_mot_de_passe', methods: ['POST'])]

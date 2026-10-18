@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: consented progress
@@ -7,7 +7,7 @@ status: pending
 ## Architecture projection
 
 ```txt
-✅ progress entities, migration, consent flow, and tests
+✅ progress entities, migration and consent flow
 ```
 
 ## Tasks to do
@@ -21,3 +21,7 @@ status: pending
 | Task | Acceptance criteria |
 | --- | --- |
 | 1 | A learner can revoke and erase recorded progress. |
+
+## Delivery note
+
+Revoking the explicit consent removes every recorded completion for that learner.
