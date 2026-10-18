@@ -10,7 +10,10 @@ services:
       - qdrant_storage:/qdrant/storage
     networks: [rag]
   rag:
-    build: ./service
+    build:
+      context: ./service
+      args:
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
     restart: unless-stopped
     environment:
       RAG_SERVICE_TOKEN: ${RAG_SERVICE_TOKEN:?Set RAG_SERVICE_TOKEN}
