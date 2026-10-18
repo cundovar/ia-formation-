@@ -1,0 +1,39 @@
+name: formateur-ia-rag
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.16.3
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY}
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks: [rag]
+  rag:
+    build: ./service
+    restart: unless-stopped
+    environment:
+      RAG_SERVICE_TOKEN: ${RAG_SERVICE_TOKEN:?Set RAG_SERVICE_TOKEN}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
+    depends_on: [qdrant]
+    read_only: true
+    tmpfs: [/tmp:rw,noexec,nosuid,size=512m]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    networks: [rag, coolify]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.routers.formateur-ia-rag.rule=Host(`${RAG_SERVICE_HOST:?Set the RAG service hostname}`)
+      - traefik.http.routers.formateur-ia-rag.entrypoints=https
+      - traefik.http.routers.formateur-ia-rag.tls=true
+      - traefik.http.routers.formateur-ia-rag.tls.certresolver=letsencrypt
+      - traefik.http.services.formateur-ia-rag.loadbalancer.server.port=8000
+volumes:
+  qdrant_storage:
+networks:
+  rag:
+  coolify:
+    external: true

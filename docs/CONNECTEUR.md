@@ -40,7 +40,7 @@ Ajouter l'adresse `https://<site>/mcp/apprenant` comme connecteur personnalisé,
 | Outil | Rôle |
 | --- | --- |
 | `lister_parcours` | Parcours publics ou attribués au compte, avec filtre facultatif par public |
-| `rechercher_cours` | Recherche MySQL dans les passages des seuls cours publiés accessibles au compte ; chaque résultat fournit une citation |
+| `rechercher_cours` | Recherche sémantique vectorielle dans les passages des seuls cours publiés accessibles au compte ; chaque résultat fournit une citation. MySQL sert de repli si le service vectoriel est indisponible. |
 | `lire_cours` | Contenu d'un cours accessible par son identifiant |
 
 Un contenu introuvable peut être absent, non publié ou réservé à une autre personne : le connecteur ne précise pas lequel de ces cas s'applique.

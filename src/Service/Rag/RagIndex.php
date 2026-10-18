@@ -13,7 +13,7 @@ final class RagIndex
 {
     private const PASSAGE_LENGTH = 900;
 
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(private EntityManagerInterface $entityManager, private VectorStore $vectors) {}
 
     /** Synchronise le petit catalogue courant avant une recherche, sans réseau ni modèle externe. */
     public function refresh(): void
@@ -22,6 +22,19 @@ final class RagIndex
             $this->sync($course);
         }
         $this->entityManager->flush();
+    }
+
+    public function rebuildVectors(): int
+    {
+        $count = 0;
+        foreach ($this->entityManager->getRepository(PageContent::class)->findAll() as $course) {
+            $text = self::text($course->getContent());
+            if (!$course->isPublished() || $text === '') { $this->vectors->deleteCourse((int) $course->getId()); continue; }
+            $checksum = hash('sha256', $course->getStatus().'\0'.$text);
+            $this->indexVectors($course, self::split($text), $checksum);
+            ++$count;
+        }
+        return $count;
     }
 
     private function sync(PageContent $course): void
@@ -37,6 +50,7 @@ final class RagIndex
             foreach ($existing as $passage) {
                 $this->entityManager->remove($passage);
             }
+            $this->vectors->deleteCourse((int) $course->getId());
             return;
         }
         $chunks = self::split($text);
@@ -50,6 +64,14 @@ final class RagIndex
         foreach (array_slice($existing, count($chunks)) as $passage) {
             $this->entityManager->remove($passage);
         }
+        $this->indexVectors($course, $chunks, $checksum);
+    }
+
+    /** @param list<string> $chunks */
+    private function indexVectors(PageContent $course, array $chunks, string $checksum): void
+    {
+        $id = (int) $course->getId();
+        $this->vectors->index(array_map(static fn (string $text, int $offset) => ['id' => $id.'-'.($offset + 1), 'text' => $text, 'course_id' => $id, 'position' => $offset + 1, 'checksum' => $checksum], $chunks, array_keys($chunks)));
     }
 
     /** @return list<string> */

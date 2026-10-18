@@ -9,6 +9,7 @@ use App\Entity\PageContent;
 use App\Entity\RagPassage;
 use App\Entity\User;
 use App\Service\Rag\RagIndex;
+use App\Service\Rag\VectorStore;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -18,7 +19,7 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final class LearnerContentService
 {
-    public function __construct(private EntityManagerInterface $entityManager, private RagIndex $ragIndex) {}
+    public function __construct(private EntityManagerInterface $entityManager, private RagIndex $ragIndex, private VectorStore $vectors) {}
 
     /** @return list<array<string, mixed>> */
     public function parcours(User $learner, ?string $audience = null): array
@@ -48,6 +49,10 @@ final class LearnerContentService
             return [];
         }
 
+        $vectorResults = $this->vectors->search($query);
+        if ($vectorResults !== null) {
+            return $this->vectorResults($learner, $vectorResults);
+        }
         $this->ragIndex->refresh();
         $terms = self::booleanTerms($query);
         if ($terms === '') {
@@ -77,6 +82,19 @@ final class LearnerContentService
             }
         }
 
+        return $result;
+    }
+
+    /** @param list<array{course_id:int,position:int,text:string,score:float}> $passages @return list<array<string,mixed>> */
+    private function vectorResults(User $learner, array $passages): array
+    {
+        $result = [];
+        foreach ($passages as $passage) {
+            $page = $this->entityManager->find(PageContent::class, (int) $passage['course_id']);
+            if (!$page instanceof PageContent || !$this->canRead($page, $learner)) continue;
+            $result[] = $this->summary($page) + ['citation' => ['coursId' => $page->getId(), 'passage' => (int) $passage['position'], 'texte' => (string) $passage['text'], 'adresse' => $page->getPage()?->getSlug() === null ? null : '/spa/'.$page->getPage()->getSlug()]];
+            if (count($result) === 10) break;
+        }
         return $result;
     }
 

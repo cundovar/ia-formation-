@@ -84,6 +84,8 @@ Le job `deploy` (rsync vers un hébergement OVH, puis `doctrine:migrations:migra
 
 L'hébergement mutualisé n'exécute jamais Playwright. Le service `deploy/netcup-capture/` se déploie sur un serveur Docker avec Traefik : choisir un domaine de capture, générer un jeton avec `openssl rand -hex 32`, le placer dans le `.env` du service, puis renseigner la même valeur et `CAPTURE_SERVICE_URL` dans le `.env` du site. Vérifier ensuite `GET /health` et une capture réelle.
 
+Le RAG vectoriel s'exécute sur le même type de serveur Docker Netcup, dans `deploy/netcup-rag/`. Qdrant n'est jamais exposé directement : le service RAG authentifié y accède sur le réseau Docker. Après déploiement, vérifier `GET /health` sur le service RAG, renseigner `RAG_VECTOR_URL` et `RAG_VECTOR_TOKEN` sur OVH, puis lancer `php bin/console app:rag:reindex`. Le guide complet est [`RAG_VECTORIEL.md`](RAG_VECTORIEL.md).
+
 Contrôles du harness lui-même :
 
 ```bash

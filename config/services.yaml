@@ -12,6 +12,8 @@ parameters:
     # Service Playwright isolé sur Netcup. Laisser l'URL vide en développement pour utiliser le moteur local.
     env(CAPTURE_SERVICE_URL): ''
     env(CAPTURE_SERVICE_TOKEN): ''
+    env(RAG_VECTOR_URL): ''
+    env(RAG_VECTOR_TOKEN): ''
     # Connecteur MCP (docs/CONNECTEUR.md) : adresse publique du site et hôtes de retour OAuth autorisés
     env(MCP_PUBLIC_URL): ''
     app.oauth.redirect_hosts: '%env(csv:OAUTH_REDIRECT_HOSTS)%'
