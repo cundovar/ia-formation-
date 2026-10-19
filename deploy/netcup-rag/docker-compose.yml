@@ -13,16 +13,17 @@ services:
     build:
       context: ./service
       args:
-        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
     restart: unless-stopped
     environment:
       RAG_SERVICE_TOKEN: ${RAG_SERVICE_TOKEN:?Set RAG_SERVICE_TOKEN}
       QDRANT_URL: http://qdrant:6333
       QDRANT_API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
     depends_on: [qdrant]
     read_only: true
-    tmpfs: [/tmp:rw,noexec,nosuid,size=512m]
+    tmpfs:
+      - /tmp
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     networks: [rag, coolify]

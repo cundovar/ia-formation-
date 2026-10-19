@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 WORKDIR /app
-ARG EMBEDDING_MODEL=intfloat/multilingual-e5-small
+ARG EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
