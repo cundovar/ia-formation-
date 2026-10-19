@@ -62,21 +62,21 @@ Aucun e-mail, pseudo ni suivi d'apprenant n'est envoyé à Qdrant.
 
 **Repli automatique** : si le service RAG ne répond pas (panne, délai de 8 s dépassé, variables absentes), la recherche passe par MySQL FULLTEXT sur la table `rag_passage`, avec les mêmes règles d'accès. Cette table est remise à jour juste avant chaque recherche de repli.
 
-## 5. Quand réindexer
+## 5. Mise à jour automatique et réindexation
 
-> **Important.** Quand le service RAG fonctionne, la publication, la modification ou le retrait d'un cours **ne met pas Qdrant à jour automatiquement**. Le repli MySQL se resynchronise seul, mais pas Qdrant.
+Quand un cours est **publié, modifié (texte ou statut) ou retiré**, le site met Qdrant à jour automatiquement (`src/EventListener/RagCourseSyncListener.php`) :
 
-Conséquences :
+- les cours touchés sont notés pendant l'enregistrement, puis envoyés au service RAG **après la réponse** : la publication n'attend pas Netcup ;
+- un cours publié voit ses points remplacés ; un cours repassé en brouillon ou supprimé voit ses points retirés ;
+- un changement de titre, de rubrique ou d'accès ne relance rien : le texte indexé ne change pas, et les droits sont vérifiés à chaque recherche ;
+- si le service RAG est en panne, la publication réussit quand même ; un avertissement « Recherche vectorielle non mise à jour pour le cours … » est écrit dans le journal du site (`var/log/prod.log`).
 
-- un **nouveau cours** n'est pas trouvé par la recherche vectorielle tant qu'on n'a pas réindexé ;
-- un **cours modifié** peut renvoyer l'ancien texte en citation ;
-- un **cours retiré** n'est jamais renvoyé (le site filtre les droits), mais ses points restent dans Qdrant jusqu'à la réindexation.
+Lancer `app:rag:reindex` à la main seulement :
 
-Lancer donc `app:rag:reindex` après :
-
-- une publication, une modification ou un retrait de cours ;
-- une restauration de Qdrant ou un changement de modèle de vecteurs ;
-- une modification de `deploy/netcup-rag/service/`.
+- après un avertissement de ce type dans le journal ;
+- après une restauration de Qdrant ou un changement de modèle de vecteurs ;
+- après une modification de `deploy/netcup-rag/service/` ;
+- pour une première mise en service.
 
 ```bash
 ssh ovh 'cd ~/ia && php bin/console app:rag:reindex'
@@ -134,7 +134,7 @@ Bonnes pratiques :
 | « Échec pour les cours … » | Service injoignable, jeton faux, erreur Qdrant | Vérifier `RAG_VECTOR_URL` et `RAG_VECTOR_TOKEN` sur OVH, puis `docker logs formateur-ia-rag-rag-1` sur Netcup |
 | Erreur 401 dans les journaux du service | Jeton différent entre OVH et Netcup | Aligner `RAG_VECTOR_TOKEN` (OVH) et `RAG_SERVICE_TOKEN` (Netcup) |
 | `is not a valid point ID` | Ancienne version du service | Reconstruire : `docker compose up -d --build rag` |
-| Nouveau cours introuvable | Pas encore réindexé (section 5) | `app:rag:reindex` |
+| Nouveau cours introuvable | Service en panne au moment de la publication (avertissement dans `var/log/prod.log`) | `app:rag:reindex` |
 | La recherche marche mais semble « par mots » | Repli MySQL actif : service RAG en panne | Vérifier le conteneur `rag` et ses journaux |
 | `localhost:6333` ne répond pas | Tunnel SSH fermé | Relancer la commande de la section 7 |
 
