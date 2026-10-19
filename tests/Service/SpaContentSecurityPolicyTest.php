@@ -19,7 +19,8 @@ final class SpaContentSecurityPolicyTest extends TestCase
         $policy = SpaContentSecurityPolicy::header();
 
         self::assertStringContainsString("script-src 'self';", $policy);
-        self::assertStringContainsString("connect-src 'self' https://api.anthropic.com;", $policy);
+        self::assertStringContainsString("connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://open.bigmodel.cn;", $policy);
+        self::assertStringNotContainsString('api.z.ai', $policy);
         self::assertStringContainsString("object-src 'none'", $policy);
         self::assertStringContainsString("frame-src 'none'", $policy);
         self::assertStringNotContainsString('unsafe-eval', $policy);

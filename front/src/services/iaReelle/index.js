@@ -4,12 +4,14 @@
  * il lui est passé sous forme de fonction (`agentReel`).
  */
 import anthropic from './anthropic.js'
+import deepseek from './deepseek.js'
+import glm from './glm.js'
 import { erreur, ErreurIaReelle } from './erreurs.js'
 
 export { ErreurIaReelle }
 
-// Seuls les fournisseurs qui acceptent l'appel direct depuis un navigateur (phase 6, T6.0)
-export const FOURNISSEURS = Object.fromEntries([anthropic].map((fournisseur) => [fournisseur.id, fournisseur]))
+// Seuls les fournisseurs qui acceptent l'appel direct depuis un navigateur (phases 6 et 7), par ordre alphabétique
+export const FOURNISSEURS = Object.fromEntries([anthropic, deepseek, glm].map((fournisseur) => [fournisseur.id, fournisseur]))
 
 export const LIMITES_IA_REELLE = {
   consigne: 2000,

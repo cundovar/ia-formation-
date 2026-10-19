@@ -14,7 +14,7 @@ namespace App\Service;
 final class SpaContentSecurityPolicy
 {
     // Fournisseurs que le navigateur peut appeler directement (front/src/services/iaReelle)
-    public const AI_PROVIDERS = ['https://api.anthropic.com'];
+    public const AI_PROVIDERS = ['https://api.anthropic.com', 'https://api.deepseek.com', 'https://open.bigmodel.cn'];
 
     public static function header(): string
     {
