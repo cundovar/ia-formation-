@@ -12,6 +12,9 @@ Liste de travail du **16 octobre 2026**. Les identifiants entre crochets sont ci
 | [PIX] | [Les compétences Pix](https://pix.fr/competences/) | Pix (cadre de référence des compétences numériques, décret n° 2019-919 du 30 août 2019) | repris du référentiel de la médiation numérique | Rattacher un cours « apprendre » à une compétence |
 | [OWASP-LLM] | [OWASP Top 10 for Large Language Model Applications](https://genai.owasp.org/llm-top-10/) | OWASP | à consulter | Injection de consignes, permissions excessives des agents (laboratoires) |
 | [ANTHROPIC-CORS] | [Documentation de l'API d'Anthropic](https://docs.claude.com/en/api/overview) (appel depuis un navigateur : en-tête `anthropic-dangerous-direct-browser-access`, annoncé en août 2024) | Anthropic | à consulter : vérifier l'adresse et le comportement actuels avant la mise en ligne | Mode IA réelle des laboratoires (`LAB-08`) |
+| [DEEPSEEK-API] | [Documentation de l'API DeepSeek](https://api-docs.deepseek.com/) (modèles, prix, codes d'erreur, mode « réflexion ») | DeepSeek | à consulter : relevé du 19 octobre 2026 (modèles `deepseek-flash` et `deepseek-v4-pro`, appel depuis le navigateur accepté) | Mode IA réelle des laboratoires (`LAB-08`) |
+| [ZHIPU-API] | [Documentation de la plateforme BigModel](https://docs.bigmodel.cn/cn/guide/start/quick-start) (modèles, codes d'erreur) | Zhipu AI | à consulter : relevé du 19 octobre 2026 (`open.bigmodel.cn` accepte l'appel depuis le navigateur, `api.z.ai` le refuse) | Mode IA réelle des laboratoires (`LAB-08`) |
+| [CNIL-TRANSFERTS] | [Transférer des données hors de l'Union européenne](https://www.cnil.fr/fr/transferer-des-donnees-hors-de-lue) | CNIL | à consulter | Avertissement sur le lieu de traitement des données (`LAB-08`) |
 | [PLAN] | `PLAN_APP_FORMATION_IA.md` et `AGENTS.md` | Ce projet | 16/10/2026 | Règles du projet |
 
 ## Sources à compléter

@@ -11,6 +11,8 @@ const VERSION_API = '2023-06-01'
 export default {
   id: 'anthropic',
   libelle: 'Anthropic',
+  lieuDonnees: 'aux États-Unis',
+  horsUnionEuropeenne: true,
   modeles: [
     { id: 'claude-haiku-5-5', libelle: 'Claude Haiku 5.5 (rapide, le moins cher)' },
     { id: 'claude-sonnet-5-5', libelle: 'Claude Sonnet 5.5 (plus précis, plus cher)' },

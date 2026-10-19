@@ -66,7 +66,9 @@
         </p>
         <ul class="mt-1 list-disc space-y-1 pl-5">
           <li>Chaque réponse est facturée par le fournisseur, sur votre compte. Fixez un plafond de dépense sur sa page officielle.</li>
-          <li>La consigne de l'agent et la donnée qu'il reçoit partent chez le fournisseur. N'y écrivez rien de personnel ni de confidentiel.</li>
+          <li data-testid="ia-lieu-donnees">
+            La consigne de l'agent et la donnée qu'il reçoit partent chez {{ lieuDonnees }}. Ses conditions d'utilisation disent si ces contenus peuvent être conservés ou réutilisés. N'y écrivez rien de personnel ni de confidentiel.
+          </li>
           <li>Votre clé est un mot de passe. Elle n'est envoyée qu'au fournisseur, jamais à ce site, et elle est oubliée en quittant la page.</li>
           <li>Les objectifs du laboratoire restent vérifiés en simulation : une vraie IA ne répond jamais deux fois pareil.</li>
         </ul>
@@ -148,6 +150,9 @@
           <template v-else>
             Créez-la sur la page officielle du fournisseur.
           </template>
+          <template v-if="ia.fournisseurChoisi?.aideCle">
+            {{ ia.fournisseurChoisi.aideCle }}
+          </template>
           <a
             v-if="ia.fournisseurChoisi"
             :href="ia.fournisseurChoisi.pageCles"
@@ -227,6 +232,13 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('online', majConnexion)
   window.removeEventListener('offline', majConnexion)
+})
+
+// « Anthropic, qui les traite aux États-Unis, hors de l'Union européenne »
+const lieuDonnees = computed(() => {
+  const fournisseur = ia.fournisseurChoisi
+  if (!fournisseur) return 'le fournisseur'
+  return `${fournisseur.libelle}, qui les traite ${fournisseur.lieuDonnees}${fournisseur.horsUnionEuropeenne ? ', hors de l\'Union européenne' : ''}`
 })
 
 const formatDouteux = computed(() => ia.cle.trim() !== '' && ia.fournisseurChoisi?.formatCle && !ia.fournisseurChoisi.formatCle.test(ia.cle.trim()))

@@ -193,6 +193,49 @@ T6.0 (19 octobre 2026) : seul Anthropic documente l'appel direct depuis un navig
 
 **Plus tard, hors v1** : agent réel qui choisit parmi les outils fictifs (labo d'injection en conditions réelles) ; relais sans stockage pour les fournisseurs qui refusent le navigateur ; clé du site pour des ateliers encadrés (code de séance, quota, plafond).
 
+### Phase 7 — Autres fournisseurs : DeepSeek et GLM
+
+**Objectif.** Laisser l'apprenant utiliser une clé DeepSeek ou GLM (Zhipu AI) en mode IA réelle, en plus d'Anthropic, sans changer le principe de `LAB-08` : appel direct du navigateur, clé jamais reçue par le site.
+
+**Constat technique (19 octobre 2026, requêtes de vérification `OPTIONS` sans clé, origine `https://ia.varascundo.com`).**
+
+| Fournisseur | Adresse | Appel depuis le navigateur |
+|---|---|---|
+| Anthropic | `api.anthropic.com/v1/messages` | accepté (déjà en place) |
+| DeepSeek | `api.deepseek.com/chat/completions` | accepté (`access-control-allow-origin` renvoie l'origine du site) |
+| GLM, plateforme chinoise | `open.bigmodel.cn/api/paas/v4/chat/completions` | accepté |
+| GLM, plateforme internationale | `api.z.ai/api/paas/v4/chat/completions` | **refusé** (aucun en-tête CORS ; anomalie signalée publiquement depuis septembre 2026) |
+
+Ce constat ne remplace pas l'essai réel avec une clé (T7.6). Les fournisseurs peuvent changer leurs règles : l'adaptateur doit pouvoir être retiré sans toucher au reste.
+
+**État au 19 octobre 2026.** Plan validé par le porteur du projet le 19 octobre 2026. T7.0 à T7.5 sont dans le code : `compatibleOpenAI.js`, `deepseek.js`, `glm.js`, lieu de traitement des données dans le panneau, CSP, tests `iaReelleFournisseurs.spec.js`. Modèles retenus (T7.0) : `deepseek-flash` et `deepseek-v4-pro` ; `glm-4.7-flash` (gratuit) et `glm-5.3`. La réflexion préalable, active par défaut chez ces deux fournisseurs, est désactivée (`thinking: disabled`) pour ne pas consommer la limite de jetons. Restent : T7.6 (essai réel), la vérification des pages de facturation, la validation éditoriale de `LAB-08`.
+
+**Décisions proposées.**
+- **Un adaptateur commun « compatible OpenAI »** (`/chat/completions`, en-tête `Authorization: Bearer`, réponse `choices[0].message.content`) pour DeepSeek et GLM ; Anthropic garde le sien.
+- **GLM par `open.bigmodel.cn` seulement**, tant que `api.z.ai` refuse le navigateur. Les clés des deux plateformes ne sont pas interchangeables : le panneau le dit.
+- **Modèles** : le moins cher ou gratuit de chaque fournisseur par défaut, un plus précis en option. Identifiants exacts à confirmer en T7.0 sur les pages officielles (les noms changent souvent).
+- **Avertissement renforcé pour ces deux fournisseurs** : les données partent en Chine, pays sans décision d'adéquation de l'Union européenne ; leurs conditions d'utilisation autorisent la réutilisation des contenus ; leurs modèles peuvent refuser ou orienter certaines réponses. Les données des laboratoires sont fictives, mais la consigne est écrite par l'apprenant : rappel appuyé de n'y mettre rien de personnel.
+- **Aucune préférence affichée** : ordre alphabétique, même présentation, aucun logo, liens vers les pages officielles seulement.
+- **Valeur pédagogique** : comparer la réponse de plusieurs modèles à la même consigne illustre `LIM-01` (une IA répond autrement d'un modèle à l'autre).
+
+**Règles et documents à mettre à jour (T7.1, avant le code).**
+- `regles/07-laboratoires.md`, `LAB-08` : fournisseurs hors Union européenne, avertissement sur le lieu de traitement des données, choix des fournisseurs pour raison technique.
+- `regles/sources.md` : pages officielles de DeepSeek et de Zhipu (documentation de l'API, conditions, politique de confidentialité), à consulter et dater ; source CNIL sur les transferts hors Union européenne.
+- Validation par le responsable éditorial, comme le reste de `regles/`.
+
+**Tâches.**
+- T7.0 (S) Confirmer sur les pages officielles : adresses, identifiants et prix des modèles, format des erreurs (clé refusée, crédit épuisé, limite de requêtes), pages des clés et de la facturation, conditions d'usage d'une clé dans un navigateur.
+- T7.1 (S) Règles et sources (ci-dessus), validées avant T7.2.
+- T7.2 (M) `front/src/services/iaReelle/compatibleOpenAI.js` : fabrique d'adaptateurs (adresse, modèles, format de clé, pages officielles) ; `deepseek.js` et `glm.js` ; ajout au registre `FOURNISSEURS`. Tests Vitest (fetch simulé) : en-têtes, corps, lecture de la réponse, traduction de chaque erreur, clé jamais dans un message.
+- T7.3 (S) Panneau `ModeIaReelle.vue` : avertissement propre au fournisseur choisi (lieu de traitement des données), aide sur le format de clé, liens officiels. Tests du lecteur.
+- T7.4 (S) CSP : ajouter `https://api.deepseek.com` et `https://open.bigmodel.cn` à `SpaContentSecurityPolicy::AI_PROVIDERS` ; test PHPUnit.
+- T7.5 (S) Documentation : `docs/PLAN_LABORATOIRES.md` (état), `AGENTS.md` si la règle change.
+- T7.6 (S) Essai réel par le porteur du projet avec ses clés DeepSeek et GLM (l'agent ne saisit jamais de vraie clé), sur le site déployé et sur mobile.
+
+**Risques.** Retrait du CORS par un fournisseur (adaptateur désactivable, message clair, simulation toujours disponible) ; changement de noms de modèles (liste dans l'adaptateur, test à chaque mise à jour) ; confusion entre les plateformes GLM chinoise et internationale (aide sur la clé, message d'erreur « clé refusée » qui le rappelle) ; données personnelles tapées dans une consigne (avertissement renforcé).
+
+**Hors de cette phase.** OpenAI, Google Gemini et Mistral (appel depuis le navigateur refusé ou non garanti) ; relais serveur ; plateforme internationale `api.z.ai` tant qu'elle refuse le navigateur.
+
 ## 7. Risques et parades
 
 | Risque | Parade |

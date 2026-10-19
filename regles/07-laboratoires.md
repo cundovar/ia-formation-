@@ -90,5 +90,7 @@ Un laboratoire fait manipuler un workflow (déclencheur, conditions, agent, outi
 - La vérification des objectifs reste calculée en simulation : une vraie IA ne répond pas deux fois pareil.
 - Si l'appel échoue (clé refusée, crédit épuisé, service indisponible, appel bloqué par le navigateur, hors ligne), l'étape s'arrête avec un message clair et la simulation reste disponible.
 - Seuls sont proposés les fournisseurs qui acceptent l'appel direct depuis un navigateur ; leur choix tient à cette contrainte technique, pas à une préférence ni à un partenariat.
+- Les fournisseurs sont présentés de la même façon, par ordre alphabétique, sans logo.
+- Le panneau dit **où sont traitées les données** du fournisseur choisi. Pour un fournisseur établi hors de l'Union européenne (par exemple en Chine), il le signale clairement, rappelle que ses conditions d'utilisation disent si les contenus envoyés peuvent être conservés ou réutilisés, et redemande de n'écrire rien de personnel ni de confidentiel dans la consigne.
 
-**Source.** [PLAN] : phase 6 de `docs/PLAN_LABORATOIRES.md` ; `DON-05` : une clé d'API est un mot de passe ; [ANSSI-IAG] : clés d'API et fuite de données ; [ANTHROPIC-CORS] : appel direct depuis un navigateur.
+**Source.** [PLAN] : phase 6 de `docs/PLAN_LABORATOIRES.md` ; `DON-05` : une clé d'API est un mot de passe ; [ANSSI-IAG] : clés d'API et fuite de données ; [ANTHROPIC-CORS], [DEEPSEEK-API], [ZHIPU-API] : appel direct depuis un navigateur ; [CNIL-TRANSFERTS] : données traitées hors de l'Union européenne.
