@@ -1,0 +1,8 @@
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://qdrant:6333;
+        proxy_set_header api-key "${QDRANT_API_KEY}";
+    }
+}
