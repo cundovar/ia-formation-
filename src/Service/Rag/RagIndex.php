@@ -28,7 +28,7 @@ final class RagIndex
     {
         $count = 0;
         foreach ($this->entityManager->getRepository(PageContent::class)->findAll() as $course) {
-            $text = self::text($course->getContent());
+            $text = self::text(($course->getCode() ?: null) ?? $course->getContent());
             if (!$course->isPublished() || $text === '') { $this->vectors->deleteCourse((int) $course->getId()); continue; }
             $checksum = hash('sha256', $course->getStatus().'\0'.$text);
             $this->indexVectors($course, self::split($text), $checksum);
