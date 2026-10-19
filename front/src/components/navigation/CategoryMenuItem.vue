@@ -131,17 +131,14 @@ const isOpen = computed(() =>
   line-height: 1.3;
   color: #1f2937;
   text-decoration: none;
-  background: transparent;
+  /* Sous-menu : couleur pastel distincte du fond bleu de la rubrique */
+  background: #e0e7ff;
   transition: background-color 160ms ease;
 }
 
 .parcours-row:hover,
 .parcours-row--active {
-  background: #fff;
-}
-
-.parcours-row--active {
-  box-shadow: inset 4px 0 0 #93c5fd;
+  background: #c7d2fe;
 }
 
 .parcours-row:focus-visible {
@@ -151,6 +148,8 @@ const isOpen = computed(() =>
 
 .parcours-name {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .parcours-chevron {
@@ -217,6 +216,7 @@ const isOpen = computed(() =>
 
 .parcours-course {
   display: flex;
+  overflow-wrap: anywhere;
   align-items: flex-start;
   gap: 0.6rem;
   min-height: 2.5rem;

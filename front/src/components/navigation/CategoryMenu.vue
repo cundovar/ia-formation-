@@ -160,6 +160,8 @@ const isOpen = (group) =>
 
 .rubrique-name {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.3;
@@ -179,7 +181,11 @@ details[open] > .rubrique-summary .rubrique-chevron {
 .rubrique-parcours {
   list-style: none;
   margin: 0;
-  padding: 0 0.5rem 0.5rem;
+  /* Retrait à gauche : les parcours se lisent comme un sous-menu de la rubrique */
+  padding: 0 0.5rem 0.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
