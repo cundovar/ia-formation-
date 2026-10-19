@@ -9,6 +9,17 @@ services:
     volumes:
       - qdrant_storage:/qdrant/storage
     networks: [rag]
+  dashboard:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    environment:
+      QDRANT_API_KEY: ${QDRANT_API_KEY:?Set QDRANT_API_KEY}
+    depends_on: [qdrant]
+    volumes:
+      - ./dashboard/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - "127.0.0.1:6333:80"
+    networks: [rag]
   rag:
     build:
       context: ./service

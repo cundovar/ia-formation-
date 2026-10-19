@@ -12,6 +12,8 @@ use Doctrine\ORM\EntityManagerInterface;
 final class RagIndex
 {
     private const PASSAGE_LENGTH = 900;
+    // Le service vectoriel accepte au plus 100 passages par requête
+    private const BATCH_SIZE = 50;
 
     public function __construct(private EntityManagerInterface $entityManager, private VectorStore $vectors) {}
 
@@ -24,17 +26,22 @@ final class RagIndex
         $this->entityManager->flush();
     }
 
-    public function rebuildVectors(): int
+    /** @return array{indexed:int,failed:list<int>} cours vectorisés, et identifiants des cours en échec */
+    public function rebuildVectors(): array
     {
-        $count = 0;
+        $indexed = 0;
+        $failed = [];
         foreach ($this->entityManager->getRepository(PageContent::class)->findAll() as $course) {
-            $text = self::text($course->getContent());
+            $text = self::text(($course->getCode() ?: null) ?? $course->getContent());
             if (!$course->isPublished() || $text === '') { $this->vectors->deleteCourse((int) $course->getId()); continue; }
             $checksum = hash('sha256', $course->getStatus().'\0'.$text);
-            $this->indexVectors($course, self::split($text), $checksum);
-            ++$count;
+            if ($this->indexVectors($course, self::split($text), $checksum)) {
+                ++$indexed;
+            } else {
+                $failed[] = (int) $course->getId();
+            }
         }
-        return $count;
+        return ['indexed' => $indexed, 'failed' => $failed];
     }
 
     private function sync(PageContent $course): void
@@ -68,10 +75,21 @@ final class RagIndex
     }
 
     /** @param list<string> $chunks */
-    private function indexVectors(PageContent $course, array $chunks, string $checksum): void
+    private function indexVectors(PageContent $course, array $chunks, string $checksum): bool
     {
         $id = (int) $course->getId();
-        $this->vectors->index(array_map(static fn (string $text, int $offset) => ['id' => $id.'-'.($offset + 1), 'text' => $text, 'course_id' => $id, 'position' => $offset + 1, 'checksum' => $checksum], $chunks, array_keys($chunks)));
+        $passages = array_map(static fn (string $text, int $offset) => ['id' => $id.'-'.($offset + 1), 'text' => $text, 'course_id' => $id, 'position' => $offset + 1, 'checksum' => $checksum], $chunks, array_keys($chunks));
+        // Les passages d'une ancienne version plus longue ne doivent pas rester dans l'index
+        if (!$this->vectors->deleteCourse($id)) {
+            return false;
+        }
+        foreach (array_chunk($passages, self::BATCH_SIZE) as $batch) {
+            if (!$this->vectors->index($batch)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** @return list<string> */

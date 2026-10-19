@@ -1,5 +1,6 @@
 import os
 import secrets
+import uuid
 from functools import lru_cache
 from fastapi import FastAPI, Header, HTTPException
 from fastembed import TextEmbedding
@@ -9,6 +10,8 @@ from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, P
 
 app = FastAPI(docs_url=None, redoc_url=None)
 COLLECTION = "formation_ia_courses"
+# Qdrant n'accepte que des entiers ou des UUID : « 12-1 » (cours-passage) devient un UUID stable
+def point_id(value): return str(uuid.uuid5(uuid.NAMESPACE_URL, f"formation-ia:{value}"))
 
 def auth(value):
     expected = f"Bearer {os.environ['RAG_SERVICE_TOKEN']}"
@@ -33,7 +36,7 @@ def health(): return {"ok": True}
 @app.post("/index")
 def index(request: IndexRequest, authorization: str | None = Header(default=None)):
     auth(authorization); collection(); vectors = list(model().embed([p.text for p in request.passages]))
-    store().upsert(COLLECTION, [PointStruct(id=p.id, vector=v.tolist(), payload={"course_id":p.course_id,"position":p.position,"checksum":p.checksum,"text":p.text}) for p,v in zip(request.passages,vectors)])
+    store().upsert(COLLECTION, [PointStruct(id=point_id(p.id), vector=v.tolist(), payload={"course_id":p.course_id,"position":p.position,"checksum":p.checksum,"text":p.text}) for p,v in zip(request.passages,vectors)])
     return {"indexed":len(request.passages)}
 @app.post("/search")
 def search(request: SearchRequest, authorization: str | None = Header(default=None)):
