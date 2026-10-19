@@ -14,7 +14,7 @@ def auth(value):
     expected = f"Bearer {os.environ['RAG_SERVICE_TOKEN']}"
     if value is None or not secrets.compare_digest(value, expected): raise HTTPException(401, "Non autorisé")
 @lru_cache
-def model(): return TextEmbedding(model_name=os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-small"), cache_dir="/models")
+def model(): return TextEmbedding(model_name=os.getenv("EMBEDDING_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"), cache_dir="/models")
 @lru_cache
 def store(): return QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"])
 def collection():
