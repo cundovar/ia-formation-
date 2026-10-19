@@ -122,7 +122,7 @@ const isOpen = (group) =>
 
 .rubrique {
   border-radius: 1rem;
-  background: #eff6ff;
+  background: rgb(255 255 255 / 70%);
   box-shadow: 0 4px 12px rgb(15 23 42 / 6%);
 }
 
@@ -142,7 +142,7 @@ const isOpen = (group) =>
 }
 
 .rubrique-summary:hover {
-  background: #dbeafe;
+  background: #fff;
 }
 
 .rubrique-summary:focus-visible {

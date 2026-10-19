@@ -12,6 +12,10 @@ export const AUDIENCES = [
     icon: 'fas fa-robot',
     iconBgClass: 'bg-blue-100',
     cardBgClass: 'surface-card--blue',
+    // Menu de navigation : fond de l'entrée, survol, et panneau des parcours dépliés
+    menuBgClass: 'bg-blue-200',
+    menuHoverClass: 'hover:bg-blue-300',
+    menuPanelClass: 'audience-panel--blue',
     otherAudienceText: 'Vous formez d\'autres personnes à l\'IA ?',
   },
   {
@@ -23,9 +27,17 @@ export const AUDIENCES = [
     icon: 'fas fa-chalkboard-user',
     iconBgClass: 'bg-emerald-100',
     cardBgClass: 'surface-card--green',
+    menuBgClass: 'bg-emerald-200',
+    menuHoverClass: 'hover:bg-emerald-300',
+    menuPanelClass: 'audience-panel--green',
     otherAudienceText: 'Vous voulez apprendre pour vous-même ?',
   },
 ]
+
+// Parcours d'une entrée, d'après le champ `audience` de chaque catégorie
+export const catsParAudience = (cats = []) => Object.fromEntries(
+  AUDIENCES.map((audience) => [audience.key, cats.filter((cat) => cat.audience === audience.key)]),
+)
 
 export const getAudience = (key) => AUDIENCES.find((audience) => audience.key === key) ?? null
 

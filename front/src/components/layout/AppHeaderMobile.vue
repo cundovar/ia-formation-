@@ -9,21 +9,27 @@
     <!-- Ligne du haut: Menu burger, Logo, Bouton auth -->
     <div class="flex justify-between items-center px-3 py-1">
       <!-- Bouton menu burger -->
-      <div
-        class="cursor-pointer"
+      <button
+        type="button"
+        class="cursor-pointer min-w-11 min-h-11 flex items-center justify-center rounded-md focus-visible:outline focus-visible:outline-3 focus-visible:outline-blue-800"
+        :aria-label="isMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'"
+        :aria-expanded="isMenuOpen"
+        data-testid="bouton-menu"
         @click="$emit('toggleMenu')"
       >
         <i
           v-if="!isMenuOpen"
           :class="[header.textColor || 'text-blue-950', 'pi pi-bars cursor-pointer']"
           style="font-size: 1.5rem"
+          aria-hidden="true"
         />
         <i
           v-else
           :class="[header.textColor || 'text-blue-950', 'pi pi-times cursor-pointer']"
           style="font-size: 1.5rem"
+          aria-hidden="true"
         />
-      </div>
+      </button>
 
       <!-- Logo centré -->
       <router-link to="/">
@@ -88,6 +94,7 @@
         variant=""
         size="md"
         icon="pi pi-search"
+        aria-label="Rechercher un cours"
         class="ml-auto"
         :class="showSearch ? 'invisible': 'visible'"
         @click="toggleSearchPanel"
@@ -117,6 +124,7 @@
             class="absolute border cursor-pointer right-0 top-0"
             size="sm"
             text-content="X"
+            aria-label="Fermer la recherche"
             variant="danger"
             @click="toggleSearchPanel"
           />
