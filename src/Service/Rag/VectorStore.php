@@ -16,7 +16,8 @@ final class VectorStore
     /** @param list<array{id:string,text:string,course_id:int,position:int,checksum:string}> $passages */
     public function index(array $passages): bool
     {
-        return $passages === [] || $this->request('POST', '/index', ['passages' => $passages]) !== null;
+        // Le calcul des vecteurs se fait sur processeur : plus long qu'une recherche
+        return $passages === [] || $this->request('POST', '/index', ['passages' => $passages], 60) !== null;
     }
 
     /** @return list<array{course_id:int,position:int,text:string,score:float}>|null */
@@ -32,11 +33,11 @@ final class VectorStore
         return $this->request('DELETE', '/courses/'.$courseId) !== null;
     }
 
-    private function request(string $method, string $path, ?array $json = null): ?array
+    private function request(string $method, string $path, ?array $json = null, int $timeout = 8): ?array
     {
         if ($this->url === '' || $this->token === '') return null;
         try {
-            $response = $this->http->request($method, rtrim($this->url, '/').$path, ['headers' => ['Authorization' => 'Bearer '.$this->token], 'json' => $json, 'timeout' => 8]);
+            $response = $this->http->request($method, rtrim($this->url, '/').$path, ['headers' => ['Authorization' => 'Bearer '.$this->token], 'json' => $json, 'timeout' => $timeout]);
             return $response->getStatusCode() >= 200 && $response->getStatusCode() < 300 ? $response->toArray(false) : null;
         } catch (TransportExceptionInterface) {
             return null;
