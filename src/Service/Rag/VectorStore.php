@@ -13,6 +13,11 @@ final class VectorStore
 {
     public function __construct(private HttpClientInterface $http, #[Autowire('%env(RAG_VECTOR_URL)%')] private string $url, #[Autowire('%env(RAG_VECTOR_TOKEN)%')] private string $token) {}
 
+    public function isEnabled(): bool
+    {
+        return $this->url !== '' && $this->token !== '';
+    }
+
     /** @param list<array{id:string,text:string,course_id:int,position:int,checksum:string}> $passages */
     public function index(array $passages): bool
     {
@@ -35,7 +40,7 @@ final class VectorStore
 
     private function request(string $method, string $path, ?array $json = null, int $timeout = 8): ?array
     {
-        if ($this->url === '' || $this->token === '') return null;
+        if (!$this->isEnabled()) return null;
         try {
             $response = $this->http->request($method, rtrim($this->url, '/').$path, ['headers' => ['Authorization' => 'Bearer '.$this->token], 'json' => $json, 'timeout' => $timeout]);
             return $response->getStatusCode() >= 200 && $response->getStatusCode() < 300 ? $response->toArray(false) : null;

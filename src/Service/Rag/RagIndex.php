@@ -32,16 +32,25 @@ final class RagIndex
         $indexed = 0;
         $failed = [];
         foreach ($this->entityManager->getRepository(PageContent::class)->findAll() as $course) {
-            $text = self::text(($course->getCode() ?: null) ?? $course->getContent());
-            if (!$course->isPublished() || $text === '') { $this->vectors->deleteCourse((int) $course->getId()); continue; }
-            $checksum = hash('sha256', $course->getStatus().'\0'.$text);
-            if ($this->indexVectors($course, self::split($text), $checksum)) {
-                ++$indexed;
-            } else {
+            $published = $course->isPublished() && self::text(($course->getCode() ?: null) ?? $course->getContent()) !== '';
+            if (!$this->indexCourse($course)) {
                 $failed[] = (int) $course->getId();
+            } elseif ($published) {
+                ++$indexed;
             }
         }
         return ['indexed' => $indexed, 'failed' => $failed];
+    }
+
+    /** Met à jour les points d'un cours : remplacés s'il est publié, retirés sinon. Renvoie false si le service a échoué. */
+    public function indexCourse(PageContent $course): bool
+    {
+        $text = self::text(($course->getCode() ?: null) ?? $course->getContent());
+        if (!$course->isPublished() || $text === '') {
+            return $this->vectors->deleteCourse((int) $course->getId());
+        }
+
+        return $this->indexVectors($course, self::split($text), hash('sha256', $course->getStatus().'\0'.$text));
     }
 
     private function sync(PageContent $course): void
