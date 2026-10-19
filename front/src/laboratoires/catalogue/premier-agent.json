@@ -13,12 +13,14 @@
   "objectif": "Transmettre le bon contexte à un agent et cadrer son rôle par une consigne.",
   "scenario": "La Médiathèque Exemple, une médiathèque imaginaire, teste un agent qui répond aux messages des lecteurs. Pour l'instant, il répond à côté : il ne reçoit pas la bonne donnée. Et quand on lui parle de météo, il invente une prévision.",
   "simulation": "L'agent ne fait pas appel à une IA : il choisit sa réponse avec des règles écrites à l'avance, affichées dans ses réglages. Une vraie IA peut répondre autrement, ou se tromper.",
+  "modeReel": true,
   "instructions": [
     "Exécutez le workflow avec chaque message : l'agent ne comprend jamais la question.",
     "Ouvrez « Données transmises » du déclencheur : où se trouve le texte du message ?",
     "Dans l'agent, changez « Donnée transmise à l'agent » pour lui donner le texte du message.",
     "Exécutez avec le message sur la météo : l'agent invente une prévision.",
-    "Complétez la consigne : « Réponds uniquement aux questions sur la médiathèque. » Puis vérifiez votre workflow."
+    "Complétez la consigne : « Réponds uniquement aux questions sur la médiathèque. » Puis vérifiez votre workflow.",
+    "Facultatif : avec votre propre clé d'API, rejouez le laboratoire en mode IA réelle et comparez la réponse d'une vraie IA à celle de la simulation."
   ],
   "blocsDisponibles": [
     "declencheur",

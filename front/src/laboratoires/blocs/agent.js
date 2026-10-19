@@ -1,3 +1,4 @@
+import { ErreurExecution } from '../moteur/erreurs.js'
 import { decrireCondition, ecrireChemin, lireChemin, verifierChemin } from '../moteur/expressions.js'
 import { deciderAgent } from '../simulateurs/agentFictif.js'
 import { decrireOutil } from '../simulateurs/outilsFictifs.js'
@@ -50,10 +51,11 @@ export default {
     if (String(config.consigne ?? '').length > 2000) erreurs.push('La consigne ne peut pas dépasser 2 000 caractères.')
     return erreurs.filter(Boolean)
   },
-  executer: ({ entree, config, contexte }) => {
+  executer: async ({ entree, config, contexte }) => {
     const chemin = String(config.contexte ?? '').trim()
     const lu = chemin ? lireChemin(entree, chemin) : { trouve: false }
     const vu = { consigne: config.consigne ?? '', ...(lu.trouve ? { contexte: lu.valeur } : {}) }
+    if (typeof contexte.agentReel === 'function') return executerAvecIaReelle({ entree, config, vu, chemin, lu, agentReel: contexte.agentReel })
     const decision = deciderAgent(contexte.simulateurs?.agent, vu, config.outils ?? [])
 
     const lignes = []
@@ -78,4 +80,27 @@ export default {
       explication: lignes.join(' '),
     }
   },
+}
+
+// Mode IA réelle (LAB-08) : la réponse vient d'un vrai modèle, sans règle ni outil (v1)
+async function executerAvecIaReelle({ entree, config, vu, chemin, lu, agentReel }) {
+  let reponse
+  try {
+    reponse = await agentReel({ consigne: vu.consigne, contexte: vu.contexte })
+  } catch (exception) {
+    const message = exception?.name === 'ErreurIaReelle' ? exception.message : 'L\'appel à la vraie IA a échoué.'
+    throw new ErreurExecution('IA_REELLE', `${message} Vous pouvez repasser en simulation.`)
+  }
+  const lignes = []
+  if (chemin && !lu.trouve) lignes.push(`Attention : aucune donnée à « ${chemin} », l'IA ne reçoit aucun contexte.`)
+  if (!chemin) lignes.push('Aucune donnée n\'est transmise à l\'IA.')
+  lignes.push(`Mode IA réelle : réponse d'un vrai modèle (${reponse.fournisseur}, ${reponse.modele}), sans règle écrite à l'avance. Elle peut changer d'une exécution à l'autre, et contenir des erreurs.`)
+  if ((config.outils ?? []).length) lignes.push('En mode IA réelle, l\'agent ne peut pas encore demander d\'outil : seule sa réponse texte est utilisée.')
+  lignes.push(`Réponse : « ${reponse.texte} »`)
+  return {
+    donnees: ecrireChemin(entree, config.champ, { reponse: reponse.texte }),
+    sortiesActives: ['reponse'],
+    explication: lignes.join(' '),
+    iaReelle: { fournisseur: reponse.fournisseur, modele: reponse.modele },
+  }
 }

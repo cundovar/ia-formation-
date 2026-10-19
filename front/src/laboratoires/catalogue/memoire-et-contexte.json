@@ -13,12 +13,14 @@
   "objectif": "Retenir une information utile d'un message à l'autre, sans mémoriser de donnée sensible.",
   "scenario": "Un lecteur de la Médiathèque Exemple donne son prénom et son numéro de téléphone au premier message. Au troisième message, ce premier message est sorti du contexte de l'agent : il ne sait plus à qui il parle. Une mémoire peut l'aider, à condition de ne retenir que l'utile.",
   "simulation": "La conversation est fictive et rejouée en une seule exécution. La mémoire disparaît à la fin de l'exécution, et le site n'enregistre rien.",
+  "modeReel": true,
   "instructions": [
     "Exécutez le workflow : l'agent redemande le prénom du lecteur.",
     "Ouvrez « Retenir du premier message » : que garde la mémoire ?",
     "Ne retenez que le prénom, sous le nom « prenom ».",
     "Ajoutez avant l'agent un bloc Mémoire qui relit la mémoire dans « conversation.memoire ».",
-    "Vérifiez votre workflow avec les deux conversations."
+    "Vérifiez votre workflow avec les deux conversations.",
+    "Facultatif : avec votre propre clé d'API, rejouez le laboratoire en mode IA réelle et comparez la réponse d'une vraie IA à celle de la simulation."
   ],
   "blocsDisponibles": [
     "declencheur",

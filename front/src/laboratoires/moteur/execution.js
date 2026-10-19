@@ -75,7 +75,11 @@ export function repondreValidation(execution, noeudId, decision) {
   return suivante
 }
 
-export async function etapeSuivante(execution, { registre = BLOCS } = {}) {
+/**
+ * `agentReel` (facultatif) : fonction async qui confie le bloc Agent à une vraie IA (LAB-08).
+ * Elle vient de l'extérieur : le moteur lui-même ne fait aucun appel réseau.
+ */
+export async function etapeSuivante(execution, { registre = BLOCS, agentReel = null } = {}) {
   if (estTerminee(execution) || execution.statut === 'attente_humaine') return execution
   const suivante = cloner(execution)
   suivante.statut = 'en_cours'
@@ -113,7 +117,7 @@ export async function etapeSuivante(execution, { registre = BLOCS } = {}) {
       const reponse = await bloc.executer({
         entree,
         config: cloner(noeud.config ?? {}),
-        contexte: { jeu: suivante.jeu, simulateurs: suivante.simulateurs, etat: suivante.etatSimulateurs, decision: suivante.decisions[noeudId] },
+        contexte: { jeu: suivante.jeu, simulateurs: suivante.simulateurs, etat: suivante.etatSimulateurs, decision: suivante.decisions[noeudId], agentReel },
       })
       const donnees = reponse.donnees ?? {}
       if (tailleJson(donnees) > LIMITES.tailleDonnees) {
@@ -136,6 +140,8 @@ export async function etapeSuivante(execution, { registre = BLOCS } = {}) {
         sortie: donnees,
         sortiesActives,
         explication: reponse.explication ?? '',
+        // Étape confiée à une vraie IA (LAB-01, LAB-08) : le journal le dit
+        ...(reponse.iaReelle ? { iaReelle: cloner(reponse.iaReelle) } : {}),
       })
     } catch (exception) {
       const erreur = exception instanceof ErreurExecution

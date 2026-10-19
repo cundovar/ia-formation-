@@ -12,7 +12,8 @@
         class="fas fa-flask mt-1 text-amber-800"
         aria-hidden="true"
       />
-      <span><strong>Simulation.</strong> {{ store.lab.simulation }}</span>
+      <span v-if="store.modeIaReelle"><strong>Mode IA réelle.</strong> Le bloc Agent est confié à un vrai modèle ({{ ia.fournisseurChoisi?.libelle }}), avec votre clé. Tout le reste du laboratoire reste simulé, et les objectifs sont vérifiés en simulation.</span>
+      <span v-else><strong>Simulation.</strong> {{ store.lab.simulation }}</span>
     </p>
 
     <section
@@ -134,6 +135,7 @@
 
       <div :class="vueAffichee === 'graphe' ? 'grid items-start gap-4 lg:grid-cols-2' : 'space-y-4 lg:sticky lg:top-32 lg:self-start'">
         <BarreControles />
+        <ModeIaReelle v-if="store.lab.modeReel" />
         <ValidationHumaine />
         <JournalExecution />
         <MessagesMcp />
@@ -164,11 +166,13 @@
 <script setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from 'vue'
 import { useResponsive } from '@/composables/ui/useResponsive'
+import { useIaReelleStore } from '@/stores/iaReelle'
 import { useLaboratoireStore } from '@/stores/laboratoire'
 import VueSequentielle from './editeur/VueSequentielle.vue'
 import BarreControles from './execution/BarreControles.vue'
 import JournalExecution from './execution/JournalExecution.vue'
 import MessagesMcp from './execution/MessagesMcp.vue'
+import ModeIaReelle from './execution/ModeIaReelle.vue'
 import ValidationHumaine from './execution/ValidationHumaine.vue'
 import CriteresReussite from './CriteresReussite.vue'
 import IndicesCorrection from './IndicesCorrection.vue'
@@ -191,6 +195,7 @@ const props = defineProps({
 })
 
 const store = useLaboratoireStore()
+const ia = useIaReelleStore()
 const { islgOuPlus } = useResponsive()
 const vue = ref('etapes')
 // Sous 1024 px, la vue en étapes s'impose : relier des poignées au doigt n'est pas fiable

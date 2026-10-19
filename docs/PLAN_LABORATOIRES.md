@@ -1,6 +1,6 @@
 # Laboratoires IA — plan de développement
 
-Décision du 17 octobre 2026. Les laboratoires sortent du hors-périmètre de `PLAN_APP_FORMATION_IA.md`, en **simulation locale uniquement**. Le suivi de progression, les scores et le mode « IA réelle » restent écartés. Règles de contenu : `regles/07-laboratoires.md`.
+Décision du 17 octobre 2026. Les laboratoires sortent du hors-périmètre de `PLAN_APP_FORMATION_IA.md`, en **simulation locale uniquement**. Le suivi de progression et les scores restent écartés ; le mode « IA réelle » n'existe qu'avec la clé de l'apprenant, en option (phase 6, `LAB-08`). Règles de contenu : `regles/07-laboratoires.md`.
 
 ## 1. Objectif
 
@@ -148,9 +148,50 @@ Décisions :
 - **Connecteur** : outils MCP brouillon → contrôles (`CLE_API`, `PersonalDataChecker`, domaines fictifs) → relecture par un autre connecteur → publication, sur le modèle de `QcmDraftService`.
 - **Front** : fusion des labos du code et de ceux de l'API, cache vidé à la déconnexion.
 
-### Phase 6 (hors première version) — Mode IA réelle
-- Endpoint Symfony séparé : clé côté serveur, `symfony/rate-limiter`, quotas, entrée bornée, aucune journalisation du contenu, désactivé par défaut.
-- À cadrer dans ce plan et dans `regles/` avant de commencer.
+### Phase 6 (hors première version) — Mode IA réelle avec la clé de l'apprenant
+
+Proposition du 18 octobre 2026, validée par le porteur du projet le 19 octobre 2026. Elle remplace l'ancienne piste « clé côté serveur ». La règle `LAB-08` reste à valider par le responsable éditorial, comme le reste de `regles/`.
+
+T6.0 (19 octobre 2026) : seul Anthropic documente l'appel direct depuis un navigateur (en-tête `anthropic-dangerous-direct-browser-access`). Pour OpenAI, Google Gemini et Mistral, les retours publics signalent des appels bloqués (CORS) ou un comportement instable : ils ne sont pas proposés en v1. Modèle par défaut : `claude-haiku-5-5`, le moins cher. L'architecture garde un adaptateur par fournisseur pour en ajouter un dès qu'il accepte ces appels.
+
+État au 19 octobre 2026 : T6.0 à T6.6 sont dans le code de la branche `feat/laboratoires-ia-reelle` (`front/src/services/iaReelle/`, `stores/iaReelle.js`, `ModeIaReelle.vue`, injection `agentReel`, `"modeReel": true` sur `premier-agent` et `memoire-et-contexte`, CSP des pages Vue par `SpaSecurityHeadersListener`). Tests Vitest : `tests/unit/laboratoires/iaReelle.spec.js`. Restent : T6.7 (essai réel par le porteur du projet), la vérification des adresses des pages officielles de clés et de facturation, et le contrôle de la CSP sur le site déployé.
+
+**Objectif.** Dans un laboratoire autorisé, l'apprenant peut faire répondre le bloc Agent par un vrai modèle, avec **sa propre clé d'API**, pour comparer avec la simulation : une vraie IA répond autrement, peut ignorer une consigne ou se laisser piéger. La simulation reste le mode par défaut, gratuit et hors ligne.
+
+**Décisions proposées.**
+- **Clé de l'apprenant, jamais celle du site.** Le site ne finance aucun appel et n'a ni quota ni budget à gérer.
+- **La clé ne quitte pas le navigateur vers le site.** Saisie dans la page, gardée en mémoire (store Pinia non persisté), effacée en quittant la page, avec le bouton « Oublier ma clé » et à la déconnexion. Jamais dans un compte, une URL, `localStorage`, le serveur ou les journaux.
+- **Appel direct du navigateur au fournisseur.** Le site ne relaie rien : il ne voit ni la clé, ni la consigne, ni la réponse.
+- **Fournisseurs** : seulement ceux qui acceptent l'appel depuis un navigateur. v1 : Anthropic seul (voir T6.0) ; ce choix tient à une contrainte technique, pas à une préférence.
+- **Périmètre v1** : seul le bloc Agent, réponse texte. Outils, API, MCP, documents et mémoire restent simulés. L'agent réel ne déclenche pas d'outil en v1.
+- **Laboratoires concernés** : ceux qui le déclarent (`"modeReel": true` dans le JSON), d'abord « Configurer un premier agent » et « Donner une mémoire à un agent ».
+- **Vérification des critères** : toujours en simulation. Une vraie IA ne répond jamais deux fois pareil.
+- **Envoi borné** : uniquement la consigne et la donnée transmise à l'agent (données fictives du labo), 4 000 caractères au plus ; réponse limitée (environ 300 jetons) ; délai maximal et annulation possibles.
+
+**Architecture.**
+- Le moteur reste sans réseau : `creerExecution` reçoit en option une fonction `agentReel` (injection de dépendance), passée au bloc Agent par `contexte`. Le garde-fou ESLint de `src/laboratoires/**` ne change pas.
+- Nouveau dossier hors du moteur : `front/src/services/iaReelle/`, avec un adaptateur par fournisseur (`anthropic.js`, `openai.js`, `gemini.js`) et une interface commune `repondre({ consigne, contexte, cle, modele, signal })` → `{ texte, fournisseur, modele }`. Erreurs traduites en langage clair : clé refusée (401), crédit ou quota épuisé (402, 429), service indisponible, appel bloqué par le navigateur, hors ligne.
+- Store `stores/iaReelle.js` (non persisté) : fournisseur, modèle, clé en mémoire, état du test de clé.
+- Interface : panneau `ModeIaReelle.vue` dans le lecteur (choix « Simulation / IA réelle », fournisseur, champ de clé en `type="password"` sans saisie automatique, bouton « Tester », liens vers les pages officielles de création de clé et de plafond de dépense, avertissements). Le journal indique « Réponse d'une IA réelle (fournisseur, modèle) » ou « Règle n° X (simulation) ».
+- Durcissement du site : en-tête Content-Security-Policy (`connect-src` limité au site et aux fournisseurs retenus, scripts du seul site) pour réduire le risque qu'un script vole la clé ; aucun intercepteur `axios` ni service worker ne touche ces appels (requêtes POST hors du site, jamais mises en cache).
+
+**Règles et plans à mettre à jour (T6.1).**
+- `regles/07-laboratoires.md` : LAB-01 (annoncer le mode utilisé à chaque étape), LAB-02 (rien de personnel ni de confidentiel dans une consigne envoyée à un vrai modèle), nouvelle règle LAB-08 « Mode IA réelle avec sa propre clé » (facultatif, coût et données chez le fournisseur choisi, renvoi vers DON-05), sources (conditions des fournisseurs).
+- `PLAN_APP_FORMATION_IA.md` (hors périmètre) et `AGENTS.md` (« jamais d'appel à un service d'IA ») : préciser l'exception.
+
+**Tâches.**
+- T6.0 (S) Vérifier, pour chaque fournisseur, l'appel depuis le navigateur (CORS), l'en-tête requis, les conditions d'usage d'une clé côté client et le modèle le moins cher adapté. Garder seulement ceux qui passent.
+- T6.1 (S) Cadrage écrit : règles, plans, `AGENTS.md`, validés avant T6.2.
+- T6.2 (M) Adaptateurs et tests Vitest (fetch simulé) : en-têtes, entrée bornée, délai, traduction des erreurs, clé jamais présente dans un message d'erreur.
+- T6.3 (M) Injection `agentReel` dans le moteur et le bloc Agent ; journal ; critères toujours simulés. Tests : moteur sans réseau ; un appel qui échoue arrête l'étape avec un message clair, la simulation reste disponible.
+- T6.4 (M) Store, panneau, champ `modeReel` dans le catalogue et `validerLaboratoire.js`. Clavier, mobile, lecteur d'écran, hors ligne (mode réel indisponible, message clair).
+- T6.5 (S) CSP et tests de non-fuite : aucune requête vers le site ne contient la clé (espion sur `axios` et `fetch`), clé effacée à la déconnexion et en quittant la page.
+- T6.6 (S) Contenus : instructions « Comparez avec une vraie IA » dans les labos concernés.
+- T6.7 (S) Essai réel par le porteur du projet avec sa propre clé (l'agent de développement ne saisit jamais de vraie clé), sur le site complet et sur mobile.
+
+**Risques.** Vol de la clé par une faille XSS (CSP, aucun `v-html`, clé en mémoire seulement) ; fournisseur qui change ses règles CORS (adaptateur désactivable, repli en simulation) ; coût pour l'apprenant (avertissement, lien vers le plafond de dépense) ; données réelles tapées dans une consigne (avertissement LAB-02) ; confusion avec un partenariat (aucune marque mise en avant, liens vers les pages officielles seulement).
+
+**Plus tard, hors v1** : agent réel qui choisit parmi les outils fictifs (labo d'injection en conditions réelles) ; relais sans stockage pour les fournisseurs qui refusent le navigateur ; clé du site pour des ateliers encadrés (code de séance, quota, plafond).
 
 ## 7. Risques et parades
 
