@@ -4,7 +4,10 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import AppNavigation from '@/components/layout/AppNavigation.vue'
 
 const Stub = { template: '<div />' }
-const cats = [{ id: 1, name: 'Automatiser des tâches avec l\'IA', audience: 'apprendre', superMenu: { id: 20, name: 'Automatiser et gérer les données', ordre: 1 } }]
+const cats = [
+  { id: 1, name: 'Automatiser des tâches avec l\'IA', audience: 'apprendre', superMenu: { id: 20, name: 'Automatiser et gérer les données', ordre: 1 } },
+  { id: 2, name: 'Construire un atelier', audience: 'former' },
+]
 
 const monter = async () => {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:p(.*)*', component: Stub }] })
@@ -32,6 +35,16 @@ describe('colonne de navigation', () => {
 
     await bouton.trigger('click')
     expect(wrapper.find('#parcours-apprendre').exists()).toBe(false)
+  })
+
+  it('déplie aussi « Je forme à l\'IA » avec ses seuls parcours', async () => {
+    const wrapper = await monter()
+    const bouton = wrapper.get('[data-testid="deplier-former"]')
+    expect(bouton.attributes('aria-label')).toBe('Afficher les parcours : Je forme à l\'IA')
+    await bouton.trigger('click')
+    const panneau = wrapper.get('#parcours-former')
+    expect(panneau.text()).toContain('Construire un atelier')
+    expect(panneau.text()).not.toContain('Automatiser des tâches')
   })
 
   it('donne un nom au bouton de repli de la colonne', async () => {

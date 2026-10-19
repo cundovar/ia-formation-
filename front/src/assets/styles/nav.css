@@ -16,3 +16,12 @@ nav{
   .scroll-gauche > * {
     direction: ltr; /* remet le contenu en lecture normale */
   }
+/* Panneau des parcours sous une entrée du menu (« J'apprends », « Je forme »), couleur de l'entrée */
+.audience-panel {
+  padding: 0.5rem;
+  border: 1px solid;
+  border-top: 0;
+  border-radius: 0 0 0.75rem 0.75rem;
+}
+.audience-panel--blue { border-color: #bfdbfe; background: #eff6ff; }
+.audience-panel--green { border-color: #a7f3d0; background: #ecfdf5; }

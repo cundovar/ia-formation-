@@ -1,4 +1,12 @@
 <template>
+  <!-- Voile clair sous le menu ouvert (mobile et tablette) : la page derrière reste lisible comme « en arrière-plan », un toucher referme le menu -->
+  <div
+    v-if="isMenuOpen && !isXlOuPlus"
+    class="fixed inset-x-0 top-28 bottom-0 z-30 bg-slate-100/70 backdrop-blur-sm"
+    aria-hidden="true"
+    data-testid="voile-menu"
+    @click="$emit('closeMenu')"
+  />
   <!--
     Seul le repli de la colonne est animé : l'élargissement au survol d'un parcours est immédiat, sinon le panneau
     des chapitres apparaissait coupé pendant l'animation.
@@ -34,7 +42,7 @@
         />
       </div>
 
-      <!-- Les deux entrées de l'accueil ; « J'apprends » déplie ses parcours sous elle, dans la colonne -->
+      <!-- Les entrées de l'accueil : chacune déplie ses parcours sous elle, dans la colonne -->
       <div
         v-for="audience in AUDIENCES"
         :key="audience.key"
@@ -42,15 +50,15 @@
       >
         <div
           :class="[
-            audience.key === 'apprendre' ? 'bg-blue-200' : 'bg-emerald-200',
+            audience.menuBgClass,
             'flex items-stretch shadow-neutral-600',
-            audience.key === 'apprendre' && openAudienceMenu ? 'rounded-t-lg' : '',
+            ouverts[audience.key] ? 'rounded-t-lg' : '',
           ]"
         >
           <router-link
             :to="audience.path"
             :class="[
-              audience.key === 'apprendre' ? 'hover:bg-blue-300' : 'hover:bg-emerald-300',
+              audience.menuHoverClass,
               'flex-1 min-w-0 min-h-[3rem] cursor-pointer p-2 text-gray-900 font-bold hover:underline flex items-center gap-2 break-words'
             ]"
           >
@@ -61,30 +69,30 @@
             <span class="min-w-0">{{ audience.title }}</span>
           </router-link>
           <button
-            v-if="audience.key === 'apprendre' && apprendreCats.length"
+            v-if="parcours[audience.key].length"
             type="button"
-            class="shrink-0 w-11 flex items-center justify-center text-gray-900 hover:bg-blue-300 focus-visible:outline focus-visible:outline-3 focus-visible:outline-blue-800"
-            :aria-expanded="openAudienceMenu"
-            aria-controls="parcours-apprendre"
-            :aria-label="openAudienceMenu ? 'Masquer les parcours pour apprendre l’IA' : 'Afficher les parcours pour apprendre l’IA'"
-            data-testid="deplier-apprendre"
-            @click="openAudienceMenu = !openAudienceMenu"
+            :class="[audience.menuHoverClass, 'shrink-0 w-11 flex items-center justify-center text-gray-900 focus-visible:outline focus-visible:outline-3 focus-visible:outline-blue-800']"
+            :aria-expanded="ouverts[audience.key]"
+            :aria-controls="`parcours-${audience.key}`"
+            :aria-label="`${ouverts[audience.key] ? 'Masquer' : 'Afficher'} les parcours : ${audience.title}`"
+            :data-testid="`deplier-${audience.key}`"
+            @click="ouverts[audience.key] = !ouverts[audience.key]"
           >
             <i
-              :class="['fas', openAudienceMenu ? 'fa-chevron-up' : 'fa-chevron-down']"
+              :class="['fas', ouverts[audience.key] ? 'fa-chevron-up' : 'fa-chevron-down']"
               aria-hidden="true"
             />
           </button>
         </div>
         <div
-          v-if="audience.key === 'apprendre' && openAudienceMenu && apprendreCats.length"
-          id="parcours-apprendre"
-          class="audience-dropdown"
+          v-if="ouverts[audience.key] && parcours[audience.key].length"
+          :id="`parcours-${audience.key}`"
+          :class="['audience-panel', audience.menuPanelClass]"
           role="region"
-          aria-label="Parcours pour apprendre l’IA"
+          :aria-label="`Parcours : ${audience.title}`"
         >
           <CategoryMenu
-            :cats="apprendreCats"
+            :cats="parcours[audience.key]"
             :menus-by-category="menusByCategory"
             :hovered-category="hoveredCategory"
             :click-menu="clickMenu"
@@ -97,9 +105,12 @@
       </div>
       <router-link
         to="/qcm"
-        class=" max-xl:hidden xl:w-full h-[3rem] max-xl:w-[14rem] max-xl:ml-20 cursor-pointer shadow-neutral-600 bg-purple-300 p-2 hover:bg-purple-400 text-gray-600 font-bold hover:underline flex items-center gap-2"
+        class="max-xl:hidden xl:w-full min-h-[3rem] cursor-pointer shadow-neutral-600 bg-purple-300 p-2 hover:bg-purple-400 text-gray-900 font-bold hover:underline flex items-center gap-2"
       >
-        <i class="fas fa-brain" />
+        <i
+          class="fas fa-brain"
+          aria-hidden="true"
+        />
         QCM
       </router-link>
       <router-link
@@ -116,7 +127,13 @@
 
 
       <!-- Liens QCM -->
-      <MenuLinks @close-menu="$emit('closeMenu')" />
+      <MenuLinks
+        :cats="cats"
+        :menus-by-category="menusByCategory"
+        :click-menu="clickMenu"
+        @open-menu="$emit('openMenu', $event)"
+        @close-menu="$emit('closeMenu')"
+      />
     </nav>
   </div>
 </template>
@@ -125,8 +142,8 @@
 import ButtonArrowMenu from '../ui/ButtonArrowMenu.vue';
 import CategoryMenu from '../navigation/CategoryMenu.vue';
 import MenuLinks from '../navigation/MenuLinks.vue';
-import { AUDIENCES } from '@/config/audiences';
-import { computed, ref } from 'vue';
+import { AUDIENCES, catsParAudience } from '@/config/audiences';
+import { computed, reactive } from 'vue';
 
 const props = defineProps({
   cats: { type: Array, required: true },
@@ -139,8 +156,9 @@ const props = defineProps({
   isOpenMenuGauche: { type: Boolean, default: false }
 });
 
-const openAudienceMenu = ref(false);
-const apprendreCats = computed(() => props.cats.filter((cat) => cat.audience === 'apprendre'));
+// Entrées dépliées, et parcours de chaque entrée (même logique pour « J'apprends » et « Je forme »)
+const ouverts = reactive(Object.fromEntries(AUDIENCES.map((audience) => [audience.key, false])));
+const parcours = computed(() => catsParAudience(props.cats));
 
 defineEmits(['openMenu', 'hoverCategory', 'closeMenu', 'toggleMenuGauche']);
 </script>
@@ -168,14 +186,6 @@ defineEmits(['openMenu', 'hoverCategory', 'closeMenu', 'toggleMenuGauche']);
 
 .div-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #555;
-}
-
-.audience-dropdown {
-  padding: 0.5rem;
-  border: 1px solid #bfdbfe;
-  border-top: 0;
-  border-radius: 0 0 0.75rem 0.75rem;
-  background: #eff6ff;
 }
 
 </style>
