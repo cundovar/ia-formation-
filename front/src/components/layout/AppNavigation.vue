@@ -1,12 +1,14 @@
 <template>
   <!--
+    Seul le repli de la colonne est animé : l'élargissement au survol d'un parcours est immédiat, sinon le panneau
+    des chapitres apparaissait coupé pendant l'animation.
     Colonne fixe : exactement la hauteur visible sous l'en-tête, avec une barre de défilement seulement si le menu
     est plus long. Sans débordement, la molette fait défiler la page même quand la souris est sur la colonne.
     La colonne laisse passer la souris (pointer-events-none) : seul le menu lui-même capte clics et molette.
   -->
   <div
     :class="[
-      'xl:z-30 scroll-gauche xl:top-20 h-[calc(100vh-7rem)] xl:h-[calc(100vh-5rem)] fixed border-blue-950 overflow-y-auto pointer-events-none div-scrollbar transition-all duration-500 ease-in-out',
+      'xl:z-30 scroll-gauche xl:top-20 h-[calc(100vh-7rem)] xl:h-[calc(100vh-5rem)] fixed border-blue-950 overflow-y-auto pointer-events-none div-scrollbar transition-transform duration-500 ease-in-out',
       isXlOuPlus ? '' : isMenuOpen ? 'max-xl:w-full md:w-2/3 z-40 top-28 ' : 'w-full -translate-x-full top-28',
       hoveredCategory ? 'z-40 w-1/2 ' : 'z-0 w-[20rem]',
       isOpenMenuGauche ? '-translate-x-[80%]' : 'translate-x-0',
@@ -23,39 +25,62 @@
       ]"
       @mouseleave="isXlOuPlus && $emit('hoverCategory', null)"
     >
-      <div class="max-xl:hidden">
+      <!-- Bouton de repli de la colonne : au-dessus des entrées, sans les chevaucher -->
+      <div class="max-xl:hidden flex justify-end">
         <ButtonArrowMenu
           :fonction="() => $emit('toggleMenuGauche')"
           :is-open="isOpenMenuGauche"
-          ajout-class="absolute right-3 top-0"
+          :label="isOpenMenuGauche ? 'Afficher le menu de gauche' : 'Replier le menu de gauche'"
         />
       </div>
 
-      <!-- Les deux entrées de l'accueil -->
+      <!-- Les deux entrées de l'accueil ; « J'apprends » déplie ses parcours sous elle, dans la colonne -->
       <div
         v-for="audience in AUDIENCES"
         :key="audience.key"
-        class="audience-entry max-xl:hidden xl:w-full"
-        @mouseenter="openAudienceMenu = audience.key === 'apprendre'"
-        @mouseleave="openAudienceMenu = false"
-        @focusin="openAudienceMenu = audience.key === 'apprendre'"
-        @focusout="onAudienceFocusout"
+        class="max-xl:hidden xl:w-full"
       >
-        <router-link
-          :to="audience.path"
+        <div
           :class="[
-            audience.key === 'apprendre' ? 'bg-blue-200 hover:bg-blue-300' : 'bg-emerald-200 hover:bg-emerald-300',
-            'xl:w-full min-h-[3rem] cursor-pointer shadow-neutral-600 p-2 text-gray-900 font-bold hover:underline flex items-center gap-2'
+            audience.key === 'apprendre' ? 'bg-blue-200' : 'bg-emerald-200',
+            'flex items-stretch shadow-neutral-600',
+            audience.key === 'apprendre' && openAudienceMenu ? 'rounded-t-lg' : '',
           ]"
-          :aria-expanded="audience.key === 'apprendre' ? openAudienceMenu : undefined"
-          :aria-haspopup="audience.key === 'apprendre' ? 'true' : undefined"
         >
-          <i :class="audience.icon" aria-hidden="true" />
-          {{ audience.title }}
-        </router-link>
+          <router-link
+            :to="audience.path"
+            :class="[
+              audience.key === 'apprendre' ? 'hover:bg-blue-300' : 'hover:bg-emerald-300',
+              'flex-1 min-w-0 min-h-[3rem] cursor-pointer p-2 text-gray-900 font-bold hover:underline flex items-center gap-2 break-words'
+            ]"
+          >
+            <i
+              :class="audience.icon"
+              aria-hidden="true"
+            />
+            <span class="min-w-0">{{ audience.title }}</span>
+          </router-link>
+          <button
+            v-if="audience.key === 'apprendre' && apprendreCats.length"
+            type="button"
+            class="shrink-0 w-11 flex items-center justify-center text-gray-900 hover:bg-blue-300 focus-visible:outline focus-visible:outline-3 focus-visible:outline-blue-800"
+            :aria-expanded="openAudienceMenu"
+            aria-controls="parcours-apprendre"
+            :aria-label="openAudienceMenu ? 'Masquer les parcours pour apprendre l’IA' : 'Afficher les parcours pour apprendre l’IA'"
+            data-testid="deplier-apprendre"
+            @click="openAudienceMenu = !openAudienceMenu"
+          >
+            <i
+              :class="['fas', openAudienceMenu ? 'fa-chevron-up' : 'fa-chevron-down']"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
         <div
           v-if="audience.key === 'apprendre' && openAudienceMenu && apprendreCats.length"
+          id="parcours-apprendre"
           class="audience-dropdown"
+          role="region"
           aria-label="Parcours pour apprendre l’IA"
         >
           <CategoryMenu
@@ -116,9 +141,6 @@ const props = defineProps({
 
 const openAudienceMenu = ref(false);
 const apprendreCats = computed(() => props.cats.filter((cat) => cat.audience === 'apprendre'));
-const onAudienceFocusout = (event) => {
-  if (!event.currentTarget.contains(event.relatedTarget)) openAudienceMenu.value = false;
-};
 
 defineEmits(['openMenu', 'hoverCategory', 'closeMenu', 'toggleMenuGauche']);
 </script>
@@ -148,23 +170,12 @@ defineEmits(['openMenu', 'hoverCategory', 'closeMenu', 'toggleMenuGauche']);
   background-color: #555;
 }
 
-.audience-entry {
-  position: relative;
-}
-
 .audience-dropdown {
-  position: absolute;
-  z-index: 70;
-  top: 100%;
-  left: 0;
-  width: min(24rem, calc(100vw - 2rem));
-  max-height: min(70vh, 34rem);
-  overflow-y: auto;
   padding: 0.5rem;
   border: 1px solid #bfdbfe;
+  border-top: 0;
   border-radius: 0 0 0.75rem 0.75rem;
   background: #eff6ff;
-  box-shadow: 0 10px 24px rgb(15 23 42 / 18%);
 }
 
 </style>
