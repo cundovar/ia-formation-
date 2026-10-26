@@ -79,6 +79,14 @@
                 </router-link>
               </li>
             </ol>
+            <!-- Diaporama publié du chapitre : seulement quand tous ses cours sont publiés (DIAPO_CHAPITRE_INCOMPLET) -->
+            <DiaporamaActions
+              v-if="diaporamasParChapitre[group.chapitreId]"
+              :diaporama="diaporamasParChapitre[group.chapitreId]"
+              :audience="audience?.key ?? 'apprendre'"
+              cible="chapitre"
+              :charger-captures="chargerCaptures"
+            />
           </details>
         </li>
       </ol>
@@ -102,7 +110,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useData } from '../utils/fetchDataPwa'
 import SeoHead from '../components/layout/SeoHead.vue'
@@ -111,6 +119,9 @@ import { storeToRefs } from 'pinia'
 import { useNiveauStore } from "@/stores/niveauCoursStore";
 import { getAudience } from '@/config/audiences'
 import { chapterNumber, sortChapters } from '@/utils/parcours'
+import DiaporamaActions from '../components/features/diaporamas/DiaporamaActions.vue'
+import { chargerDiaporamas, idCible } from '@/services/diaporamas'
+import { chargerCaptures } from '@/services/captures'
 
 
 
@@ -260,6 +271,7 @@ if(selectedNiveau.value){
       grouped[label] = {
         label: label,
         slug: label.toLowerCase().replace(/\s+/g, '-'),
+        chapitreId: menu.menu?.id ?? null,
         items: [],
       }
     }
@@ -278,6 +290,18 @@ if(selectedNiveau.value){
 
   return sortChapters(Object.values(grouped))
 })
+
+// Diaporamas publiés des chapitres affichés, rangés par identifiant de chapitre
+const diaporamasParChapitre = ref({})
+watch(
+  () => categoryMenus.value.map((group) => group.chapitreId).filter(Boolean).join(','),
+  async (ids) => {
+    const chapitres = ids ? ids.split(',').map(Number) : []
+    const diaporamas = await chargerDiaporamas({ chapitres })
+    diaporamasParChapitre.value = Object.fromEntries(diaporamas.map((d) => [idCible(d.chapitre), d]))
+  },
+  { immediate: true },
+)
 
 // Couleurs pastel des chapitres
 const chapterVariants = ['blue', 'green', 'purple', 'amber']
