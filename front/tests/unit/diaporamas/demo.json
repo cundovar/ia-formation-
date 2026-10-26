@@ -54,7 +54,7 @@
       "modele": "question",
       "titre": "Testez-vous",
       "question": "Quelle consigne donnera la réponse la plus utile ?",
-      "reponses": ["« Écris un mail »", "« Écris un mail court et poli à un voisin pour décaler un rendez-vous »", "« Mail voisin »"],
+      "reponses": ["« Écris un mail »", "« Écris un mail court et poli pour décaler le rendez-vous »", "« Mail voisin »"],
       "notes": "Laissez le groupe choisir avant de donner la réponse. La bonne réponse est la deuxième : elle précise la tâche, le destinataire, le ton et le but. La première est trop vague ; la troisième ne dit même pas ce qu'il faut produire. Profitez-en pour rappeler qu'une consigne se corrige : si la réponse ne convient pas, on précise au lieu de recommencer de zéro."
     },
     {
