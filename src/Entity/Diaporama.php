@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Annotation\SerializedName;
 
 /**
  * Diaporama d'un cours ou d'un chapitre (docs/PLAN_DIAPORAMAS.md) : une synthèse structurée, rédigée par
@@ -14,9 +21,18 @@ use Doctrine\ORM\Mapping as ORM;
  *
  * Il vise exactement un cours ou un chapitre. Les diapositives sont gardées en JSON : liste d'objets
  * {modele, titre, points, notes…} décrits dans front/src/diaporamas/modeles.js.
+ *
+ * API publique en lecture seule : GET /api/diaporamas?cours=ID ou ?chapitre[]=ID. PublishedContentExtension
+ * ne sert que les diaporamas publiés dont la cible est publiée et accessible.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'diaporama')]
+#[ApiResource(
+    operations: [new GetCollection(), new Get()],
+    normalizationContext: ['groups' => ['diaporama:read']],
+    paginationItemsPerPage: 50,
+)]
+#[ApiFilter(SearchFilter::class, properties: ['cours' => 'exact', 'chapitre' => 'exact'])]
 class Diaporama
 {
     public const STATUS_DRAFT = 'brouillon';
@@ -29,6 +45,7 @@ class Diaporama
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['diaporama:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne]
@@ -40,14 +57,17 @@ class Diaporama
     private ?Menus $chapitre = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['diaporama:read'])]
     private string $titre = '';
 
     #[ORM\Column(name: 'sous_titre', length: 255)]
+    #[Groups(['diaporama:read'])]
     private string $sousTitre = '';
 
     // JSON fourni par l'agent : sa forme est vérifiée par DiaporamaChecker
     /** @var list<mixed> */
     #[ORM\Column(type: Types::JSON)]
+    #[Groups(['diaporama:read'])]
     private array $diapositives = [];
 
     #[ORM\Column(length: 20)]
@@ -122,6 +142,29 @@ class Diaporama
         }
 
         return $this->cours !== null ? self::TARGET_COURSE : self::TARGET_CHAPTER;
+    }
+
+    #[Groups(['diaporama:read'])]
+    #[SerializedName('cours')]
+    public function getCoursId(): ?int
+    {
+        return $this->cours?->getId();
+    }
+
+    #[Groups(['diaporama:read'])]
+    #[SerializedName('chapitre')]
+    public function getChapitreId(): ?int
+    {
+        return $this->chapitre?->getId();
+    }
+
+    /**
+     * Public du parcours (apprendre ou former) : couleur du thème du diaporama.
+     */
+    #[Groups(['diaporama:read'])]
+    public function getAudience(): ?string
+    {
+        return $this->cours?->getCategory()?->getAudience() ?? $this->chapitre?->getCategory()?->getAudience();
     }
 
     public function getTitre(): string
