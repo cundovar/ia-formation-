@@ -6,6 +6,20 @@
       v-if="pageContent"
       class="page-layout w-full"
     >
+      <!-- Retour à la page précédente -->
+      <button
+        type="button"
+        class="back-link md:ml-10 lg:ml-20 px-3 md:px-5 pt-3"
+        data-testid="retour-cours"
+        @click="goBack"
+      >
+        <i
+          class="fas fa-arrow-left"
+          aria-hidden="true"
+        />
+        Retour
+      </button>
+
       <!-- Breadcrumb -->
       <SafeHtml
         :html="'accueil/' + (pageContent.menu?.label || pageContent.category?.name || 'Cours')"
@@ -153,6 +167,7 @@
 
 <script setup>
 import { computed, ref, watch, onMounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Prism from 'prismjs'
 import api from '@/services/api'
@@ -161,6 +176,7 @@ import ReadAloud from './ReadAloud.vue'
 import AppButton from '../../ui/AppButton.vue'
 import SafeHtml from '../../ui/SafeHtml.vue'
 import { expandCaptures } from '@/utils/captures'
+import { revenir } from '@/utils/retour'
 import { structureCourse } from '@/utils/courseSections'
 import { useToc } from '@/composables/ui/useToc'
 import { useVisibilityFilter } from '@/composables/ui/useVisibilityFilter'
@@ -175,6 +191,7 @@ const props = defineProps({
 })
 
 // Composables
+const router = useRouter()
 const contentRef = ref(null)
 const laboratoires = computed(() => laboratoiresDuCours(props.slug))
 const { toc, activeId, scrollToHeading, generateToc } = useToc(contentRef, {
@@ -194,6 +211,9 @@ const progressionActive = ref(false)
 const completionMessage = ref('')
 
 // Methods
+// Page précédente du site, sinon le parcours du cours (voir utils/retour.js)
+const goBack = () => revenir(router, pageContent.value?.category?.name)
+
 function getPageId(page) {
   // Si c'est un objet avec un ID classique
   if (typeof page === 'object' && page?.id) {
@@ -347,6 +367,26 @@ onMounted(() => {
 
 <style scoped>
 /* Texte du cours : voir assets/styles/content-cours.css */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e3a8a;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.back-link:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
 .course-header {
   max-width: 44rem;
   margin: 0 auto;
