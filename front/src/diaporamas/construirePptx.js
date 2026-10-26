@@ -1,7 +1,7 @@
 // Construction du fichier .pptx dans le navigateur (docs/PLAN_DIAPORAMAS.md § 7).
 // PptxGenJS n'est chargé qu'au moment de la construction, pour garder les pages légères.
-import { nomFichier, planDiaporama } from './miseEnPage'
-import { COULEURS, ESPACE_PARAGRAPHE, LICENCE, POLICE, TAILLES, ZONES, couleursPublic } from './theme'
+import { maitres, nomFichier, planDiaporama } from './miseEnPage'
+import { ESPACE_PARAGRAPHE, LICENCE, POLICE } from './theme'
 
 const PUCES = {
   point: { indent: 24 },
@@ -10,73 +10,67 @@ const PUCES = {
 
 const SANS_TRAIT = { type: 'none' }
 
+const position = (element) => ({ x: element.x, y: element.y, w: element.w, h: element.h })
+
+const optionsForme = (element) => ({
+  ...position(element),
+  fill: { color: element.fond },
+  line: element.bordure ? { color: element.bordure, width: 1 } : SANS_TRAIT,
+  ...(element.forme === 'roundRect' ? { rectRadius: 0.3 } : {}),
+})
+
+const optionsTexte = (element) => ({
+  ...position(element),
+  fontFace: POLICE,
+  fontSize: element.taille,
+  bold: element.gras,
+  color: element.couleur,
+  align: element.align,
+  valign: element.valign,
+  margin: 0,
+  paraSpaceAfter: element.paragraphes.length > 1 ? ESPACE_PARAGRAPHE : 0,
+})
+
+const paragraphes = (element) => {
+  const dernier = element.paragraphes.length - 1
+  return element.paragraphes.map((p, index) => ({
+    text: p.texte,
+    options: {
+      breakLine: index < dernier,
+      ...(p.puce ? { bullet: PUCES[p.puce] } : {}),
+      ...(p.lien ? { hyperlink: { url: p.lien } } : {}),
+    },
+  }))
+}
+
 const definirMaitres = (pptx, plan, site) => {
-  const couleurs = couleursPublic(plan.audience)
-  const titre = {
-    name: 'titre',
-    type: 'title',
-    fontFace: POLICE,
-    bold: true,
-    color: couleurs.fonce,
-    align: 'left',
-    margin: 0,
+  for (const [nom, maitre] of Object.entries(maitres(plan, site))) {
+    const { taille, couleur, ...zone } = maitre.titre
+    pptx.defineSlideMaster({
+      title: nom,
+      background: { color: maitre.fond },
+      objects: [
+        ...maitre.elements.map((element) => (element.type === 'forme'
+          ? { [element.forme]: optionsForme(element) }
+          : { text: { text: element.paragraphes.map((p) => p.texte).join('\n'), options: optionsTexte(element) } })),
+        {
+          placeholder: {
+            options: { name: 'titre', type: 'title', ...zone, fontFace: POLICE, fontSize: taille, bold: true, color: couleur, align: 'left', margin: 0 },
+            text: '',
+          },
+        },
+      ],
+      ...(maitre.numero
+        ? { slideNumber: { ...position(maitre.numero), fontFace: POLICE, fontSize: maitre.numero.taille, color: maitre.numero.couleur, align: 'right' } }
+        : {}),
+    })
   }
-
-  pptx.defineSlideMaster({
-    title: 'COUVERTURE',
-    background: { color: couleurs.pastel },
-    objects: [
-      { placeholder: { options: { ...titre, x: 0.9, y: 1.6, w: 9.6, h: 2.1, fontSize: TAILLES.titreCouverture, valign: 'bottom' }, text: '' } },
-      { text: { text: site, options: { x: 0.9, y: 6.7, w: 8, h: 0.4, fontFace: POLICE, fontSize: TAILLES.repere, color: COULEURS.texteDoux, margin: 0 } } },
-    ],
-  })
-
-  pptx.defineSlideMaster({
-    title: 'CONTENU',
-    background: { color: COULEURS.fond },
-    objects: [
-      { rect: { ...ZONES.bandeau, fill: { color: couleurs.accent }, line: SANS_TRAIT } },
-      { rect: { ...ZONES.trait, fill: { color: couleurs.trait }, line: SANS_TRAIT } },
-      { rect: { ...ZONES.filet, fill: { color: COULEURS.bordure }, line: SANS_TRAIT } },
-      { text: { text: plan.titre, options: { ...ZONES.pied, fontFace: POLICE, fontSize: TAILLES.repere, color: COULEURS.texteDoux, margin: 0, valign: 'middle' } } },
-      { placeholder: { options: { ...titre, ...ZONES.titre, fontSize: TAILLES.titre, valign: 'middle' }, text: '' } },
-    ],
-    slideNumber: { ...ZONES.numero, fontFace: POLICE, fontSize: TAILLES.repere, color: COULEURS.texteDoux, align: 'right' },
-  })
 }
 
 const ajouterElement = (slide, element) => {
-  const position = { x: element.x, y: element.y, w: element.w, h: element.h }
-  if (element.type === 'forme') {
-    slide.addShape(element.forme, {
-      ...position,
-      fill: { color: element.fond },
-      line: element.bordure ? { color: element.bordure, width: 1 } : SANS_TRAIT,
-      ...(element.forme === 'roundRect' ? { rectRadius: 0.3 } : {}),
-    })
-  } else if (element.type === 'image') {
-    slide.addImage({ ...position, data: element.data, altText: element.alt })
-  } else if (element.type === 'texte') {
-    const dernier = element.paragraphes.length - 1
-    slide.addText(element.paragraphes.map((p, index) => ({
-      text: p.texte,
-      options: {
-        breakLine: index < dernier,
-        ...(p.puce ? { bullet: PUCES[p.puce] } : {}),
-        ...(p.lien ? { hyperlink: { url: p.lien } } : {}),
-      },
-    })), {
-      ...position,
-      fontFace: POLICE,
-      fontSize: element.taille,
-      bold: element.gras,
-      color: element.couleur,
-      align: element.align,
-      valign: element.valign,
-      margin: 0,
-      paraSpaceAfter: element.paragraphes.length > 1 ? ESPACE_PARAGRAPHE : 0,
-    })
-  }
+  if (element.type === 'forme') slide.addShape(element.forme, optionsForme(element))
+  else if (element.type === 'image') slide.addImage({ ...position(element), data: element.data, altText: element.alt })
+  else if (element.type === 'texte') slide.addText(paragraphes(element), optionsTexte(element))
 }
 
 /**

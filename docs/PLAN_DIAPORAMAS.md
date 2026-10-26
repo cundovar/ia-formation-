@@ -103,7 +103,7 @@ La liste de référence, complète, est dans `regles/controles.md` (section « C
 - consignes `rediger_diaporama` et `relire_diaporama`, comme `rediger_qcm` et `relire_qcm`.
 - Le connecteur fournit à l'agent le texte du cours ou du chapitre, les règles `DIA-*` et la liste des modèles.
 
-**API publique** : `GET /api/diaporamas?cours={id}` et `?chapitre={id}`, filtrée par `PublishedContentExtension` (diaporama publié, cible publiée, accès réservé respecté). Les brouillons n'y apparaissent jamais.
+**API publique** : `GET /api/diaporamas?cours={id}` et `?chapitre[]={id}&chapitre[]={id}` (plusieurs chapitres d'un parcours en une requête) ; chaque élément de `member` porte `titre`, `sousTitre`, `audience` (facultatif : sinon celle du parcours), `diapositives`, et sa cible `cours` ou `chapitre` (identifiant ou IRI). C'est le format attendu par le front (`front/src/services/diaporamas.js`), filtrée par `PublishedContentExtension` (diaporama publié, cible publiée, accès réservé respecté). Les brouillons n'y apparaissent jamais.
 
 **Back-office** : liste des diaporamas, aperçu, correction d'un point ou d'une note, retrait de la publication, mention « à mettre à jour ».
 
@@ -133,7 +133,7 @@ La liste de référence, complète, est dans `regles/controles.md` (section « C
 - D3 (M) **Entité et migration** `Diaporama` ; `DiaporamaChecker` et ses tests PHPUnit (dont `DIAPO_COPIE`).
 - D4 (M) **Connecteur** : outils et consignes, relecture par un autre connecteur, publication. Tests du service.
 - D5 (S) **API publique** et filtrage dans `PublishedContentExtension` ; plan du site et cache hors ligne. Tests d'accès (brouillon invisible, contenu réservé).
-- D6 (M) **Front** : boutons de téléchargement .pptx et version PDF (cours, chapitre), aperçu, hors ligne. Tests Vitest et vérification sur mobile, au clavier et en connexion lente.
+- D6 (M) **Front** (fait le 26 octobre 2026 ; reste masqué tant que `DIAPORAMAS_PUBLIES` vaut `false` dans `front/src/services/diaporamas.js`, à passer à `true` avec D5) : boutons de téléchargement .pptx et version PDF (cours, chapitre), aperçu, hors ligne. Tests Vitest et vérification sur mobile, au clavier et en connexion lente.
 - D7 (S) **Back-office** : liste, aperçu, correction, mention « à mettre à jour ».
 - D8 (S) **Essai réel** : un diaporama de cours et un de chapitre rédigés par un agent, relus par l'autre connecteur, ouverts dans PowerPoint, LibreOffice Impress et Google Slides.
 

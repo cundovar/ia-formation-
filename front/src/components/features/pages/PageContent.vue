@@ -116,6 +116,15 @@
             </ul>
           </section>
 
+          <!-- Diaporama publié du cours : .pptx, version PDF, aperçu (docs/PLAN_DIAPORAMAS.md) -->
+          <DiaporamaActions
+            v-if="diaporama"
+            :diaporama="diaporama"
+            :audience="pageContent.category?.audience ?? 'apprendre'"
+            cible="cours"
+            :charger-captures="chargerCaptures"
+          />
+
           <!-- Navigation Precedent / Suivant -->
           <div class="flex justify-center items-center p-3 md:p-5 mt-10 border-t border-gray-300 gap-4 md:gap-10">
             <router-link
@@ -181,6 +190,9 @@ import { structureCourse } from '@/utils/courseSections'
 import { useToc } from '@/composables/ui/useToc'
 import { useVisibilityFilter } from '@/composables/ui/useVisibilityFilter'
 import { laboratoiresDuCours } from '@/laboratoires/catalogue'
+import DiaporamaActions from '../diaporamas/DiaporamaActions.vue'
+import { chargerDiaporamas } from '@/services/diaporamas'
+import { chargerCaptures } from '@/services/captures'
 
 // Props
 const props = defineProps({
@@ -204,6 +216,7 @@ const { filterByVisibility } = useVisibilityFilter()
 const pageContent = ref(null)
 // Contenu prêt à afficher : marqueurs [capture:ID] remplacés par les captures, parties du gabarit repérées
 const renderedCode = ref('')
+const diaporama = ref(null)
 const previousPage = ref(null)
 const nextPage = ref(null)
 const allPages = ref([])
@@ -243,6 +256,7 @@ function getPageId(page) {
 
 async function fetchPageContent() {
   renderedCode.value = ''
+  diaporama.value = null
   try {
     const { data } = await api.get(
       `/page_contents?page.slug=/${encodeURIComponent(props.slug)}`
@@ -250,7 +264,11 @@ async function fetchPageContent() {
 
     if (data.totalItems > 0) {
       pageContent.value = data.member[0]
-      renderedCode.value = structureCourse(await expandCaptures(pageContent.value.code, fetchCaptures))
+      renderedCode.value = structureCourse(await expandCaptures(pageContent.value.code, chargerCaptures))
+      const coursId = pageContent.value.id
+      chargerDiaporamas({ cours: coursId }).then(([premier]) => {
+        if (pageContent.value?.id === coursId) diaporama.value = premier ?? null
+      })
 
       nextTick(() => {
         document.querySelectorAll('pre code').forEach((el) => {
@@ -294,12 +312,6 @@ onMounted(async () => {
     progressionActive.value = false
   }
 })
-
-async function fetchCaptures(ids) {
-  const query = ids.map((id) => `id[]=${encodeURIComponent(id)}`).join('&')
-  const { data } = await api.get(`/captures?${query}`)
-  return data.member ?? []
-}
 
 async function fetchNavigationPages() {
   try {

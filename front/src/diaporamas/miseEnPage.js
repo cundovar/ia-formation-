@@ -278,6 +278,32 @@ const DISPOSITIONS = {
   fin,
 }
 
+// Décor commun des deux masques : la couverture et les diapositives de contenu.
+// `titre` est l'emplacement du titre (lu par les lecteurs d'écran dans PowerPoint).
+export const maitres = (plan, site) => {
+  const couleurs = couleursPublic(plan.audience)
+  const repere = { taille: TAILLES.repere, couleur: COULEURS.texteDoux, role: 'repere', valign: 'middle' }
+  return {
+    COUVERTURE: {
+      fond: couleurs.pastel,
+      titre: { x: 0.9, y: 1.6, w: 9.6, h: 2.1, taille: TAILLES.titreCouverture, valign: 'bottom', couleur: couleurs.fonce },
+      elements: [bloc({ x: 0.9, y: 6.7, w: 8, h: 0.4 }, [paragraphe(site)], repere)],
+      numero: null,
+    },
+    CONTENU: {
+      fond: COULEURS.fond,
+      titre: { ...ZONES.titre, taille: TAILLES.titre, valign: 'middle', couleur: couleurs.fonce },
+      elements: [
+        forme('rect', ZONES.bandeau, couleurs.accent),
+        forme('rect', ZONES.trait, couleurs.trait),
+        forme('rect', ZONES.filet, COULEURS.bordure),
+        bloc(ZONES.pied, [paragraphe(plan.titre)], repere),
+      ],
+      numero: { ...ZONES.numero, taille: TAILLES.repere, couleur: COULEURS.texteDoux },
+    },
+  }
+}
+
 const TITRES_PAR_DEFAUT = { fin: 'Pour aller plus loin', a_retenir: 'À retenir', objectifs: 'Ce que vous saurez faire' }
 
 /**
