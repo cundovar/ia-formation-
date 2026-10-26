@@ -10,6 +10,8 @@ use App\Entity\Menus;
 use App\Entity\Page;
 use App\Entity\PageContent;
 use App\Entity\CourseMedia;
+use App\Entity\Diaporama;
+use App\Service\Redaction\DiaporamaService;
 use App\Entity\QCM;
 use App\Entity\QcmDraft;
 use App\Entity\LanguageQCM;
@@ -43,6 +45,7 @@ class DashboardController extends AbstractDashboardController
         private CourseMediaRepositoryInterface $courseMediaRepository,
         private SiteConfigurationRepositoryInterface $siteConfigRepository,
         private AdminUrlGenerator $adminUrlGenerator,
+        private DiaporamaService $diaporamaService,
     ) {}
 
     #[Route('/site-config', name: 'admin_site_config')]
@@ -86,6 +89,11 @@ class DashboardController extends AbstractDashboardController
                 'capture' => $capture,
                 'url' => $this->adminUrlGenerator->unsetAll()->setController(CourseMediaCrudController::class)->setAction('edit')->setEntityId($capture->getId())->generateUrl(),
             ], $capturesDue),
+            // Diaporamas dont le cours a changé depuis la synthèse
+            'diaporamasOutdated' => array_map(fn (Diaporama $diaporama) => [
+                'diaporama' => $diaporama,
+                'url' => $this->adminUrlGenerator->unsetAll()->setController(DiaporamaCrudController::class)->setAction('detail')->setEntityId($diaporama->getId())->generateUrl(),
+            ], $this->diaporamaService->outdated()),
         ]);
     }
 
@@ -104,6 +112,7 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::section('📚 Cours');
         yield MenuItem::linkToCrud('Cours', 'fa fa-file-lines', PageContent::class);
         yield MenuItem::linkToCrud('Captures', 'fa fa-image', CourseMedia::class);
+        yield MenuItem::linkToCrud('Diaporamas', 'fa fa-person-chalkboard', Diaporama::class);
 
         yield MenuItem::section('🧠 QCM');
         yield MenuItem::linkToCrud('QCM', 'fa fa-question-circle', QCM::class);

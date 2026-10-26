@@ -189,5 +189,32 @@
                 <p>Aucune capture à revérifier.</p>
             {% endif %}
         </div>
+
+        {# Diaporamas dont le cours a changé depuis la synthèse #}
+        <div class="recent-section" data-testid="diaporamas-outdated">
+            <h2><i class="fa fa-person-chalkboard"></i> Diaporamas à mettre à jour</h2>
+            {% if diaporamasOutdated|length > 0 %}
+                <table class="recent-table">
+                    <thead>
+                        <tr>
+                            <th>Diaporama</th>
+                            <th>Cible</th>
+                            <th>Modifié le</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in diaporamasOutdated %}
+                            <tr>
+                                <td><a href="{{ item.url }}">{{ item.diaporama.titre }}</a></td>
+                                <td>{{ item.diaporama.libelleCible }}</td>
+                                <td>{{ item.diaporama.updatedAt|date('d/m/Y') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Aucun diaporama à mettre à jour.</p>
+            {% endif %}
+        </div>
     </div>
 {% endblock %}

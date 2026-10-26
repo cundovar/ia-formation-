@@ -39,6 +39,15 @@ final class DiaporamaSource
     }
 
     /**
+     * Le cours a changé depuis la synthèse : le diaporama est à mettre à jour.
+     */
+    public function estPerime(Diaporama $diaporama): bool
+    {
+        return $diaporama->getTypeCible() !== null && $diaporama->getEmpreinteSource() !== null
+            && $diaporama->getEmpreinteSource() !== $this->empreinte($diaporama);
+    }
+
+    /**
      * Titres des cours du chapitre qui ne sont pas encore publiés.
      *
      * @return list<string>

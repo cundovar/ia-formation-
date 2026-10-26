@@ -33,3 +33,12 @@ Sur le site, le marqueur devient l'image, sa légende, « Capture du site ChatGP
 **Remplacer une capture** : ouvrir la capture, déposer le nouveau fichier, mettre à jour la date. Tous les cours qui contiennent son marqueur affichent la nouvelle image sans être modifiés. La fiche de la capture indique les cours qui l'utilisent.
 
 Le site n'affiche aucune autre image que les captures gérées ici. Une image collée directement dans le HTML d'un cours est retirée à l'affichage.
+
+## Diaporamas
+
+Menu **Diaporamas**. Un diaporama est la synthèse d'un cours ou d'un chapitre, téléchargeable en PowerPoint et en PDF sur la page publique. L'assistant de rédaction le rédige et le publie après la relecture d'un autre connecteur (voir `docs/CONNECTEUR.md`) ; le back-office ne crée ni ne publie de diaporama.
+
+- **Relire** : la fiche montre l'aperçu de chaque diapositive avec ses notes de présentation, la relecture du connecteur et les contrôles de `regles/controles.md`.
+- **Corriger** : le titre, le sous-titre et les diapositives se modifient en texte (format YAML : chaque diapositive commence par `- modele:`, chaque point par un tiret ; garder les espaces en début de ligne). Une correction qui ajoute un contrôle bloquant n'est pas enregistrée. Le statut et la relecture ne changent pas : un diaporama publié reste en ligne.
+- **Retirer du site** : le diaporama repasse en brouillon et disparaît de la page. Pour le republier, l'assistant de rédaction doit obtenir une nouvelle relecture.
+- **À mettre à jour** : quand le texte du cours (ou d'un cours du chapitre) change après la synthèse, la colonne **Suivi du cours** l'indique et le tableau de bord le liste. Après avoir corrigé le diaporama, ou vérifié qu'il reste juste, cliquer sur **Marquer comme à jour**. L'assistant de rédaction peut aussi le réécrire avec `modifier_diaporama`.
