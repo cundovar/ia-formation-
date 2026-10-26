@@ -55,6 +55,8 @@ Modèles de diapositive (le thème leur donne une mise en page fixe) :
 | `a_retenir` | synthèse | 2 à 5 points |
 | `fin` | clôture | lien vers le cours complet, sources, date |
 
+Champs de chaque modèle (référence : `front/src/diaporamas/modeles.js`) : `points` (liste de textes) ; `comparaison` : `colonnes` (deux objets `{ titre, points }`) ; `capture` : `capture` (identifiant de la capture) ; `exercice` : `consigne`, `duree` (minutes) ; `question` : `question`, `reponses` ; `fin` : `lien`, `sources` (objets `{ libelle, url }`), `date` ; `titre` : `sousTitre`, `public`, `duree`. Le diaporama porte aussi `audience` (`apprendre` ou `former`), qui donne la couleur du thème.
+
 Chaque diapositive a des **notes de présentation** : c'est là que va le détail du cours, reformulé à l'oral.
 
 ## 5. Règles éditoriales à ajouter (`regles/08-diaporamas.md`)
@@ -127,7 +129,7 @@ La liste de référence, complète, est dans `regles/controles.md` (section « C
 
 - D0 (S) **Décisions** (faites le 26 octobre 2026, § 11) ; mise à jour de `PLAN_APP_FORMATION_IA.md` et `AGENTS.md`.
 - D1 (S) **Règles** : `regles/08-diaporamas.md`, ajouts à `regles/controles.md` et `regles/README.md` ; validation éditoriale avant D3.
-- D2 (M) **Thème et générateur** : `front/src/diaporamas/` (thème, modèles, `construirePptx.js`). Tests Vitest : chaque modèle produit les bons éléments, aucune diapositive vide, textes alternatifs présents. Revue visuelle d'un diaporama de démonstration en données fictives.
+- D2 (M) **Thème et générateur** (fait le 26 octobre 2026) : `front/src/diaporamas/` (thème, modèles, `construirePptx.js`). Tests Vitest : chaque modèle produit les bons éléments, aucune diapositive vide, textes alternatifs présents. Revue visuelle d'un diaporama de démonstration en données fictives.
 - D3 (M) **Entité et migration** `Diaporama` ; `DiaporamaChecker` et ses tests PHPUnit (dont `DIAPO_COPIE`).
 - D4 (M) **Connecteur** : outils et consignes, relecture par un autre connecteur, publication. Tests du service.
 - D5 (S) **API publique** et filtrage dans `PublishedContentExtension` ; plan du site et cache hors ligne. Tests d'accès (brouillon invisible, contenu réservé).
