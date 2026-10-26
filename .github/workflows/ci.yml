@@ -131,6 +131,8 @@ jobs:
   capture:
     name: Moteur de capture (Playwright)
     runs-on: ubuntu-latest
+    # Le miroir apt d'Ubuntu est parfois très lent : échouer vite plutôt qu'attendre 6 h.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -140,8 +142,20 @@ jobs:
           cache-dependency-path: capture/package-lock.json
       - name: Install capture dependencies
         run: npm ci --prefix capture
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('./capture/node_modules/playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
       - name: Install Chromium for Playwright
-        run: npx --prefix capture playwright-core install --with-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx --prefix capture playwright-core install chromium
+      - name: Install Chromium system libraries
+        run: npx --prefix capture playwright-core install-deps chromium
       - name: Check syntax
         run: npm run lint --prefix capture
       - name: Run capture tests (local test site, no external network)
