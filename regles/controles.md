@@ -45,3 +45,25 @@ Le serveur les applique à chaque création ou modification d'un brouillon de QC
 
 La plausibilité des réponses fausses, la justesse de la bonne réponse et le ton de la correction ne se vérifient pas automatiquement : ils relèvent de la relecture (`relire_qcm`).
 
+## Contrôles d'un diaporama
+
+Prévus pour l'étape D3 du plan (`docs/PLAN_DIAPORAMAS.md`), pas encore présents dans le code. Le serveur les appliquera à chaque création ou modification d'un brouillon de diaporama, à sa vérification et à sa publication (`src/Service/Redaction/DiaporamaChecker.php`).
+
+| Code | Règle | Niveau | Ce qui est vérifié |
+| --- | --- | --- | --- |
+| `DIAPO_MODELE_INCONNU` | — | bloquant | Le JSON suit le format : chaque diapositive a un modèle connu et les champs de ce modèle. |
+| `DIAPO_NOMBRE` | `DIA-01` | bloquant | De 6 à 12 diapositives pour un cours, de 10 à 20 pour un chapitre. |
+| `DIAPO_TITRE_MANQUANT`, `DIAPO_TITRE_LONG` | `DIA-01`, `DIA-05` | bloquant | Chaque diapositive a un titre de 60 caractères au plus. |
+| `DIAPO_TROP_DE_POINTS` | `DIA-01` | bloquant | 5 points au plus par diapositive. |
+| `DIAPO_COPIE` | `DIA-02` | bloquant | Aucun passage de plus de 8 mots identiques au cours (ou aux cours du chapitre). |
+| `CAPTURE_INCONNUE` | `CAP-02`, `DIA-05` | bloquant | Chaque capture citée existe dans le back-office et a un texte alternatif. |
+| `DIAPO_CHAPITRE_INCOMPLET` | — | bloquant | Tous les cours du chapitre sont publiés avant son diaporama. |
+| `NUMERO_SECURITE_SOCIALE`, `IBAN`, `TELEPHONE`, `CLE_API`, `COURRIEL_REEL` | `DON-04` | bloquant | Mêmes contrôles que pour un cours, sur les diapositives et les notes. |
+| `RELECTURE_MANQUANTE`, `RELECTURE_AVEC_RESERVES`, `RELECTURE_DEFAVORABLE` | `RED-02` | bloquant (à la publication) | Un autre agent a relu le diaporama depuis sa dernière modification, avec un avis favorable. |
+| `DIAPO_NOTES_MANQUANTES` | `DIA-03` | bloquant | Chaque diapositive, sauf la première et la dernière, a des notes de présentation. |
+| `DIAPO_POINT_LONG` | `DIA-01` | avertissement | Point de plus de 12 mots. |
+| `DIAPO_NOTES_LONGUEUR` | `DIA-03` | avertissement | Notes de 300 à 900 caractères. |
+| `DIAPO_SANS_PRATIQUE` | `DIA-04` | avertissement | Un diaporama de cours « apprendre » a une diapositive d'exercice ou de question. |
+| `DIAPO_SOURCE_PERIMEE` | — | avertissement | Le cours a changé depuis le diaporama (empreinte de la source différente). |
+
+La qualité de la synthèse, le choix des idées et la clarté des notes ne se vérifient pas automatiquement : ils relèvent de la relecture.
