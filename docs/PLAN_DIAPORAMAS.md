@@ -47,7 +47,7 @@ Modèles de diapositive (le thème leur donne une mise en page fixe) :
 | `titre` | première diapositive | titre, sous-titre, public, durée indicative |
 | `objectifs` | ce que l'on saura faire | 2 à 4 points |
 | `notion` | une idée, une définition | titre, 1 à 4 points, pictogramme facultatif |
-| `etapes` | une démarche | 2 à 6 étapes numérotées |
+| `etapes` | une démarche | 2 à 5 étapes numérotées |
 | `comparaison` | deux colonnes (à faire / à éviter, avant / après) | 2 listes de 1 à 4 points |
 | `capture` | montrer l'outil | une capture du back-office (`[capture:ID]`), 0 à 2 points |
 | `exercice` | faire pratiquer (`POS-06`) | consigne d'activité, durée |
@@ -130,7 +130,7 @@ La liste de référence, complète, est dans `regles/controles.md` (section « C
 - D0 (S) **Décisions** (faites le 26 octobre 2026, § 11) ; mise à jour de `PLAN_APP_FORMATION_IA.md` et `AGENTS.md`.
 - D1 (S) **Règles** : `regles/08-diaporamas.md`, ajouts à `regles/controles.md` et `regles/README.md` ; validation éditoriale avant D3.
 - D2 (M) **Thème et générateur** (fait le 26 octobre 2026) : `front/src/diaporamas/` (thème, modèles, `construirePptx.js`). Tests Vitest : chaque modèle produit les bons éléments, aucune diapositive vide, textes alternatifs présents. Revue visuelle d'un diaporama de démonstration en données fictives.
-- D3 (M) **Entité et migration** `Diaporama` ; `DiaporamaChecker` et ses tests PHPUnit (dont `DIAPO_COPIE`).
+- D3 (M) **Entité et migration** (fait le 26 octobre 2026 : `src/Entity/Diaporama.php`, `DiaporamaChecker`, `DiaporamaSource`) `Diaporama` ; `DiaporamaChecker` et ses tests PHPUnit (dont `DIAPO_COPIE`).
 - D4 (M) **Connecteur** : outils et consignes, relecture par un autre connecteur, publication. Tests du service.
 - D5 (S) **API publique** et filtrage dans `PublishedContentExtension` ; plan du site et cache hors ligne. Tests d'accès (brouillon invisible, contenu réservé).
 - D6 (M) **Front** (fait le 26 octobre 2026 ; reste masqué tant que `DIAPORAMAS_PUBLIES` vaut `false` dans `front/src/services/diaporamas.js`, à passer à `true` avec D5) : boutons de téléchargement .pptx et version PDF (cours, chapitre), aperçu, hors ligne. Tests Vitest et vérification sur mobile, au clavier et en connexion lente.

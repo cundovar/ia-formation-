@@ -47,15 +47,17 @@ La plausibilité des réponses fausses, la justesse de la bonne réponse et le t
 
 ## Contrôles d'un diaporama
 
-Prévus pour l'étape D3 du plan (`docs/PLAN_DIAPORAMAS.md`), pas encore présents dans le code. Le serveur les appliquera à chaque création ou modification d'un brouillon de diaporama, à sa vérification et à sa publication (`src/Service/Redaction/DiaporamaChecker.php`).
+Le serveur les applique à un diaporama (`src/Service/Redaction/DiaporamaChecker.php`) ; le connecteur les utilisera à chaque création, modification, vérification et publication (étape D4 de `docs/PLAN_DIAPORAMAS.md`). Les champs de chaque modèle sont listés dans `DiaporamaChecker::MODELES`.
 
 | Code | Règle | Niveau | Ce qui est vérifié |
 | --- | --- | --- | --- |
-| `DIAPO_MODELE_INCONNU` | — | bloquant | Le JSON suit le format : chaque diapositive a un modèle connu et les champs de ce modèle. |
+| `DIAPO_CIBLE` | — | bloquant | Le diaporama vise un cours ou un chapitre, et un seul. |
+| `DIAPO_MODELE_INCONNU` | — | bloquant | Chaque diapositive a un modèle connu. |
+| `DIAPO_CHAMP_MANQUANT` | — | bloquant | Les champs du modèle sont remplis : nombre minimal de points ou de réponses, consigne, question, deux colonnes avec un titre, identifiant de capture. |
 | `DIAPO_NOMBRE` | `DIA-01` | bloquant | De 6 à 12 diapositives pour un cours, de 10 à 20 pour un chapitre. |
 | `DIAPO_TITRE_MANQUANT`, `DIAPO_TITRE_LONG` | `DIA-01`, `DIA-05` | bloquant | Chaque diapositive a un titre de 60 caractères au plus. |
-| `DIAPO_TROP_DE_POINTS` | `DIA-01` | bloquant | 5 points au plus par diapositive. |
-| `DIAPO_COPIE` | `DIA-02` | bloquant | Aucun passage de plus de 8 mots identiques au cours (ou aux cours du chapitre). |
+| `DIAPO_TROP_DE_POINTS` | `DIA-01` | bloquant | 5 points au plus par diapositive, et le maximum du modèle (4 pour une notion, 4 réponses…). |
+| `DIAPO_COPIE` | `DIA-02` | bloquant | Aucun passage de plus de 8 mots identiques au cours (ou aux cours du chapitre), sans tenir compte de la casse ni de la ponctuation. Les notes ne sont pas comparées. |
 | `CAPTURE_INCONNUE` | `CAP-02`, `DIA-05` | bloquant | Chaque capture citée existe dans le back-office et a un texte alternatif. |
 | `DIAPO_CHAPITRE_INCOMPLET` | — | bloquant | Tous les cours du chapitre sont publiés avant son diaporama. |
 | `NUMERO_SECURITE_SOCIALE`, `IBAN`, `TELEPHONE`, `CLE_API`, `COURRIEL_REEL` | `DON-04` | bloquant | Mêmes contrôles que pour un cours, sur les diapositives et les notes. |
