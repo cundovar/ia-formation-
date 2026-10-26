@@ -137,13 +137,25 @@ final class DiaporamaBackOfficeTest extends WebTestCase
 
         $this->client->request('POST', '/admin/diaporama/'.$this->id.'/marquer-a-jour');
         self::assertResponseRedirects();
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('body', 'Action refusée');
+        self::assertSelectorTextContains('body', 'À mettre à jour');
+
+        $this->client->submitForm('Marquer comme à jour');
+        self::assertResponseRedirects();
         $this->client->request('GET', '/admin');
         self::assertSelectorTextContains('[data-testid="diaporamas-outdated"]', 'Aucun diaporama à mettre à jour.');
     }
 
     public function testUnpublishedDiaporamaLeavesThePublicApi(): void
     {
+        // Sans jeton, rien ne change
         $this->client->request('POST', '/admin/diaporama/'.$this->id.'/retirer');
+        self::assertResponseRedirects();
+        self::assertTrue($this->diaporama()->isPublished());
+
+        $this->client->request('GET', '/admin/diaporama/'.$this->id);
+        $this->client->submitForm('Retirer du site');
         self::assertResponseRedirects();
 
         $diaporama = $this->diaporama();
