@@ -86,7 +86,7 @@ final class DiaporamaChecker
             && array_filter($diapositives, static fn ($d) => \is_array($d) && \in_array($d['modele'] ?? null, self::PRATIQUE, true)) === []) {
             $issues[] = $this->issue('DIAPO_SANS_PRATIQUE', 'DIA-04', DraftChecker::WARNING, 'Ajoutez une diapositive « exercice » ou « question » : le cours fait pratiquer.');
         }
-        if ($cible !== null && $diaporama->getEmpreinteSource() !== null && $diaporama->getEmpreinteSource() !== $this->source->empreinte($diaporama)) {
+        if ($this->source->estPerime($diaporama)) {
             $issues[] = $this->issue('DIAPO_SOURCE_PERIMEE', null, DraftChecker::WARNING, 'Le cours a changé depuis la synthèse : relisez le diaporama et mettez-le à jour.');
         }
 

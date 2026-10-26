@@ -136,6 +136,60 @@ final class DiaporamaService
     }
 
     /**
+     * Correction par le responsable éditorial dans le back-office, avec les mêmes contrôles bloquants que l'agent.
+     * Le statut et la relecture sont gardés, l'empreinte aussi : corriger une coquille ne dit pas que le
+     * diaporama suit le cours modifié (voir markUpToDate).
+     *
+     * @param array<string, mixed> $data titre, sousTitre, diapositives
+     * @return list<array{code: string, regle: ?string, niveau: string, message: string}> avertissements restants
+     */
+    public function correct(Diaporama $diaporama, array $data): array
+    {
+        try {
+            $this->apply($diaporama, $data, false, keepFingerprint: true);
+            $issues = $this->blockUnlessValid($diaporama);
+        } catch (RedactionError $error) {
+            $this->entityManager->refresh($diaporama);
+            throw $error;
+        }
+        $diaporama->touch();
+        $this->entityManager->flush();
+
+        return $issues;
+    }
+
+    /**
+     * Retrait de la publication depuis le back-office : il faudra une nouvelle relecture pour republier.
+     */
+    public function unpublish(Diaporama $diaporama): void
+    {
+        $diaporama->setStatus(Diaporama::STATUS_DRAFT)->clearReview()->touch();
+        $this->entityManager->flush();
+    }
+
+    /**
+     * Le responsable éditorial a vérifié que le diaporama suit toujours le cours : la mention « à mettre à jour » disparaît.
+     */
+    public function markUpToDate(Diaporama $diaporama): void
+    {
+        $diaporama->setEmpreinteSource($this->source->empreinte($diaporama))->touch();
+        $this->entityManager->flush();
+    }
+
+    /**
+     * Diaporamas dont le cours a changé depuis la synthèse.
+     *
+     * @return list<Diaporama>
+     */
+    public function outdated(): array
+    {
+        return array_values(array_filter(
+            $this->entityManager->getRepository(Diaporama::class)->findBy([], ['updatedAt' => 'DESC']),
+            $this->source->estPerime(...),
+        ));
+    }
+
+    /**
      * @return array{sansControleBloquant: bool, publiable: bool, controles: list<array<string, mixed>>}
      */
     public function check(int $id): array
@@ -273,7 +327,7 @@ final class DiaporamaService
     /**
      * @param array<string, mixed> $data
      */
-    private function apply(Diaporama $diaporama, array $data, bool $creating): void
+    private function apply(Diaporama $diaporama, array $data, bool $creating, bool $keepFingerprint = false): void
     {
         $errors = [];
 
@@ -294,7 +348,9 @@ final class DiaporamaService
         }
 
         // Le texte source au moment de la synthèse : un changement du cours signale le diaporama à mettre à jour
-        $diaporama->setEmpreinteSource($this->source->empreinte($diaporama));
+        if (!$keepFingerprint) {
+            $diaporama->setEmpreinteSource($this->source->empreinte($diaporama));
+        }
     }
 
     /**

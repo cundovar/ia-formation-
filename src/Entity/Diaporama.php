@@ -39,6 +39,12 @@ class Diaporama
     public const STATUS_TO_FIX = 'a_corriger';
     public const STATUS_PUBLISHED = 'publie';
 
+    public const STATUS_LABELS = [
+        'Brouillon' => self::STATUS_DRAFT,
+        'À corriger' => self::STATUS_TO_FIX,
+        'Publié' => self::STATUS_PUBLISHED,
+    ];
+
     public const TARGET_COURSE = 'cours';
     public const TARGET_CHAPTER = 'chapitre';
 
@@ -142,6 +148,16 @@ class Diaporama
         }
 
         return $this->cours !== null ? self::TARGET_COURSE : self::TARGET_CHAPTER;
+    }
+
+    /**
+     * Libellé de la cible pour le back-office.
+     */
+    public function getLibelleCible(): string
+    {
+        return $this->cours !== null
+            ? 'Cours : '.$this->cours->getTitle()
+            : 'Chapitre : '.$this->chapitre?->getLabel();
     }
 
     #[Groups(['diaporama:read'])]

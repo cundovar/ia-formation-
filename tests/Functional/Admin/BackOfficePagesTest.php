@@ -32,7 +32,7 @@ final class BackOfficePagesTest extends WebTestCase
 
         $paths = [];
         foreach (static::getContainer()->get(RouterInterface::class)->getRouteCollection() as $name => $route) {
-            if (preg_match('/^dashboard_\w+_(index|new)$/', $name) === 1 && $name !== 'dashboard_qcm_draft_new') {
+            if (preg_match('/^dashboard_\w+_(index|new)$/', $name) === 1 && !\in_array($name, ['dashboard_qcm_draft_new', 'dashboard_diaporama_new'], true)) {
                 $paths[] = $route->getPath();
             }
         }

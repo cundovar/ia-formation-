@@ -134,7 +134,7 @@ La liste de référence, complète, est dans `regles/controles.md` (section « C
 - D4 (M) **Connecteur** (fait le 26 octobre 2026 : `src/Service/Redaction/DiaporamaService.php`, outils `*_diaporama` et consignes `rediger_diaporama`, `relire_diaporama`) : outils et consignes, relecture par un autre connecteur, publication. Tests du service.
 - D5 (S) **API publique** (fait le 26 octobre 2026 : `/api/diaporamas?cours=` et `?chapitre[]=`, lecture seule) et filtrage dans `PublishedContentExtension` ; le plan du site n'a pas d'entrée propre (le diaporama est servi sur la page du cours ou du parcours) et le cache hors ligne suit celui de l'API. Tests d'accès (brouillon invisible, contenu réservé).
 - D6 (M) **Front** (fait le 26 octobre 2026 ; branché sur l'API depuis D5) : boutons de téléchargement .pptx et version PDF (cours, chapitre), aperçu, hors ligne. Tests Vitest et vérification sur mobile, au clavier et en connexion lente.
-- D7 (S) **Back-office** : liste, aperçu, correction, mention « à mettre à jour ».
+- D7 (S) **Back-office** (fait le 26 octobre 2026 : `DiaporamaCrudController`, guide dans `docs/EDITION.md`) : liste, aperçu, correction, mention « à mettre à jour ».
 - D8 (S) **Essai réel** : un diaporama de cours et un de chapitre rédigés par un agent, relus par l'autre connecteur, ouverts dans PowerPoint, LibreOffice Impress et Google Slides.
 
 ## 10. Risques et parades
