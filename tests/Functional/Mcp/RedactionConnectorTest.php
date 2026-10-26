@@ -31,15 +31,15 @@ final class RedactionConnectorTest extends McpTestCase
         sort($tools);
 
         self::assertSame([
-            'attribuer_acces', 'capturer_page', 'classer_cours', 'classer_parcours', 'creer_brouillon', 'creer_brouillon_qcm', 'creer_module', 'creer_niveau', 'creer_niveau_qcm', 'creer_parcours', 'creer_rubrique', 'creer_theme_qcm', 'definir_illustration_parcours', 'enregistrer_relecture',
-            'enregistrer_relecture_qcm', 'lire_regles', 'lister_acces', 'lister_apprenants', 'lister_brouillons', 'lister_brouillons_qcm', 'lister_captures', 'lister_catalogue', 'lister_catalogue_qcm',
-            'lister_cours_publies', 'mettre_en_brouillon', 'modifier_brouillon', 'modifier_brouillon_qcm', 'obtenir_modele', 'ordonner_parcours', 'ordonner_rubriques', 'ouvrir_a_tous', 'preparer_depot_image', 'publier_cours', 'publier_qcm', 'remplacer_capture',
-            'retirer_acces', 'soumettre_en_revue', 'verifier_brouillon', 'verifier_brouillon_qcm', 'voir_brouillon', 'voir_brouillon_qcm',
+            'attribuer_acces', 'capturer_page', 'classer_cours', 'classer_parcours', 'creer_brouillon', 'creer_brouillon_qcm', 'creer_diaporama', 'creer_module', 'creer_niveau', 'creer_niveau_qcm', 'creer_parcours', 'creer_rubrique', 'creer_theme_qcm', 'definir_illustration_parcours', 'enregistrer_relecture',
+            'enregistrer_relecture_diaporama', 'enregistrer_relecture_qcm', 'lire_regles', 'lister_acces', 'lister_apprenants', 'lister_brouillons', 'lister_brouillons_qcm', 'lister_captures', 'lister_catalogue', 'lister_catalogue_qcm',
+            'lister_cours_publies', 'lister_diaporamas', 'mettre_en_brouillon', 'modifier_brouillon', 'modifier_brouillon_qcm', 'modifier_diaporama', 'obtenir_modele', 'ordonner_parcours', 'ordonner_rubriques', 'ouvrir_a_tous', 'preparer_depot_image', 'preparer_diaporama', 'publier_cours', 'publier_diaporama', 'publier_qcm', 'remplacer_capture',
+            'retirer_acces', 'soumettre_en_revue', 'verifier_brouillon', 'verifier_brouillon_qcm', 'verifier_diaporama', 'voir_brouillon', 'voir_brouillon_qcm', 'voir_diaporama',
         ], $tools);
 
         $prompts = array_column($this->rpc(self::CLAUDE, 'prompts/list')['result']['prompts'], 'name');
         sort($prompts);
-        self::assertSame(['rediger_cours', 'rediger_qcm', 'relire_brouillon', 'relire_qcm'], $prompts);
+        self::assertSame(['rediger_cours', 'rediger_diaporama', 'rediger_qcm', 'relire_brouillon', 'relire_diaporama', 'relire_qcm'], $prompts);
         $writing = $this->rpc(self::CLAUDE, 'prompts/get', ['name' => 'rediger_cours', 'arguments' => ['sujet' => 'écrire une bonne consigne', 'public' => 'apprendre']]);
         self::assertStringContainsString('Ne publie jamais sans relecture favorable', $writing['result']['messages'][0]['content']['text']);
 

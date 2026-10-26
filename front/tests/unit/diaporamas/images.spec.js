@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import api from '@/services/api'
 import { capturesDuDiaporama, chargerImages } from '@/diaporamas/images'
 import { chargerDiaporamas, idCible } from '@/services/diaporamas'
 import demo from './demo.json'
@@ -45,8 +46,20 @@ describe('chargerImages', () => {
 })
 
 describe('service des diaporamas', () => {
-  it('n\'interroge pas l\'API tant qu\'elle n\'est pas publiée', async () => {
+  it('demande les diaporamas d\'un cours ou de plusieurs chapitres en une requête', async () => {
+    const get = vi.spyOn(api, 'get').mockResolvedValue({ data: { member: [{ id: 1 }] } })
+    expect(await chargerDiaporamas({ cours: 3 })).toEqual([{ id: 1 }])
+    await chargerDiaporamas({ chapitres: [4, 5] })
+    expect(get.mock.calls.map(([url]) => url)).toEqual(['/diaporamas?cours=3', '/diaporamas?chapitre%5B%5D=4&chapitre%5B%5D=5'])
+    get.mockRestore()
+  })
+
+  it('ne bloque pas la page si l\'API ne répond pas', async () => {
+    const get = vi.spyOn(api, 'get').mockRejectedValue(new Error('hors ligne'))
     expect(await chargerDiaporamas({ cours: 3 })).toEqual([])
+    expect(await chargerDiaporamas({})).toEqual([])
+    expect(get).toHaveBeenCalledTimes(1)
+    get.mockRestore()
   })
 
   it('lit l\'identifiant d\'une cible', () => {

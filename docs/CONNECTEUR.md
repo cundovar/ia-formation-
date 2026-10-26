@@ -13,7 +13,7 @@ Le connecteur prépare des cours conformes au référentiel [`regles/`](../regle
 
 ## Mise en service
 
-1. Déployer le site : les migrations créent les tables `oauth_client`, `oauth_authorization_code`, `oauth_grant` et `qcm_draft`.
+1. Déployer le site : les migrations créent les tables `oauth_client`, `oauth_authorization_code`, `oauth_grant`, `qcm_draft` et `diaporama`.
 2. Dans le `.env` du serveur, indiquer l'adresse publique du site, en https et sans `/` final :
 
    ```
@@ -83,7 +83,7 @@ On peut inverser les rôles. Deux connecteurs ajoutés dans le même outil fonct
 | `capturer_page` | Capture d'une page officielle autorisée, avec repères numérotés (voir plus bas) |
 | `preparer_depot_image` | Fiche d'une image de l'ordinateur et adresse de dépôt à usage unique (voir plus bas) |
 
-Consignes : `rediger_cours`, `relire_brouillon`, `rediger_qcm`, `relire_qcm`. Ressources : chaque fichier de `regles/` sous `regles:///<fichier>`.
+Consignes : `rediger_cours`, `relire_brouillon`, `rediger_qcm`, `relire_qcm`, `rediger_diaporama`, `relire_diaporama`. Ressources : chaque fichier de `regles/` sous `regles:///<fichier>`.
 
 Règles appliquées par le site, quel que soit l'assistant :
 
@@ -165,6 +165,30 @@ Limites de cette première version :
 - un thème ou un niveau manquant peut être ajouté par le connecteur après accord de la personne ; ces entrées rejoignent le catalogue public. Le thème est l'entité « langage » reprise de DevDoc ;
 - un QCM publié se corrige dans le back-office, pas par le connecteur ;
 - un QCM n'est pas rattaché à un cours, à un module ni à un public ; les brouillons du connecteur sont visibles dans QCM → Brouillons du connecteur, en consultation seule.
+
+## Diaporamas
+
+Un diaporama est une synthèse d'un cours ou d'un chapitre (module), téléchargeable en PowerPoint et en PDF depuis la page publique. L'agent écrit seulement le contenu structuré des diapositives ; le site applique un thème fixe. Les règles sont dans [`regles/08-diaporamas.md`](../regles/08-diaporamas.md) et le plan dans [`PLAN_DIAPORAMAS.md`](PLAN_DIAPORAMAS.md).
+
+1. Dans Claude, lancer la consigne **`rediger_diaporama`** (cible `cours` ou `module`, identifiant). L'assistant lit le texte source (`preparer_diaporama`), puis crée le diaporama (`creer_diaporama`).
+2. Dans ChatGPT, lancer **`relire_diaporama`** (identifiant du diaporama). Le relecteur enregistre son avis avec `enregistrer_relecture_diaporama`.
+3. Revenir dans Claude : corriger si besoin (`modifier_diaporama`, qui efface la relecture), puis `publier_diaporama` après un avis favorable.
+
+| Outil | Rôle |
+| --- | --- |
+| `preparer_diaporama` | Texte du cours ou des cours du chapitre, public, nombre de diapositives attendu, modèles, captures disponibles, cours non publiés et diaporama existant |
+| `lister_diaporamas`, `voir_diaporama` | Diaporamas (`brouillon`, `a_corriger`, `publie`) ; leurs identifiants sont distincts de ceux des cours |
+| `creer_diaporama`, `modifier_diaporama` | Écriture ; refusée, sans rien enregistrer, si un contrôle bloquant apparaît. Une cible n'a qu'un diaporama |
+| `verifier_diaporama` | Contrôles automatiques et état de la relecture : dit si le diaporama est publiable |
+| `enregistrer_relecture_diaporama` | Avis d'un autre connecteur ; avec des réserves ou un avis défavorable, le diaporama passe `a_corriger` |
+| `publier_diaporama` | Publication si aucun contrôle ne bloque et si l'avis est favorable ; renvoie l'adresse de la page où il se télécharge |
+
+Ce que fait le site :
+
+- `/api/diaporamas` ne sert que les diaporamas publiés dont la cible est publiée et ouverte à la personne ; le diaporama d'un chapitre attend que tous ses cours soient publiés et ouverts à tous ;
+- un diaporama qui copie le cours (`DIAPO_COPIE`), contient une donnée personnelle (`DON-04`) ou n'a pas de notes de l'animateur n'est jamais enregistré ;
+- un diaporama publié reste modifiable par le connecteur : il reste en ligne et sa relecture est effacée ;
+- si le cours change après la rédaction, `DIAPO_SOURCE_PERIMEE` signale le diaporama à mettre à jour.
 
 ## Cours et QCM personnalisés
 
