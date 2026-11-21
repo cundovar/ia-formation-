@@ -1,4 +1,6 @@
-{# Aperçu des diapositives dans le back-office : le contenu, sans le thème du site (front/src/diaporamas/). #}
+{# Aperçu des diapositives dans le back-office : le contenu, sans le thème du site (front/src/diaporamas/).
+   Une scène animée y apparaît sous sa forme fixe : sa description (équivalent accessible) et sa justification.
+   La projection mise en forme, avec les étapes des scènes, s'ouvre dans l'aperçu du site. #}
 {% set diaporama = entity.instance %}
 <style>
     .diapo-apercu { display: grid; gap: 12px; max-width: 900px; }
@@ -7,12 +9,19 @@
     .diapo-apercu h4 { font-size: 1.05rem; margin: 0 0 6px; }
     .diapo-apercu ul { margin: 0 0 6px; padding-left: 20px; }
     .diapo-apercu .colonnes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .diapo-apercu .scene { background: #eef2fb; border: 1px dashed #8a9bbd; border-radius: 6px; padding: 6px 10px; margin: 6px 0; font-size: .92rem; }
     .diapo-apercu .notes { background: #fff; border-left: 3px solid #b8c7e0; padding: 6px 10px; margin-top: 6px; font-size: .9rem; white-space: pre-line; }
 </style>
 <div class="diapo-apercu">
+    <p>
+        <a href="/spa/diaporamas/apercu/{{ diaporama.id }}" target="_blank" rel="noopener">Ouvrir l'aperçu mis en forme (projection, scènes, vue fixe, vérification du rendu)</a>
+        · thème {{ diaporama.theme }}
+        {% if diaporama.objectif %} · objectif : {{ diaporama.objectif }}{% endif %}
+        {% if diaporama.couverture %} · {{ diaporama.couverture.exploites }} cours publiés exploités sur {{ diaporama.couverture.total }}{% endif %}
+    </p>
     {% for diapo in field.value %}
         <section class="diapo" aria-label="Diapositive {{ loop.index }}">
-            <div class="diapo-entete">Diapositive {{ loop.index }} · {{ diapo.modele ?? '?' }}{% if diapo.duree is defined %} · {{ diapo.duree }} min{% endif %}</div>
+            <div class="diapo-entete">Diapositive {{ loop.index }} · {{ diapo.modele ?? '?' }}{% if (diapo.partie ?? '') is not empty %} · {{ diapo.partie }}{% endif %}{% if diapo.duree is defined %} · {{ diapo.duree }} min{% endif %}</div>
             {% if (diapo.modele ?? '') == 'titre' %}
                 <h4>{{ diaporama.titre }}</h4>
                 <p>{{ diaporama.sousTitre }}</p>
@@ -41,6 +50,12 @@
                 <ul>{% for source in diapo.sources %}<li>{{ source.libelle ?? '' }} — {{ source.url ?? '' }}</li>{% endfor %}</ul>
             {% endif %}
             {% if diapo.lien is defined %}<p>{{ diapo.lien }}</p>{% endif %}
+            {% if diapo.scene is defined and diapo.scene is iterable %}
+                <div class="scene">
+                    <strong>Scène « {{ diapo.scene.type ?? '?' }} » (vue fixe) :</strong> {{ diapo.scene.description ?? '' }}
+                    {% if (diapo.scene.justification ?? '') is not empty %}<br><em>Pourquoi :</em> {{ diapo.scene.justification }}{% endif %}
+                </div>
+            {% endif %}
             {% if (diapo.notes ?? '') is not empty %}
                 <div class="notes"><strong>Notes :</strong> {{ diapo.notes }}</div>
             {% endif %}

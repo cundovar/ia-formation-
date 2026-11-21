@@ -65,6 +65,8 @@ security:
          # Compte de la personne connectée (/user-api/me) et espace apprenant (/user-api/mon-espace)
          - { path: ^/user-api, roles: ROLE_USER }
          # Ressources API Platform : modification de son propre profil, le reste réservé aux admins
+         # Aperçu des brouillons de diaporama (DiaporamaApercuController)
+         - { path: ^/api/apercu-diaporamas, roles: ROLE_ADMIN }
          - { path: ^/api/users, methods: [PATCH], roles: ROLE_USER }
          - { path: ^/api/users, roles: ROLE_ADMIN }
          - { path: ^/api, methods: [POST, PUT, PATCH, DELETE], roles: ROLE_ADMIN }

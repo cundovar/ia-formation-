@@ -51,4 +51,24 @@ export default [
       ],
     },
   },
+
+  // Scènes des diaporamas : données déclaratives et fonctions pures (regles/08-diaporamas.md, DIA-07 à DIA-09)
+  {
+    files: ['src/diaporamas/scenes/**/*.js'],
+    rules: {
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
+      'no-restricted-imports': ['error', {
+        paths: ['vue', 'pinia', 'vue-router', 'axios'],
+        patterns: [{ group: ['@/services/*', '@/composables/*', '@/stores/*', '**/services/*'], message: 'Le moteur des scènes ne fait aucun appel réseau.' }],
+      }],
+      'no-restricted-globals': ['error',
+        { name: 'fetch', message: 'Le moteur des scènes ne fait aucun appel réseau.' },
+        { name: 'XMLHttpRequest', message: 'Le moteur des scènes ne fait aucun appel réseau.' },
+        { name: 'localStorage', message: 'Les scènes n\'enregistrent rien.' },
+        { name: 'indexedDB', message: 'Les scènes n\'enregistrent rien.' },
+      ],
+    },
+  },
 ]

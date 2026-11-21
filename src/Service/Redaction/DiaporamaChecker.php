@@ -9,8 +9,10 @@ use App\Entity\Diaporama;
 
 /**
  * Contrôles automatiques d'un diaporama (regles/controles.md, regles/08-diaporamas.md).
- * Ils couvrent la structure, la copie du cours et les données personnelles ; la qualité de la synthèse
- * relève de la relecture par un autre connecteur.
+ * Ils couvrent la structure, le thème, les scènes (catalogue regles/scenes/catalogue.json), la couverture
+ * d'un parcours, la copie du cours et les données personnelles. Ils tournent à l'enregistrement, sans
+ * navigateur ; les débordements réels se vérifient dans l'aperçu (« Vérifier toutes les diapositives »).
+ * La qualité de la synthèse et la pertinence d'une scène relèvent de la relecture par un autre connecteur.
  */
 final class DiaporamaChecker
 {
@@ -32,8 +34,12 @@ final class DiaporamaChecker
     ];
 
     // Nombre de diapositives par cible (DIA-01)
-    public const NOMBRE = [Diaporama::TARGET_COURSE => [6, 12], Diaporama::TARGET_CHAPTER => [10, 20]];
+    public const NOMBRE = [Diaporama::TARGET_COURSE => [6, 12], Diaporama::TARGET_CHAPTER => [10, 20], Diaporama::TARGET_PATH => [12, 26]];
     public const MAX_TITLE_LENGTH = 60;
+    public const MAX_OBJECTIF_LENGTH = 160;
+    public const MAX_PARTIE_LENGTH = 48;
+    // DIA-07 : une scène par tranche de trois diapositives au plus
+    public const DIAPOSITIVES_PAR_SCENE = 3;
     public const MAX_POINTS = 5;
     public const MAX_POINT_WORDS = 12;
     public const NOTES_LENGTH = [300, 900];
@@ -48,7 +54,10 @@ final class DiaporamaChecker
         private CourseMediaRepositoryInterface $captures,
         private DiaporamaSource $source = new DiaporamaSource(),
         private PersonalDataChecker $personalData = new PersonalDataChecker(),
-    ) {}
+        private ?SceneValidator $scenes = null,
+    ) {
+        $this->scenes ??= new SceneValidator(new SceneCatalogue(\dirname(__DIR__, 3).'/regles/scenes/catalogue.json'));
+    }
 
     /**
      * @return list<array{code: string, regle: ?string, niveau: string, message: string}>
@@ -60,7 +69,22 @@ final class DiaporamaChecker
         $diapositives = $diaporama->getDiapositives();
 
         if ($cible === null) {
-            $issues[] = $this->issue('DIAPO_CIBLE', null, DraftChecker::BLOCKING, 'Le diaporama vise un cours ou un chapitre, et un seul.');
+            $issues[] = $this->issue('DIAPO_CIBLE', null, DraftChecker::BLOCKING, 'Le diaporama vise un cours, un chapitre ou un parcours, et un seul.');
+        }
+        if (!\in_array($diaporama->getTheme(), Diaporama::THEMES, true)) {
+            $issues[] = $this->issue('DIAPO_THEME_INCONNU', 'DIA-05', DraftChecker::BLOCKING, sprintf('Thème inconnu « %s ». Thèmes du site : %s.', $diaporama->getTheme(), implode(', ', Diaporama::THEMES)));
+        }
+        if (mb_strlen((string) $diaporama->getObjectif()) > self::MAX_OBJECTIF_LENGTH) {
+            $issues[] = $this->issue('DIAPO_OBJECTIF_LONG', 'DIA-01', DraftChecker::BLOCKING, sprintf('L\'objectif dépasse %d caractères.', self::MAX_OBJECTIF_LENGTH));
+        }
+        if ($cible === Diaporama::TARGET_PATH) {
+            $inventaire = $this->source->inventaire($diaporama);
+            $exploites = \count(array_filter($inventaire, static fn (array $c) => $c['exploite']));
+            if ($exploites === 0) {
+                $issues[] = $this->issue('DIAPO_PARCOURS_VIDE', 'DIA-10', DraftChecker::BLOCKING, 'Le parcours n\'a encore aucun cours publié : il n\'y a rien à synthétiser.');
+            } elseif ($exploites < \count($inventaire)) {
+                $issues[] = $this->issue('DIAPO_COUVERTURE_PARTIELLE', 'DIA-10', DraftChecker::WARNING, sprintf('Le diaporama s\'appuie sur %d cours publiés sur %d : annoncez cette couverture sur l\'ouverture ou la fin, sans présenter les cours non rédigés comme acquis.', $exploites, \count($inventaire)));
+            }
         }
         if (trim($diaporama->getTitre()) === '') {
             $issues[] = $this->issue('DIAPO_TITRE_MANQUANT', 'DIA-05', DraftChecker::BLOCKING, 'Le diaporama n\'a pas de titre.');
@@ -80,6 +104,10 @@ final class DiaporamaChecker
         $last = \count($diapositives) - 1;
         foreach ($diapositives as $index => $diapo) {
             array_push($issues, ...$this->checkSlide($diapo, $index + 1, $index === 0 || $index === $last, $sourceShingles));
+        }
+        $avecScene = \count(array_filter($diapositives, static fn ($d) => \is_array($d) && isset($d['scene'])));
+        if ($avecScene > max(1, intdiv(\count($diapositives), self::DIAPOSITIVES_PAR_SCENE))) {
+            $issues[] = $this->issue('DIAPO_SCENES_NOMBREUSES', 'DIA-07', DraftChecker::WARNING, sprintf('%d scènes pour %d diapositives : gardez une scène pour les idées où le mouvement aide vraiment (une pour %d diapositives au plus).', $avecScene, \count($diapositives), self::DIAPOSITIVES_PAR_SCENE));
         }
 
         if ($cible === Diaporama::TARGET_COURSE && $diaporama->getCours()?->getCategory()?->getAudience() === 'apprendre'
@@ -163,6 +191,13 @@ final class DiaporamaChecker
         if (isset($spec['capture'])) {
             array_push($issues, ...$this->checkCapture($diapo['capture'] ?? null, $prefixe));
         }
+        $partie = $diapo['partie'] ?? null;
+        if ($partie !== null && (!\is_string($partie) || mb_strlen($partie) > self::MAX_PARTIE_LENGTH || preg_match('/<\s*\/?\s*[a-z!?]/i', $partie) === 1)) {
+            $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', null, DraftChecker::BLOCKING, $prefixe.sprintf('le repère de partie est un texte simple de %d caractères au plus.', self::MAX_PARTIE_LENGTH));
+        }
+        if (\array_key_exists('scene', $diapo)) {
+            array_push($issues, ...$this->checkScene($diapo, $modele, $prefixe));
+        }
 
         $notes = self::texte($diapo['notes'] ?? null);
         if (!$extremite && $notes === '') {
@@ -174,6 +209,51 @@ final class DiaporamaChecker
         $copie = $this->passageCopie(self::texteVisible($diapo), $sourceShingles);
         if ($copie !== null) {
             $issues[] = $this->issue('DIAPO_COPIE', 'DIA-02', DraftChecker::BLOCKING, $prefixe.sprintf('« %s… » reprend le cours mot pour mot : reformulez.', $copie));
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Scène animée facultative (DIA-07 à DIA-09) : donnée du catalogue, sur un modèle qui lui laisse la place.
+     *
+     * @param array<string, mixed> $diapo
+     * @return list<array{code: string, regle: ?string, niveau: string, message: string}>
+     */
+    private function checkScene(array $diapo, string $modele, string $prefixe): array
+    {
+        \assert($this->scenes !== null);
+        $issues = [];
+        $codes = [
+            'SCENE_INCONNUE' => ['DIAPO_SCENE_INCONNUE', 'DIA-08'],
+            'SCENE_REFERENCE' => ['DIAPO_SCENE_REFERENCE', 'DIA-08'],
+            'SCENE_LIMITE' => ['DIAPO_SCENE_LIMITE', 'DIA-08'],
+        ];
+        foreach ($this->scenes->valider($diapo['scene']) as $erreur) {
+            [$code, $regle] = $codes[$erreur['code']] ?? ['DIAPO_SCENE_CHAMP', 'DIA-08'];
+            if ($erreur['champ'] === 'scene.description') {
+                [$code, $regle] = ['DIAPO_SCENE_DESCRIPTION', 'DIA-09'];
+            }
+            $issues[] = $this->issue($code, $regle, DraftChecker::BLOCKING, $prefixe.$erreur['message']);
+        }
+
+        $catalogue = $this->scenes->catalogue();
+        if (!\in_array($modele, $catalogue->modelesAutorises(), true)) {
+            $issues[] = $this->issue('DIAPO_SCENE_MODELE', 'DIA-08', DraftChecker::BLOCKING, $prefixe.sprintf('une scène se place sur une diapositive %s, pas sur « %s ».', implode(', ', $catalogue->modelesAutorises()), $modele));
+        } else {
+            ['pointsMax' => $pointsMax, 'longueurPointMax' => $longueurMax] = $catalogue->limitesDiapositive();
+            $points = self::liste($diapo['points'] ?? null);
+            if (\count($points) > $pointsMax) {
+                $issues[] = $this->issue('DIAPO_SCENE_MODELE', 'DIA-08', DraftChecker::BLOCKING, $prefixe.sprintf('avec une scène, %d points au plus sous le schéma (%d actuellement).', $pointsMax, \count($points)));
+            }
+            foreach ($points as $point) {
+                if (mb_strlen($point) > $longueurMax) {
+                    $issues[] = $this->issue('DIAPO_SCENE_MODELE', 'DIA-08', DraftChecker::BLOCKING, $prefixe.sprintf('avec une scène, chaque point tient en %d caractères : « %s ».', $longueurMax, mb_strimwidth($point, 0, 50, '…')));
+                }
+            }
+        }
+        if (\is_array($diapo['scene']) && self::texte($diapo['scene']['justification'] ?? null) === '') {
+            $issues[] = $this->issue('DIAPO_SCENE_JUSTIFICATION', 'DIA-07', DraftChecker::WARNING, $prefixe.'dites en une phrase pourquoi cette scène aide à comprendre (champ justification).');
         }
 
         return $issues;
@@ -212,6 +292,8 @@ final class DiaporamaChecker
                 array_push($textes, self::texte($colonne['titre'] ?? null), ...self::liste($colonne['points'] ?? null));
             }
         }
+        // Libellés projetés d'une scène et sa description (lue par les lecteurs d'écran et imprimée)
+        array_push($textes, ...array_map(self::texte(...), SceneValidator::textes($diapo['scene'] ?? null)));
 
         // Chaque texte est comparé séparément : un passage ne chevauche pas deux points
         return implode(' | ', array_filter($textes));

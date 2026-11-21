@@ -139,15 +139,21 @@ final class PublishedContentExtension implements QueryCollectionExtensionInterfa
             );
         };
         $autreCours = $queryNameGenerator->generateJoinAlias('cours_du_chapitre');
+        $parcours = $queryNameGenerator->generateJoinAlias('parcours');
+        $coursDuParcours = $queryNameGenerator->generateJoinAlias('cours_du_parcours');
 
         $queryBuilder
             ->leftJoin(sprintf('%s.cours', $alias), $cours)
             ->leftJoin(sprintf('%s.chapitre', $alias), $chapitre)
+            ->leftJoin(sprintf('%s.parcours', $alias), $parcours)
             ->andWhere(sprintf('%s.status = :%s', $alias, $publie))
             ->andWhere(sprintf(
                 '(%1$s.id IS NOT NULL AND %1$s.status = :%3$s AND (%1$s.reserve = false%4$s) AND (%1$s.category IS NULL OR IDENTITY(%1$s.category) NOT IN (%5$s)))'
                 .' OR (%2$s.id IS NOT NULL AND (%2$s.category IS NULL OR IDENTITY(%2$s.category) NOT IN (%6$s))'
-                .' AND NOT EXISTS (SELECT %7$s.id FROM %8$s %7$s WHERE %7$s.menu = %2$s AND (%7$s.status <> :%9$s OR %7$s.reserve = true)))',
+                .' AND NOT EXISTS (SELECT %7$s.id FROM %8$s %7$s WHERE %7$s.menu = %2$s AND (%7$s.status <> :%9$s OR %7$s.reserve = true)))'
+                // Diaporama de parcours : parcours accessible, avec au moins un cours publié ouvert à tous (DIA-10)
+                .' OR (%10$s.id IS NOT NULL AND %10$s.id NOT IN (%11$s)'
+                .' AND EXISTS (SELECT %12$s.id FROM %8$s %12$s WHERE %12$s.category = %10$s AND %12$s.status = :%9$s AND %12$s.reserve = false))',
                 $cours,
                 $chapitre,
                 $coursPublie,
@@ -157,6 +163,9 @@ final class PublishedContentExtension implements QueryCollectionExtensionInterfa
                 $autreCours,
                 PageContent::class,
                 $chapitreComplet,
+                $parcours,
+                $parcoursReserves(),
+                $coursDuParcours,
             ))
             ->setParameter($publie, Diaporama::STATUS_PUBLISHED)
             ->setParameter($coursPublie, PageContent::STATUS_PUBLISHED)

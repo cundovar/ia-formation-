@@ -1,0 +1,291 @@
+{
+  "version": 1,
+  "date": "2026-11-21",
+  "description": "Catalogue de référence des scènes animées des diaporamas (docs/PLAN_DIAPORAMAS.md § 13, regles/08-diaporamas.md DIA-07 à DIA-09). Une scène est facultative ; l'agent choisit un identifiant et fournit seulement les champs prévus ; le site détermine formes, positions et mouvement. Lu par le site (front/src/diaporamas/scenes/valider.js) et par le connecteur (src/Service/Redaction/SceneCatalogue.php).",
+  "types": {
+    "texte": "chaîne non vide, sans balise HTML ni lien javascript:/data:, longueur en caractères (min, max)",
+    "entier": "nombre entier (min, max)",
+    "booleen": "true ou false",
+    "choix": "une des valeurs listées",
+    "identifiant": "lettres minuscules, chiffres, - ou _, 1 à 30 caractères",
+    "liste": "liste de min à max éléments, chacun du type donné",
+    "objet": "objet avec seulement les champs listés"
+  },
+  "champsCommuns": {
+    "type": { "type": "choix", "obligatoire": true, "valeurs": ["escalier", "chaine_traitement", "aiguillage", "entonnoir", "loupe", "sas_validation"] },
+    "version": { "type": "entier", "obligatoire": true, "min": 1, "max": 1 },
+    "description": { "type": "texte", "obligatoire": true, "min": 40, "max": 300, "aide": "Équivalent fixe et accessible : ce que montre la scène, du début à la fin, sans parler de mouvement ni de couleur (DIA-09)." },
+    "justification": { "type": "texte", "obligatoire": false, "max": 200, "aide": "Pourquoi cette scène aide à comprendre (DIA-07). Non projetée : affichée dans l'aperçu et à côté de la projection." }
+  },
+  "modelesAutorises": ["notion", "etapes", "exercice"],
+  "limitesDiapositive": { "pointsMax": 3, "longueurPointMax": 44 },
+  "scenes": [
+    {
+      "id": "escalier",
+      "version": 1,
+      "libelle": "Escalier",
+      "usage": "Une progression réelle en plusieurs étapes, où chaque étape prépare la suivante.",
+      "convient": [
+        "Les modules d'un parcours, dans leur ordre réel",
+        "Les niveaux d'une démarche qui se construit pas à pas"
+      ],
+      "peutInduireEnErreur": [
+        "Une simple liste d'éléments sans ordre : préférer une diapositive fixe",
+        "Une valeur qui monte et descend (un niveau de stock, un budget) : une marche ne se redescend pas",
+        "Des étapes facultatives ou parallèles"
+      ],
+      "champs": {
+        "marches": {
+          "type": "liste", "obligatoire": true, "min": 2, "max": 5,
+          "elements": { "type": "objet", "champs": { "libelle": { "type": "texte", "obligatoire": true, "max": 22 } } }
+        },
+        "repere": { "type": "entier", "obligatoire": false, "min": 0, "aide": "Marche où s'arrête le repère à la fin (par défaut : la dernière)." }
+      },
+      "references": [{ "champ": "repere", "indiceDe": "marches" }],
+      "etapes": [
+        "Chaque marche apparaît au clic ; le repère (cadre épais) se place sur la marche qui vient d'apparaître.",
+        "Si un repère est donné, une dernière étape le ramène sur cette marche (« vous êtes ici »)."
+      ],
+      "rendus": { "web": "étapes animées", "pptx": "fixe", "pdf": "fixe" },
+      "exemple": {
+        "type": "escalier", "version": 1,
+        "marches": [{ "libelle": "Comprendre" }, { "libelle": "Construire" }, { "libelle": "Fiabiliser" }],
+        "repere": 1,
+        "description": "Trois marches de plus en plus hautes : comprendre, construire, fiabiliser. Le repère s'arrête sur la marche 2, construire.",
+        "justification": "Les trois modules forment une progression réelle."
+      }
+    },
+    {
+      "id": "chaine_traitement",
+      "version": 1,
+      "libelle": "Chaîne de traitement",
+      "usage": "Une donnée qui traverse des opérations successives et change à un point précis.",
+      "convient": [
+        "Le trajet d'un item entre les nœuds d'un workflow",
+        "Un calcul ou une transformation dont on veut montrer l'endroit"
+      ],
+      "peutInduireEnErreur": [
+        "Des étapes qui ne s'enchaînent pas réellement",
+        "Plusieurs données qui circulent en parallèle, ou une boucle",
+        "Une transformation faite par une IA présentée comme un calcul exact"
+      ],
+      "champs": {
+        "fiche": {
+          "type": "objet", "obligatoire": true,
+          "champs": {
+            "libelle": { "type": "texte", "obligatoire": true, "max": 16 },
+            "valeur": { "type": "texte", "obligatoire": true, "max": 24 }
+          }
+        },
+        "blocs": {
+          "type": "liste", "obligatoire": true, "min": 2, "max": 3,
+          "elements": { "type": "objet", "champs": { "libelle": { "type": "texte", "obligatoire": true, "max": 20 } } }
+        },
+        "transformation": {
+          "type": "objet", "obligatoire": true,
+          "champs": {
+            "bloc": { "type": "entier", "obligatoire": true, "min": 0 },
+            "valeur": { "type": "texte", "obligatoire": true, "max": 24 }
+          }
+        }
+      },
+      "references": [{ "champ": "transformation.bloc", "indiceDe": "blocs" }],
+      "etapes": [
+        "La fiche passe sous chaque bloc, l'un après l'autre ; le bloc en cours est mis en évidence.",
+        "Au bloc de transformation, la valeur de la fiche est remplacée par la nouvelle valeur."
+      ],
+      "rendus": { "web": "étapes animées", "pptx": "etapes", "pdf": "fixe" },
+      "exemple": {
+        "type": "chaine_traitement", "version": 1,
+        "fiche": { "libelle": "Fiche d'atelier", "valeur": "places 8 · inscrits 3" },
+        "blocs": [{ "libelle": "Préparer la fiche" }, { "libelle": "Expression" }, { "libelle": "Préparer le résumé" }],
+        "transformation": { "bloc": 1, "valeur": "places_restantes : 5" },
+        "description": "Une fiche d'atelier passe par trois nœuds. Au nœud Expression, 8 places et 3 inscrits deviennent 5 places restantes.",
+        "justification": "Le cours montre le trajet réel des données et le calcul."
+      }
+    },
+    {
+      "id": "aiguillage",
+      "version": 1,
+      "libelle": "Aiguillage",
+      "usage": "Une décision prise par une condition claire, avec deux issues.",
+      "convient": [
+        "Une condition d'un workflow (If) et ses deux branches",
+        "Comparer deux résultats d'une même règle avec des données différentes"
+      ],
+      "peutInduireEnErreur": [
+        "Une décision prise par une IA : elle n'est pas déterministe",
+        "Plus de deux issues, ou des issues qui se combinent",
+        "Une condition floue (« si c'est important »)"
+      ],
+      "champs": {
+        "condition": { "type": "texte", "obligatoire": true, "max": 48 },
+        "fiche": { "type": "texte", "obligatoire": false, "max": 16 },
+        "branches": {
+          "type": "liste", "obligatoire": true, "min": 2, "max": 2,
+          "elements": {
+            "type": "objet",
+            "champs": {
+              "id": { "type": "identifiant", "obligatoire": true },
+              "libelle": { "type": "texte", "obligatoire": true, "max": 22 }
+            }
+          }
+        },
+        "brancheSuivie": { "type": "identifiant", "obligatoire": true }
+      },
+      "references": [
+        { "unique": "branches[].id" },
+        { "champ": "brancheSuivie", "parmi": "branches[].id" }
+      ],
+      "etapes": [
+        "Une fiche arrive.",
+        "La condition s'affiche et se met en évidence.",
+        "La fiche emprunte la branche suivie (trait plein, ✓) ; l'autre branche est en pointillé et marquée ✗."
+      ],
+      "rendus": { "web": "étapes animées ; la personne qui présente peut montrer l'autre branche", "pptx": "fixe", "pdf": "fixe" },
+      "exemple": {
+        "type": "aiguillage", "version": 1,
+        "condition": "Reste-t-il une place ?",
+        "branches": [{ "id": "disponible", "libelle": "Proposer l'inscription" }, { "id": "complet", "libelle": "Liste d'attente" }],
+        "brancheSuivie": "complet",
+        "description": "L'atelier est complet. La demande suit la branche liste d'attente.",
+        "justification": "Montrer qu'une condition fixe choisit le chemin."
+      }
+    },
+    {
+      "id": "entonnoir",
+      "version": 1,
+      "libelle": "Entonnoir",
+      "usage": "Le filtrage d'un ensemble selon un critère : ce qui est retenu, ce qui est écarté.",
+      "convient": [
+        "Ne garder que les champs utiles d'une réponse d'API",
+        "Sélectionner des documents ou des lignes selon une règle"
+      ],
+      "peutInduireEnErreur": [
+        "Des éléments écartés qui sont en fait transformés ou gardés ailleurs",
+        "Un critère appliqué par une IA, présenté comme une règle exacte",
+        "Un tri ou un classement (l'ordre compte) plutôt qu'un filtre"
+      ],
+      "champs": {
+        "critere": { "type": "texte", "obligatoire": true, "max": 48 },
+        "elements": {
+          "type": "liste", "obligatoire": true, "min": 3, "max": 4,
+          "elements": {
+            "type": "objet",
+            "champs": {
+              "libelle": { "type": "texte", "obligatoire": true, "max": 18 },
+              "retenu": { "type": "booleen", "obligatoire": true }
+            }
+          }
+        }
+      },
+      "references": [
+        { "auMoinsUn": "elements[].retenu", "valeur": true },
+        { "auMoinsUn": "elements[].retenu", "valeur": false }
+      ],
+      "etapes": [
+        "Les éléments entrent dans l'ensemble de départ.",
+        "Le critère apparaît.",
+        "Les éléments retenus passent à droite (✓) ; les écartés restent à l'entrée, en pointillé et marqués ✗."
+      ],
+      "rendus": { "web": "étapes animées", "pptx": "fixe", "pdf": "fixe" },
+      "exemple": {
+        "type": "entonnoir", "version": 1,
+        "critere": "Utile au besoin du workflow",
+        "elements": [
+          { "libelle": "full_name", "retenu": true },
+          { "libelle": "html_url", "retenu": true },
+          { "libelle": "forks_count", "retenu": false }
+        ],
+        "description": "Trois champs entrent. Le critère retient full_name et html_url, et écarte forks_count.",
+        "justification": "Le cours demande de ne garder que les champs utiles."
+      }
+    },
+    {
+      "id": "loupe",
+      "version": 1,
+      "libelle": "Loupe",
+      "usage": "Vérifier un détail dans un ensemble lisible.",
+      "convient": [
+        "Une ligne d'une sortie JSON ou d'un tableau à contrôler",
+        "Un réglage précis dans une configuration"
+      ],
+      "peutInduireEnErreur": [
+        "Un détail isolé qui fait oublier de vérifier le reste",
+        "Un support trop long pour être lu (plus de quatre lignes) : préférer une capture"
+      ],
+      "champs": {
+        "support": {
+          "type": "objet", "obligatoire": true,
+          "champs": {
+            "libelle": { "type": "texte", "obligatoire": true, "max": 32 },
+            "lignes": { "type": "liste", "obligatoire": true, "min": 2, "max": 4, "elements": { "type": "texte", "max": 34 } }
+          }
+        },
+        "zone": { "type": "entier", "obligatoire": true, "min": 0, "aide": "Numéro de la ligne observée (0 pour la première)." },
+        "detail": {
+          "type": "objet", "obligatoire": true,
+          "champs": {
+            "libelle": { "type": "texte", "obligatoire": true, "max": 24 },
+            "legende": { "type": "texte", "obligatoire": true, "max": 90 }
+          }
+        }
+      },
+      "references": [{ "champ": "zone", "indiceDe": "support.lignes" }],
+      "etapes": [
+        "Le support s'affiche.",
+        "Une ligne est mise en évidence (cadre épais) ; les autres s'estompent.",
+        "Le détail légendé apparaît, relié à la ligne."
+      ],
+      "rendus": { "web": "étapes animées", "pptx": "fixe", "pdf": "fixe" },
+      "exemple": {
+        "type": "loupe", "version": 1,
+        "support": { "libelle": "Sortie OUTPUT (JSON)", "lignes": ["\"atelier\": \"Découverte\",", "\"places\": 8,"] },
+        "zone": 1,
+        "detail": { "libelle": "8 sans guillemets", "legende": "Le nombre 8 n'est pas du texte : le champ places est de type Number." },
+        "description": "La loupe isole la ligne places : 8 ; sans guillemets, 8 est un nombre et non du texte.",
+        "justification": "Le cours demande de vérifier le type des valeurs."
+      }
+    },
+    {
+      "id": "sas_validation",
+      "version": 1,
+      "libelle": "Sas de validation",
+      "usage": "Une action importante qui attend un accord humain explicite.",
+      "convient": [
+        "Une validation humaine avant un envoi, une publication ou une suppression",
+        "Montrer qu'un refus bloque réellement l'action"
+      ],
+      "peutInduireEnErreur": [
+        "Une validation après coup, qui n'arrête rien en réalité",
+        "Un accord donné par une IA ou par une règle automatique"
+      ],
+      "champs": {
+        "fiche": { "type": "texte", "obligatoire": true, "max": 12 },
+        "action": { "type": "texte", "obligatoire": true, "max": 30 },
+        "question": { "type": "texte", "obligatoire": true, "max": 40 },
+        "decision": { "type": "choix", "obligatoire": true, "valeurs": ["accord", "refus"] },
+        "suiteAccord": { "type": "texte", "obligatoire": true, "max": 40 },
+        "suiteRefus": { "type": "texte", "obligatoire": true, "max": 40 }
+      },
+      "references": [],
+      "etapes": [
+        "La fiche arrive.",
+        "Elle s'arrête au sas ; la question d'accord s'affiche.",
+        "Accord (simulé) : la fiche passe et l'action se fait (✓). Refus (simulé) : la fiche reste au sas, l'action est barrée (✗) et reste bloquée."
+      ],
+      "rendus": { "web": "étapes animées ; la personne qui présente peut simuler l'accord ou le refus", "pptx": "etapes", "pdf": "fixe" },
+      "exemple": {
+        "type": "sas_validation", "version": 1,
+        "fiche": "Message",
+        "action": "Envoyer le message",
+        "question": "Le texte est-il exact et utile ?",
+        "decision": "refus",
+        "suiteAccord": "Envoi simulé, aucun message réel",
+        "suiteRefus": "Le message n'est pas envoyé",
+        "description": "Un message arrive au sas et s'arrête. Le refus laisse l'action bloquée : le message n'est pas envoyé.",
+        "justification": "Montrer que le refus bloque réellement l'action."
+      }
+    }
+  ]
+}

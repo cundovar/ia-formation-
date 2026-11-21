@@ -1,38 +1,65 @@
 <template>
   <!-- Version PDF : une diapositive par page, notes en dessous si demandé.
+       Une scène animée est imprimée dans sa vue fixe, avec ses étapes légendées et numérotées (DIA-09) :
+       sous les notes, ou sur une page qui suit la diapositive quand la page a la taille de la diapositive.
        Invisible à l'écran ; à l'impression, seul ce bloc est imprimé (classe sur body). -->
   <Teleport to="body">
     <div
       class="diaporama-impression"
       :class="{ 'diaporama-impression--notes': avecNotes }"
     >
-      <article
+      <template
         v-for="(diapositive, index) in plan.diapositives"
         :key="index"
-        class="diaporama-impression__page"
       >
-        <DiapositiveHtml
-          :diapositive="diapositive"
-          :maitre="decors[diapositive.maitre]"
-          :numero="index + 1"
-          niveau-titre="h2"
-        />
-        <div
-          v-if="avecNotes && diapositive.notes"
-          class="diaporama-impression__notes"
+        <article class="diaporama-impression__page">
+          <DiapositiveHtml
+            :diapositive="diapositive"
+            :maitre="decors[diapositive.maitre]"
+            :numero="index + 1"
+            :format="plan.format"
+            :etape="-1"
+            :mouvement="false"
+            niveau-titre="h2"
+          />
+          <div
+            v-if="avecNotes && diapositive.notes"
+            class="diaporama-impression__notes"
+          >
+            <p class="diaporama-impression__notes-titre">
+              Notes de présentation
+            </p>
+            <p>{{ diapositive.notes }}</p>
+          </div>
+          <SceneLegendes
+            v-if="avecNotes && diapositive.scene"
+            :scene="diapositive.scene"
+          />
+        </article>
+        <article
+          v-if="!avecNotes && diapositive.scene"
+          class="diaporama-impression__page diaporama-impression__page--etapes"
         >
           <p class="diaporama-impression__notes-titre">
-            Notes de présentation
+            Diapositive {{ index + 1 }} · {{ diapositive.titre }}
           </p>
-          <p>{{ diapositive.notes }}</p>
-        </div>
-      </article>
+          <SceneLegendes :scene="diapositive.scene" />
+        </article>
+      </template>
     </div>
   </Teleport>
 </template>
 
 <script setup>
+import { h } from 'vue'
 import DiapositiveHtml from './DiapositiveHtml.vue'
+
+// Équivalent fixe d'une scène : description, puis étapes numérotées
+const SceneLegendes = (props) => h('div', { class: 'diaporama-impression__scene' }, [
+  h('p', [h('strong', 'Schéma : '), props.scene.description]),
+  h('ol', props.scene.etapes.map((etape, i) => h('li', { key: i }, etape.legende))),
+])
+SceneLegendes.props = { scene: { type: Object, required: true } }
 
 defineProps({
   plan: { type: Object, required: true },
@@ -99,6 +126,33 @@ defineProps({
 
   .diaporama-impression__notes-titre {
     font-weight: 700;
+  }
+
+  .diaporama-impression__scene {
+    margin-top: 4mm;
+    font-family: 'Atkinson Hyperlegible', Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.45;
+    color: #000;
+  }
+
+  /* Numéros visibles : Tailwind retire les puces des listes */
+  .diaporama-impression__scene ol {
+    margin: 2mm 0 0;
+    padding-left: 8mm;
+    list-style: decimal;
+  }
+
+  /* Page des étapes, au format de la diapositive : texte assez grand pour être lu après projection */
+  .diaporama-impression__page--etapes {
+    box-sizing: border-box;
+    padding: 0.75in;
+    font-family: 'Atkinson Hyperlegible', Arial, sans-serif;
+    font-size: 20pt;
+  }
+
+  .diaporama-impression__page--etapes .diaporama-impression__scene {
+    font-size: 20pt;
   }
 }
 </style>

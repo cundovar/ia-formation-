@@ -2,7 +2,10 @@
 // devient une liste d'éléments positionnés (formes, textes, images), sans PptxGenJS ni Vue.
 // La même mise en page servira au .pptx et à la vue d'impression (PDF).
 import { estModeleConnu } from './modeles'
-import { COULEURS, ESPACE_PARAGRAPHE, LICENCE, TAILLES, ZONES, couleursPublic } from './theme'
+import { COULEURS, ESPACE_PARAGRAPHE, FORMAT, LICENCE, TAILLES, ZONES, couleursPublic } from './theme'
+import { DISPOSITIONS_ATELIER, MODELES_AVEC_SCENE, contexteAtelier, maitresAtelier } from './miseEnPageAtelier'
+import { planifierScene } from './scenes'
+import { couleursScene, idTheme } from './themes'
 
 const texte = (valeur) => (typeof valeur === 'string' ? valeur.trim() : '')
 const liste = (valeur) => (Array.isArray(valeur) ? valeur.map(texte).filter(Boolean) : [])
@@ -278,9 +281,28 @@ const DISPOSITIONS = {
   fin,
 }
 
+// Thème standard avec une scène : la scène occupe le haut de la zone de contenu, les points le bas
+const LEGENDE_STANDARD = 0.55
+const avecSceneStandard = (diapo, ctx) => {
+  const points = liste(diapo.points).slice(0, 3)
+  const hScene = points.length > 0 ? 3.35 : C.h
+  const zone = { x: C.x, y: C.y, w: C.w, h: hScene }
+  const dessin = { x: C.x + 0.25, y: C.y + 0.15, w: C.w - 0.5, h: hScene - 0.3 - LEGENDE_STANDARD }
+  const legende = { x: C.x + 0.25, y: C.y + hScene - LEGENDE_STANDARD - 0.08, w: C.w - 0.5, h: LEGENDE_STANDARD }
+  const scene = planifierScene(diapo.scene, { zone: dessin, couleurs: couleursScene('standard', ctx.audience), variante: ctx.variantes?.[ctx.index] })
+  const elements = [forme('rect', zone, COULEURS.carte, COULEURS.bordure)]
+  if (points.length > 0) {
+    elements.push(bloc({ x: C.x, y: C.y + hScene + 0.15, w: C.w, h: C.h - hScene - 0.15 }, puces(points, 'point'), {
+      taille: TAILLES.corpsDense,
+    }))
+  }
+  return { elements, scene: scene ? { ...scene, zone, dessin, legende } : null }
+}
+
 // Décor commun des deux masques : la couverture et les diapositives de contenu.
 // `titre` est l'emplacement du titre (lu par les lecteurs d'écran dans PowerPoint).
 export const maitres = (plan, site) => {
+  if (plan.theme === 'atelier_visuel') return maitresAtelier(plan, site)
   const couleurs = couleursPublic(plan.audience)
   const repere = { taille: TAILLES.repere, couleur: COULEURS.texteDoux, role: 'repere', valign: 'middle' }
   return {
@@ -307,28 +329,50 @@ export const maitres = (plan, site) => {
 const TITRES_PAR_DEFAUT = { fin: 'Pour aller plus loin', a_retenir: 'À retenir', objectifs: 'Ce que vous saurez faire' }
 
 /**
- * @param {object} diaporama contenu structuré : { titre, sousTitre, audience, diapositives: [...] }
- * @param {{ images?: Record<string, { data: string, largeur?: number, hauteur?: number, alt?: string, legende?: string, source?: string, date?: string }> }} options
+ * @param {object} diaporama contenu structuré : { titre, sousTitre, audience, theme, objectif, diapositives: [...] }
+ * @param {{ images?: object, format?: 'large'|'etroit', variantes?: Record<number, object> }} options
+ *   `format` : `etroit` empile les éléments pour la lecture sur mobile (thème Atelier visuel) ;
+ *   `variantes` : branche ou décision simulée pendant la projection, par numéro de diapositive.
  */
-export const planDiaporama = (diaporama, { images = {} } = {}) => {
+export const planDiaporama = (diaporama, { images = {}, format = 'large', variantes = {} } = {}) => {
   const audience = diaporama?.audience === 'former' ? 'former' : 'apprendre'
-  const ctx = { diaporama: diaporama ?? {}, audience, couleurs: couleursPublic(audience), images }
+  const theme = idTheme(diaporama?.theme)
+  const atelier = theme === 'atelier_visuel'
+  const contexteFormat = atelier ? contexteAtelier(format) : { format: 'large', dims: FORMAT }
   const titreDiaporama = texte(diaporama?.titre) || 'Diaporama'
+  const ctx = {
+    diaporama: diaporama ?? {}, audience, couleurs: couleursPublic(audience), images, variantes, titreDiaporama, ...contexteFormat,
+  }
   const diapositives = (Array.isArray(diaporama?.diapositives) ? diaporama.diapositives : [])
     .filter((diapo) => diapo && typeof diapo === 'object')
-    .map((diapo) => {
+    .map((diapo, index) => {
       // Un modèle inconnu (contenu plus récent que le site, par exemple) s'affiche comme une notion
       const modele = estModeleConnu(diapo.modele) ? diapo.modele : 'notion'
+      // Une scène n'est dessinée que sur les modèles qui l'acceptent (catalogue : modelesAutorises)
+      const source = diapo.scene && !MODELES_AVEC_SCENE.includes(modele) ? { ...diapo, scene: null } : diapo
+      const contexte = { ...ctx, index }
+      let resultat
+      if (atelier) resultat = DISPOSITIONS_ATELIER[modele](source, contexte)
+      else if (source.scene) resultat = avecSceneStandard(source, contexte)
+      else resultat = { elements: DISPOSITIONS[modele](source, contexte) }
       return {
         modele,
         maitre: modele === 'titre' ? 'COUVERTURE' : 'CONTENU',
         // DIA-05 : chaque diapositive a un titre
         titre: texte(diapo.titre) || TITRES_PAR_DEFAUT[modele] || titreDiaporama,
         notes: texte(diapo.notes),
-        elements: DISPOSITIONS[modele](diapo, ctx),
+        elements: resultat.elements,
+        scene: resultat.scene ?? null,
       }
     })
-  return { titre: titreDiaporama, audience, diapositives }
+  return {
+    titre: titreDiaporama,
+    audience,
+    theme,
+    formatNom: contexteFormat.format,
+    format: { largeur: contexteFormat.dims.largeur, hauteur: contexteFormat.dims.hauteur },
+    diapositives,
+  }
 }
 
 export const nomFichier = (titre, extension = 'pptx') => {

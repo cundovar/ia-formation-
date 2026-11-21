@@ -155,5 +155,59 @@ La liste de référence, complète, est dans `regles/controles.md` (section « C
 ## 12. Hors de ce plan
 
 - Génération automatique par le site sans agent (le site n'a pas d'IA).
-- Modification du design par l'agent (le thème reste fixe).
-- Animations et transitions complexes, vidéos intégrées.
+- Modification du design par l'agent : il choisit seulement l'identifiant d'un thème du site (`standard`, `atelier_visuel`), jamais une couleur, une police, une position ni du code (décision du 21 novembre 2026, § 13).
+- Animations libres, transitions complexes, vidéos intégrées : seules les six scènes déclaratives du catalogue sont animées (§ 13).
+
+## 13. Diaporamas de parcours et scènes animées (21 novembre 2026)
+
+### 13.1 Décisions
+
+1. **Trois cibles** : un cours, un chapitre ou un **parcours entier**. Le diaporama d'un parcours est une synthèse du parcours ; il ne remplace pas les diaporamas des modules, que la page du parcours continue d'afficher dans chaque chapitre. Le panneau « Présentation du parcours » est placé au-dessus des chapitres.
+2. **Parcours partiellement rédigé** : un diaporama de parcours est permis dès qu'un cours est publié. Il s'appuie sur les seuls cours publiés et ouverts à tous (un cours réservé n'y entre pas), annonce sa couverture (« 3 cours rédigés sur 18 », `DIA-10`, avertissement `DIAPO_COUVERTURE_PARTIELLE`) et garde l'inventaire des cours et de leur statut au moment de la synthèse (`coursSources`).
+3. **Thèmes** : l'agent choisit un identifiant, `standard` (thème d'origine) ou `atelier_visuel` (fond crème, schéma au centre, encadrés en bas, ouverture et activité dédiées, lecture mobile empilée). `DIA-05` est reformulée en ce sens.
+4. **Scènes animées** : six scènes déclaratives (escalier, chaîne de traitement, aiguillage, entonnoir, loupe, sas de validation), décrites dans le catalogue versionné `regles/scenes/catalogue.json`, lu par le site et par le connecteur. Une scène est facultative, justifiée (`DIA-07`), validée (`DIA-08`) et a un équivalent fixe (`DIA-09`).
+5. **Démonstration** : `/spa/diaporamas/demonstration`, réservée aux administrateurs (et au serveur de développement), hors navigation et hors plan du site. Le pilote « Automatiser des tâches avec l'IA » (3 diapositives) et la galerie des six scènes y sont marqués « Proposition » ; ils ne sont pas en base et ne sont pas publiés.
+
+### 13.2 Architecture
+
+- **Moteur** (`front/src/diaporamas/scenes/`) : fonctions pures, sans Vue ni réseau (règle ESLint). `etats(données, {zone, couleurs, variante})` renvoie des étapes `{legende, court, elements}` ; chaque élément a un identifiant stable, ce qui permet au rendu web d'animer le passage d'une étape à l'autre. L'équivalent fixe est la dernière étape et ses légendes numérotées.
+- **Validation** : `front/src/diaporamas/scenes/valider.js` et `src/Service/Redaction/SceneValidator.php` appliquent la même logique au même catalogue, testée par Vitest et PHPUnit sur `regles/scenes/exemples/` (valides et invalides).
+- **Thème Atelier visuel** : `front/src/diaporamas/themes/atelierVisuel.js` centralise couleurs, tailles, espacements et zones (16:9 et lecture étroite) ; `miseEnPageAtelier.js` place les éléments.
+- **Rendus** depuis le même contenu structuré :
+  - web : `ProjectionDiaporama.vue` (étapes, rejouer, variantes simulées, vue fixe légendée, lecture sans mouvement, plein écran, notes hors de la zone projetée, clavier) ; route `/spa/diaporamas/:id/projection` et aperçu administrateur `/spa/diaporamas/apercu/:id` ;
+  - .pptx : formes modifiables (rectangles arrondis, trapèze, flèches, pointillés, atténuation) ; vue fixe, ou une diapositive par étape quand le catalogue le prévoit (`rendus.pptx`), avec « Étape n/N » en tête des notes : PowerPoint, LibreOffice et Google Slides n'ont pas d'animation commune fiable ;
+  - PDF : vue d'impression avec la vue fixe, puis les étapes numérotées (sur une page qui suit la diapositive, ou sous les notes au format A4).
+- **Serveur** : entité `Diaporama` (cible `parcours`, `theme`, `objectif`, `coursSources`, migration `Version20261121100000`), contrôles `DIAPO_THEME_INCONNU`, `DIAPO_SCENE_*`, `DIAPO_PARCOURS_VIDE`, `DIAPO_COUVERTURE_PARTIELLE`, `DIAPO_SCENES_NOMBREUSES` ; outil `lister_scenes`, ressource `scenes:///catalogue.json`, `parcoursId`, `theme`, `objectif` et `scene` dans les outils ; aperçu `GET /api/apercu-diaporamas/{id}` (administrateurs, jamais mis en cache) ; filtre `?parcours=` de l'API publique.
+
+### 13.3 Contrôles : à l'enregistrement ou dans le navigateur
+
+| Contrôle | Quand | Où |
+| --- | --- | --- |
+| Modèle, champs, références, version, HTML ou script refusés | À l'enregistrement | `SceneValidator` (serveur), `valider.js` (site) |
+| Longueurs et nombres d'éléments, 3 points de 44 caractères au plus avec une scène | À l'enregistrement | Catalogue, `DiaporamaChecker` |
+| Tenue des textes aux limites maximales, absence de chevauchement, contraste (4,5:1 texte, 3:1 traits) | À chaque changement du code | Tests Vitest (`scenes.spec.js`), estimation de la largeur des textes |
+| Débordement, sortie du cadre, chevauchement réels | Dans le navigateur | Bouton « Vérifier toutes les diapositives » de l'aperçu (`controleRendu.js`) |
+| Pertinence de la scène, fidélité au cours, couverture annoncée | Relecture | Autre connecteur (`relire_diaporama`) |
+
+### 13.4 Outils spécialisés évalués
+
+Le besoin réel (six scènes 2D, étapes discrètes, équivalent fixe, exports .pptx et PDF, hors ligne, données validées) ne dépasse pas ce que font le CSS et le SVG. Aucun outil n'est retenu ; à réexaminer si une scène demande un mouvement continu ou une illustration riche.
+
+| Outil | Édition | Poids | Hors ligne | Accessibilité | Exports .pptx / PDF | Conclusion |
+| --- | --- | --- | --- | --- | --- | --- |
+| Moteur du site (CSS, SVG, données JSON) | Par données validées ; aucun code | Aucune dépendance ajoutée | Oui (dans le bundle) | Étapes annoncées, vue fixe, mouvement réduit | Formes natives modifiables | Retenu |
+| Lottie (lottie-web) | Animation dessinée dans un outil externe (After Effects) | Lecteur de plusieurs centaines de Ko | Oui | Contenu en image : légendes à doubler | Pas de formes modifiables | Écarté |
+| Rive | Éditeur en ligne, machine à états | Moteur WebAssembly | Oui | Canvas : légendes à doubler | Pas d'export .pptx | Écarté |
+| GSAP | Code JavaScript par scène | Quelques dizaines de Ko | Oui | À la charge du code | Aucun | Écarté : du code par scène, contraire à DIA-08 |
+| Remotion, Motion Canvas | Code React ou TypeScript, rendu vidéo | Chaîne de rendu lourde | Vidéo seulement | Vidéo : sous-titres à prévoir | Vidéo, pas de formes | Écarté |
+| reveal.js | HTML des diapositives | Moyen | Oui | Bonne en HTML | Export PDF ; pas de .pptx | Écarté : doublerait le moteur du site |
+
+### 13.5 Tâches
+
+- S1 (fait) Thème Atelier visuel et trois diapositives du pilote ; vérifiées à l'écran, en 16:9 et sur mobile (375 px).
+- S2 (fait) Catalogue, moteur et six scènes ; galerie de démonstration ; tests Vitest (déterminisme, limites, contrastes, variantes).
+- S3 (fait) Entité, migration, contrôles et règles `DIA-07` à `DIA-10` ; tests PHPUnit.
+- S4 (fait) Connecteur : `lister_scenes`, `parcoursId`, `theme`, `scene`, consignes en 5 temps ; aperçu administrateur ; API `?parcours=` ; tests fonctionnels (brouillon, scène invalide refusée, relecture par un autre connecteur, parcours réservé).
+- S5 (fait) Exports .pptx et PDF des scènes ; conversion LibreOffice et impression Chrome vérifiées localement.
+- S6 (fait) Panneau « Présentation du parcours » sur la page du parcours.
+- S7 (à faire) Validation éditoriale de `DIA-07` à `DIA-10` et du catalogue ; essai réel d'un diaporama de parcours rédigé par ia2 et relu par l'autre connecteur ; ouverture dans PowerPoint et Google Slides (non vérifiée).

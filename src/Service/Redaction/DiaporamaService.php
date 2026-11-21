@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Redaction;
 
 use App\Domain\CourseMedia\Repository\CourseMediaRepositoryInterface;
+use App\Entity\Category;
 use App\Entity\Diaporama;
 use App\Entity\Menus;
 use App\Entity\PageContent;
@@ -19,7 +20,8 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 final class DiaporamaService
 {
-    private const MAX_SLIDES = 25;
+    // Garde-fou de forme ; le nombre attendu par cible est dans DiaporamaChecker::NOMBRE (parcours : 26 au plus)
+    private const MAX_SLIDES = 30;
     private const MAX_NOTES_LENGTH = 2000;
     private const MAX_TEXT_LENGTH = 300;
 
@@ -28,19 +30,43 @@ final class DiaporamaService
         private DiaporamaChecker $checker,
         private CourseMediaRepositoryInterface $captures,
         private DiaporamaSource $source = new DiaporamaSource(),
-    ) {}
+        private ?SceneCatalogue $scenes = null,
+    ) {
+        $this->scenes ??= new SceneCatalogue(\dirname(__DIR__, 3).'/regles/scenes/catalogue.json');
+    }
 
     /**
-     * Ce que l'agent doit lire avant d'écrire : le texte du cours ou des cours du chapitre, le public,
-     * les captures déjà utilisées et le diaporama existant éventuel.
+     * Thèmes et scènes que l'agent peut choisir (par identifiant) : le site garde seul le design.
      *
      * @return array<string, mixed>
      */
-    public function source(?int $coursId, ?int $moduleId): array
+    public function scenes(): array
     {
-        $diaporama = (new Diaporama('lecture'))->setCible(...$this->target($coursId, $moduleId));
-        $cours = $this->source->cours($diaporama);
+        \assert($this->scenes !== null);
+
+        return [
+            'version' => $this->scenes->version(),
+            'themes' => Diaporama::THEMES,
+            'modelesAutorises' => $this->scenes->modelesAutorises(),
+            'limitesDiapositive' => $this->scenes->limitesDiapositive(),
+            'champsCommuns' => $this->scenes->champsCommuns(),
+            'scenes' => $this->scenes->resume(),
+        ];
+    }
+
+    /**
+     * Ce que l'agent doit lire avant d'écrire : le texte du cours, des cours du chapitre ou des cours publiés
+     * du parcours, le public, la couverture, les captures déjà utilisées, les thèmes et scènes possibles
+     * et le diaporama existant éventuel.
+     *
+     * @return array<string, mixed>
+     */
+    public function source(?int $coursId, ?int $moduleId, ?int $parcoursId = null): array
+    {
+        $diaporama = (new Diaporama('lecture'))->setCible(...$this->target($coursId, $moduleId, $parcoursId));
+        $cours = $this->source->coursExploites($diaporama);
         $existant = $this->existing($diaporama);
+        $inventaire = $this->source->inventaire($diaporama);
         preg_match_all('/\[capture:(\d+)\]/', implode(' ', array_map(static fn (PageContent $c) => (string) ($c->getCode() ?: $c->getContent()), $cours)), $markers);
 
         return [
@@ -48,9 +74,20 @@ final class DiaporamaService
             'public' => $this->audience($diaporama),
             'diapositivesAttendues' => DiaporamaChecker::NOMBRE[(string) $diaporama->getTypeCible()],
             'modeles' => DiaporamaChecker::MODELES,
+            'themes' => Diaporama::THEMES,
+            'scenes' => array_map(static fn (array $s) => ['type' => $s['type'], 'usage' => $s['usage'], 'peutInduireEnErreur' => $s['peutInduireEnErreur']], $this->scenes()['scenes']),
+            'couverture' => [
+                'exploites' => \count($cours),
+                'total' => \count($inventaire),
+                'inventaire' => $inventaire,
+                'consigne' => \count($cours) < \count($inventaire)
+                    ? sprintf('Seuls %d cours sur %d sont publiés : la synthèse s\'appuie sur eux seuls et annonce cette couverture (DIA-10).', \count($cours), \count($inventaire))
+                    : 'Tous les cours de la cible sont exploités.',
+            ],
             'cours' => array_map(static fn (PageContent $c) => [
                 'id' => $c->getId(),
                 'titre' => $c->getTitle(),
+                'module' => $c->getMenu()?->getLabel(),
                 'publie' => $c->isPublished(),
                 'texte' => DiaporamaSource::texteDuCours($c),
             ], $cours),
@@ -94,6 +131,7 @@ final class DiaporamaService
         $diaporama = (new Diaporama($agent))->setCible(...$this->target(
             isset($data['coursId']) ? (int) $data['coursId'] : null,
             isset($data['moduleId']) ? (int) $data['moduleId'] : null,
+            isset($data['parcoursId']) ? (int) $data['parcoursId'] : null,
         ));
         $existant = $this->existing($diaporama);
         if ($existant !== null) {
@@ -172,7 +210,9 @@ final class DiaporamaService
      */
     public function markUpToDate(Diaporama $diaporama): void
     {
-        $diaporama->setEmpreinteSource($this->source->empreinte($diaporama))->touch();
+        $diaporama->setEmpreinteSource($this->source->empreinte($diaporama))
+            ->setCoursSources($this->source->inventaire($diaporama))
+            ->touch();
         $this->entityManager->flush();
     }
 
@@ -262,7 +302,7 @@ final class DiaporamaService
 
             return $slug === null ? null : '/spa/pages/'.ltrim($slug, '/');
         }
-        $parcours = $diaporama->getChapitre()?->getCategory()?->getName();
+        $parcours = $diaporama->getParcoursDeLaCible()?->getName();
 
         return $parcours === null ? null : '/spa/category/'.rawurlencode($parcours);
     }
@@ -298,23 +338,30 @@ final class DiaporamaService
     }
 
     /**
-     * @return array{0: ?PageContent, 1: ?Menus}
+     * @return array{0: ?PageContent, 1: ?Menus, 2: ?Category}
      */
-    private function target(?int $coursId, ?int $moduleId): array
+    private function target(?int $coursId, ?int $moduleId, ?int $parcoursId = null): array
     {
-        if (($coursId === null) === ($moduleId === null)) {
-            throw RedactionError::invalid([['champ' => 'coursId', 'message' => 'Indiquez coursId (diaporama d\'un cours) ou moduleId (diaporama d\'un chapitre), pas les deux.']]);
+        if (\count(array_filter([$coursId, $moduleId, $parcoursId], static fn (?int $id) => $id !== null)) !== 1) {
+            throw RedactionError::invalid([['champ' => 'coursId', 'message' => 'Indiquez une seule cible : coursId (un cours), moduleId (un chapitre) ou parcoursId (un parcours entier).']]);
         }
         if ($coursId !== null) {
-            return [$this->entityManager->find(PageContent::class, $coursId) ?? throw new RedactionError('Cours introuvable (voir lister_cours_publies).', RedactionError::NOT_FOUND), null];
+            return [$this->entityManager->find(PageContent::class, $coursId) ?? throw new RedactionError('Cours introuvable (voir lister_cours_publies).', RedactionError::NOT_FOUND), null, null];
+        }
+        if ($parcoursId !== null) {
+            return [null, null, $this->entityManager->find(Category::class, $parcoursId) ?? throw new RedactionError('Parcours introuvable (voir lister_catalogue).', RedactionError::NOT_FOUND)];
         }
 
-        return [null, $this->entityManager->find(Menus::class, (int) $moduleId) ?? throw new RedactionError('Module introuvable (voir lister_catalogue).', RedactionError::NOT_FOUND)];
+        return [null, $this->entityManager->find(Menus::class, (int) $moduleId) ?? throw new RedactionError('Module introuvable (voir lister_catalogue).', RedactionError::NOT_FOUND), null];
     }
 
     private function existing(Diaporama $diaporama): ?Diaporama
     {
-        $criteria = $diaporama->getCours() !== null ? ['cours' => $diaporama->getCours()] : ['chapitre' => $diaporama->getChapitre()];
+        $criteria = match ($diaporama->getTypeCible()) {
+            Diaporama::TARGET_COURSE => ['cours' => $diaporama->getCours()],
+            Diaporama::TARGET_PATH => ['parcours' => $diaporama->getParcours()],
+            default => ['chapitre' => $diaporama->getChapitre()],
+        };
 
         return $this->entityManager->getRepository(Diaporama::class)->findOneBy($criteria);
     }
@@ -343,13 +390,21 @@ final class DiaporamaService
         if ($creating || \array_key_exists('diapositives', $data)) {
             $diaporama->setDiapositives($this->slides($data['diapositives'] ?? null, $errors));
         }
+        // Thème choisi par identifiant (DIA-05) : le contrôle DIAPO_THEME_INCONNU refuse une autre valeur
+        if (\array_key_exists('theme', $data)) {
+            $diaporama->setTheme(\is_string($data['theme']) ? $data['theme'] : '');
+        }
+        if (\array_key_exists('objectif', $data)) {
+            $diaporama->setObjectif(\is_string($data['objectif']) ? $data['objectif'] : null);
+        }
         if ($errors !== []) {
             throw RedactionError::invalid($errors);
         }
 
         // Le texte source au moment de la synthèse : un changement du cours signale le diaporama à mettre à jour
         if (!$keepFingerprint) {
-            $diaporama->setEmpreinteSource($this->source->empreinte($diaporama));
+            $diaporama->setEmpreinteSource($this->source->empreinte($diaporama))
+                ->setCoursSources($this->source->inventaire($diaporama));
         }
     }
 
@@ -386,7 +441,7 @@ final class DiaporamaService
 
     private function audience(Diaporama $diaporama): ?string
     {
-        return $diaporama->getCours()?->getCategory()?->getAudience() ?? $diaporama->getChapitre()?->getCategory()?->getAudience();
+        return $diaporama->getAudience();
     }
 
     /**
@@ -394,9 +449,11 @@ final class DiaporamaService
      */
     private function targetSummary(Diaporama $diaporama): array
     {
-        return $diaporama->getCours() !== null
-            ? ['type' => Diaporama::TARGET_COURSE, 'id' => $diaporama->getCours()->getId(), 'titre' => $diaporama->getCours()->getTitle()]
-            : ['type' => Diaporama::TARGET_CHAPTER, 'id' => $diaporama->getChapitre()?->getId(), 'titre' => $diaporama->getChapitre()?->getLabel()];
+        return match (true) {
+            $diaporama->getCours() !== null => ['type' => Diaporama::TARGET_COURSE, 'id' => $diaporama->getCours()->getId(), 'titre' => $diaporama->getCours()->getTitle()],
+            $diaporama->getParcours() !== null => ['type' => Diaporama::TARGET_PATH, 'id' => $diaporama->getParcours()->getId(), 'titre' => $diaporama->getParcours()->getName()],
+            default => ['type' => Diaporama::TARGET_CHAPTER, 'id' => $diaporama->getChapitre()?->getId(), 'titre' => $diaporama->getChapitre()?->getLabel()],
+        };
     }
 
     /**
@@ -410,7 +467,9 @@ final class DiaporamaService
             'cible' => $this->targetSummary($diaporama),
             'statut' => $diaporama->getStatus(),
             'auteur' => $diaporama->getAuthor(),
+            'theme' => $diaporama->getTheme(),
             'nombreDeDiapositives' => \count($diaporama->getDiapositives()),
+            'nombreDeScenes' => \count(array_filter($diaporama->getDiapositives(), static fn ($d) => \is_array($d) && isset($d['scene']))),
         ];
     }
 
@@ -421,7 +480,12 @@ final class DiaporamaService
     {
         return $this->summary($diaporama) + [
             'sousTitre' => $diaporama->getSousTitre(),
+            'objectif' => $diaporama->getObjectif(),
             'public' => $this->audience($diaporama),
+            'couverture' => $diaporama->getCouverture(),
+            'coursSources' => $diaporama->getCoursSources(),
+            // Aperçu réservé aux administrateurs : projection, vue fixe et contrôles de rendu dans le navigateur
+            'apercuUrl' => $diaporama->getId() === null ? null : '/spa/diaporamas/apercu/'.$diaporama->getId(),
             'diapositives' => $diaporama->getDiapositives(),
             'creeLe' => $diaporama->getCreatedAt()->format(\DATE_ATOM),
             'modifieLe' => $diaporama->getUpdatedAt()->format(\DATE_ATOM),

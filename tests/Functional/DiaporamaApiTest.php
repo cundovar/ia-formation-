@@ -53,7 +53,8 @@ final class DiaporamaApiTest extends WebTestCase
         self::assertSame('former', $diaporamas[0]['audience']);
         self::assertSame('objectifs', $diaporamas[0]['diapositives'][0]['modele']);
         // Ni l'auteur, ni la relecture, ni l'empreinte ne sortent de l'API
-        self::assertSame(['@id', '@type', 'id', 'titre', 'sousTitre', 'diapositives', 'cours', 'audience'], array_keys($diaporamas[0]));
+        self::assertSame(['@id', '@type', 'id', 'theme', 'titre', 'sousTitre', 'diapositives', 'cours', 'audience'], array_keys($diaporamas[0]));
+        self::assertSame('standard', $diaporamas[0]['theme']);
     }
 
     public function testDraftDiaporamaOrUnpublishedCourseStaysHidden(): void
