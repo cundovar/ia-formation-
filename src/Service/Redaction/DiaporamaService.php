@@ -230,7 +230,7 @@ final class DiaporamaService
         $diaporama = $this->diaporama($id);
         $problemes = [];
         foreach (\array_slice(\is_array($rapport['problemes'] ?? null) ? array_values($rapport['problemes']) : [], 0, 200) as $p) {
-            if (!\is_array($p) || !\in_array($p['probleme'] ?? null, ['debordement', 'sortie', 'recouvrement'], true)) {
+            if (!\is_array($p) || !\in_array($p['probleme'] ?? null, ['debordement', 'sortie', 'recouvrement', 'texte_petit'], true)) {
                 continue;
             }
             $zone = \is_array($p['mesure']['zone'] ?? null) ? $p['mesure']['zone'] : [];

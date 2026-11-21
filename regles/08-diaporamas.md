@@ -147,3 +147,40 @@ Un diaporama du site présente un cours, un chapitre ou un parcours entier devan
 - Une scène animée indique sa `notion` (l'idée qu'elle illustre) : elle n'est jamais choisie d'après un mot-clé.
 
 **Source.** [PLAN] : décision du 21 novembre 2026 ; [RGAA] critères 3 (couleurs) et 10 (présentation de l'information).
+
+## DIA-14 — Valider la direction visuelle sur deux diapositives
+
+Conserver la palette, la typographie, les références, le style des schémas
+et la préférence d’illustration dans le brief. Le thème du site applique
+les choix graphiques. Présenter deux diapositives représentatives et faire
+valider leur rendu avant de rédiger la série.
+
+Un schéma représente une relation utile au cours. Utiliser une chaîne pour
+un processus, une comparaison pour des différences explicites, un
+aiguillage pour une condition et une loupe ou un sas pour une vérification.
+Employer un dessin sans texte lorsqu’il apporte une explication complémentaire.
+Déposer le fichier avec sa légende et son alternative textuelle via le
+circuit des illustrations. Utiliser des exemples fictifs.
+
+Examiner le rendu web et les rendus fixes. Les étapes successives du PPTX
+conservent les formes et les textes éditables. Dans le PDF, présenter le
+schéma fixe et les légendes nécessaires à la compréhension.
+
+## Proposition DIA-15 — Structurer le contenu pour Atelier visuel v3
+
+*Proposition du 22 novembre 2026, à valider avant application.* L’agent
+organise les idées et propose le point principal. Le site choisit leur
+présentation, les séparateurs, la progression, les couleurs et les motifs.
+
+- Rattacher chaque diapositive à une partie du scénario et respecter l’ordre
+  déclaré. Le thème v3 prévoit quatre parties au plus.
+- Choisir au plus un passage du titre à souligner, de trois mots au plus.
+  Le reproduire tel qu’il apparaît dans le titre.
+- Pour une carte structurée, employer un titre de quatre mots au plus, un
+  texte d’environ 90 caractères et, si elle a un rôle, une icône du catalogue.
+  Identifier le point prioritaire selon son importance pédagogique.
+- Distinguer une consigne chiffrée d’un résultat mesuré. Une statistique
+  doit renvoyer à un cours source qui étaye la valeur et son contexte.
+- Choisir un visuel d’étape qui aide à comprendre l’action, avec une
+  justification conforme à DIA-12. Le site peut utiliser l’icône prévue
+  lorsque l’étape n’a pas de visuel.

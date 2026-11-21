@@ -30,6 +30,7 @@ const zoneRelative = (r, cadre) => ({
 })
 
 const message = (p) => ({
+  texte_petit: `texte sous 24 pt : « ${p.element.extrait} »`,
   debordement: `texte trop long pour sa zone : « ${p.element.extrait} » (${p.mesure.depassementPx} px de trop)`,
   sortie: `bloc hors de la diapositive : « ${p.element.extrait} »`,
   recouvrement: `textes superposés : « ${p.element.extrait} » et « ${p.autre?.extrait ?? ''} »`,
@@ -50,6 +51,10 @@ export const controlerRendu = (diapositive) => {
   blocs.forEach((bloc) => {
     const r = bloc.getBoundingClientRect()
     const element = { role: role(bloc), extrait: extrait(bloc) }
+    const taille = Number(bloc.dataset.taillePt)
+    if (element.role !== 'repere' && Number.isFinite(taille) && taille < 24) {
+      ajouter({ element, probleme: 'texte_petit', mesure: { depassementPx: 0, zone: zoneRelative(r, cadre) } })
+    }
     const depasse = Math.max(bloc.scrollHeight - bloc.clientHeight, bloc.scrollWidth - bloc.clientWidth)
     if (depasse > TOLERANCE) {
       ajouter({ element, probleme: 'debordement', mesure: { depassementPx: arrondi(depasse), zone: zoneRelative(r, cadre) } })

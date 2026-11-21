@@ -4,6 +4,7 @@
     :class="{ 'diapositive-texte--gras': element.gras }"
     :style="style"
     :data-role="element.role"
+    :data-taille-pt="element.taille"
   >
     <ul v-if="element.paragraphes.some((p) => p.puce)">
       <li

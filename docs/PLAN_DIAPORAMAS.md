@@ -256,3 +256,108 @@ Entité : `brief`, `scenario` et `controle_rendu` (JSON, migration `Version20261
 - L'indice « interface simulée » ne lit que la légende et le texte alternatif.
 - Le contrôle du rendu n'a lieu que lorsqu'un administrateur ouvre l'aperçu ; ses mesures varient selon le navigateur et les polices installées.
 - Le .pptx n'a pas été ouvert dans PowerPoint ni dans Google Slides ; seule la conversion LibreOffice est vérifiable localement.
+
+## Pilote TPE, module 9
+
+Le brief peut enregistrer une direction visuelle dans `brief.visuel`, avec
+la palette, la typographie, les références, le style des schémas et la
+préférence d’illustration. Ces champs guident les choix dans le thème du
+site. Le pilote de devis fictif est accessible dans la démonstration des
+diaporamas, onglet « Deux diapositives test · TPE ».
+
+La consigne de rédaction place la validation de deux diapositives test
+avant la rédaction de la série. Ce jalon est éditorial. L’aperçu relève les
+débordements et les superpositions ainsi que le texte pédagogique sous
+24 points. La hiérarchie, la cohérence et la densité se jugent sur le rendu.
+
+Pour le pilote, le web anime les étapes du schéma, le PPTX les décline en
+diapositives fixes avec formes et textes éditables, et le PDF donne une
+vue fixe avec les légendes. Les animations PowerPoint natives restent à
+qualifier séparément.
+
+## Atelier visuel v3 — proposition du 22 novembre 2026
+
+**Statut : proposition à valider sur deux diapositives test.** Référence
+graphique : [maquette Penpot locale](http://localhost:9001/#/workspace?team-id=9b657248-8f9f-81e1-8008-c91089ea6788&file-id=4911bca2-c422-8010-8008-fb5075a6a325&page-id=b08f8722-b968-8006-8008-fb543d43a4bf).
+
+L’agent fournit le contenu et sa structure. Le site choisit les compositions,
+alterne les dispositions compatibles, calcule la numérotation et applique
+les couleurs, rayons, ombres et motifs du thème. Il mesure le texte pour
+ajuster le surlignage et les cartes. Une fois la maquette validée, ses jetons
+seront reportés dans le thème versionné. Penpot sert de référence de conception.
+
+| Donnée proposée | Contrôle du MCP et comportement du site |
+|---|---|
+| Parties ordonnées | Réutiliser `scenario.parties` et les identifiants `scenarioPartie` déjà présents. Pour la v3, quatre parties au plus. Chaque diapositive référence une partie connue et suit l’ordre déclaré. Le site insère les séparateurs et affiche la progression. |
+| `motCle` | Un passage de trois mots au plus, présent tel quel dans le titre. Surlignage mesuré par le site, avec mise en couleur du texte si la mesure échoue. |
+| `points` structurés | Accepter les phrases existantes et les objets `{titre, texte, icone}`. Titre de quatre mots au plus et texte d’environ 90 caractères, sous réserve des limites du modèle. |
+| Catalogue d’icônes | Ajouter `regles/diaporamas/icones.json` et `lister_icones`. Les identifiants décrivent un sens. Valider leur appartenance au catalogue côté serveur et côté rendu. Les dessins proviennent du site. |
+| `miseEnAvant` | Index valide d’un point essentiel. Le site souligne une seule carte, la première par défaut. |
+| `chiffres_cles` | Valeur, unité, libellé, texte, proportion éventuelle et nature `repere` ou `statistique`. Afficher la nature. Pour une statistique, exiger une source issue d’un cours utilisé et vérifier la concordance du chiffre, de l’unité et du contexte à la relecture. |
+| Visuel d’étape | Référencer une capture ou une illustration du back-office et justifier son utilité selon DIA-12. Réutiliser le champ `capture` des étapes de démonstration ou documenter une correspondance si le contrat v3 expose `visuel`. Afficher l’icône du catalogue en l’absence de visuel. |
+
+Parcours prévu : lire les sources avec `preparer_diaporama`, proposer le brief
+et le scénario, contrôler le scénario avec `verifier_scenario_diaporama` et
+valider la direction sur deux diapositives test selon DIA-14. Créer ensuite
+le brouillon. L’aperçu relève les défauts de rendu et `verifier_diaporama`
+renvoie les constats par diapositive. Après correction, un autre connecteur
+relit le brouillon avant publication.
+
+Avant de généraliser, comparer au pilote TPE dans le web, le PDF et le PPTX.
+Vérifier en particulier l’enchaînement des parties, la place du surligneur,
+la lisibilité des cartes, la compatibilité des anciens contenus et la
+distinction entre repère pédagogique et statistique.
+
+### Plan d’implémentation v3
+
+1. **Valider le rendu avant de généraliser.** Relever dans Penpot les jetons
+   et les compositions de la maquette. Construire dans le moteur deux
+   essais pour le module 9, parcours 3, avec la demande de devis fictive.
+   Le premier relie quatre blocs (objectif, contexte, public et ton, limites).
+   Le second relie demande, réponse de l’IA et contrôle humain. Inclure un
+   exemple court par bloc et une seule conclusion par diapositive. Vérifier
+   qu’aucun prix ni délai n’est inventé. Soumettre les deux rendus au porteur
+   du projet et consigner les ajustements retenus. Livrer les essais en
+   aperçu, avec leur PDF et leur PPTX modifiable.
+
+2. **Versionner le contrat éditorial.** Dans `DiaporamaScenario`,
+   `DiaporamaChecker` et le catalogue des modèles, réserver les nouvelles
+   contraintes aux diaporamas v3. Réutiliser `scenario.parties` et
+   `scenarioPartie` comme référence canonique. Tester les parties inconnues,
+   manquantes ou désordonnées et la limite de quatre. Contrôler `motCle`,
+   les points structurés, les icônes et l’index `miseEnAvant`. Inclure
+   les champs textuels dans les contrôles éditoriaux existants. Maintenir
+   la lecture et l’édition des anciens contenus, y compris les listes
+   de phrases et les séparateurs déjà rédigés. Prévoir une nouvelle
+   migration Doctrine si le stockage change.
+
+3. **Brancher la v3 sur ia-admin.** Dans `RedactionMcpServer` et
+   `DiaporamaService`, exposer le catalogue fermé avec `lister_icones`.
+   Renvoyer le contrat de la version cible, les modèles et les visuels
+   disponibles dans `preparer_diaporama`. Aligner les schémas de création
+   et de modification sur les validations côté serveur. Exiger une
+   référence vérifiable au cours source pour toute statistique, avec
+   le passage qui justifie la valeur. Conserver la distinction entre
+   erreurs bloquantes et constats de rendu. Relier les messages au numéro
+   de la diapositive source, y compris lorsque le site insère un séparateur.
+
+4. **Faire composer les trois sorties par le moteur.** Dans le registre
+   des thèmes et `miseEnPageAtelier.js`, choisir une composition compatible
+   avec la quantité et le type de contenu. Alterner quand plusieurs
+   compositions conviennent. Calculer les séparateurs, les numéros et
+   la progression dans le plan de rendu partagé. Utiliser `mesure.js`
+   pour le surligneur et la hauteur des cartes, avec repli si la mesure
+   échoue. Résoudre les icônes depuis le catalogue et les visuels depuis
+   le back-office. Vérifier que le web, le PDF et `construirePptx.js`
+   lisent le même ordre de présentation. Garder les formes et textes
+   éditables en PPTX et les légendes lisibles sur la vue fixe du PDF.
+
+5. **Vérifier le parcours complet.** Suivre `docs/HARNESS.md`. Tester le
+   pilote et un diaporama antérieur, puis les entrées invalides du
+   connecteur, dont une icône inconnue et une statistique sans source.
+   Inspecter en navigateur les débordements, le contraste, le mobile,
+   le clavier et le hors ligne sur un contenu préparé. Générer les deux
+   exports depuis le pilote et les ouvrir dans les lecteurs disponibles.
+   Tester la correction du brouillon et le passage au connecteur
+   relecteur. Consigner les limites des lecteurs et le résultat des
+   contrôles. Maintenir le pilote en brouillon pendant les essais.

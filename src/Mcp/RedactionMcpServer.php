@@ -554,6 +554,13 @@ final class RedactionMcpServer
             'theme' => ['type' => 'string', 'enum' => Diaporama::THEMES],
             'intention' => ['type' => 'string', 'enum' => array_keys(DiaporamaBrief::INTENTIONS)],
             'statut' => ['type' => 'string', 'enum' => DiaporamaBrief::STATUTS, 'description' => 'propose tant que la personne n\'a pas confirmé ; confirme ensuite'],
+            'visuel' => self::schema([
+                'palette' => $texte(200),
+                'typographie' => $texte(200),
+                'references' => $texte(200),
+                'styleSchemas' => $texte(200),
+                'illustrations' => $texte(200),
+            ]) + ['description' => 'Direction visuelle du diaporama. Les préférences guident le choix du thème et des compositions du site.'],
             'deductions' => ['type' => 'array', 'maxItems' => 8, 'items' => self::schema(['champ' => $texte(30), 'origine' => $texte(160)], ['champ', 'origine'])],
         ], ['public', 'dureeMinutes', 'objectif', 'intention']) + ['description' => 'Brief (DIA-11) : proposé (briefPropose de preparer_diaporama), présenté à la personne, corrigé, puis gardé avec le diaporama'];
         $liste = ['type' => 'array', 'maxItems' => 3, 'items' => $texte(120)];

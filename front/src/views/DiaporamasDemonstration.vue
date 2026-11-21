@@ -70,6 +70,7 @@ import { computed, ref, watch } from 'vue'
 import ProjectionDiaporama from '@/components/features/diaporamas/ProjectionDiaporama.vue'
 import DiaporamaActions from '@/components/features/diaporamas/DiaporamaActions.vue'
 import pilote from '@/diaporamas/pilote/automatiser.json'
+import devisTpe from '@/diaporamas/pilote/devis-tpe.json'
 import galerie from '@/diaporamas/pilote/scenes.json'
 import copilot from '@/diaporamas/pilote/copilot-fil-rouge.json'
 import { chargerCaptures } from '@/services/captures'
@@ -78,6 +79,7 @@ import { useData } from '@/utils/fetchDataPwa'
 import { useCustomization } from '@/composables/ui/useCustomization'
 
 const EXEMPLES = {
+  devis: { libelle: 'Deux diapositives test · TPE', diaporama: devisTpe },
   pilote: { libelle: 'Pilote : 3 diapositives', diaporama: pilote },
   scenes: { libelle: 'Les six scènes', diaporama: galerie },
   copilot: { libelle: 'Pilote Copilot : brief, scénario, compositions', diaporama: copilot },

@@ -84,6 +84,12 @@
             <dt>Objectif</dt>
             <dd>{{ diaporama.brief.objectif }}</dd>
           </div>
+          <div v-for="(valeur, champ) in diaporama.brief.visuel" :key="champ">
+            <template v-if="valeur">
+              <dt>{{ { palette: 'Palette', typographie: 'Typographie', references: 'Références', styleSchemas: 'Style des schémas', illustrations: 'Illustrations' }[champ] }}</dt>
+              <dd>{{ valeur }}</dd>
+            </template>
+          </div>
           <div v-if="diaporama.brief.contexte">
             <dt>Contexte</dt>
             <dd>{{ diaporama.brief.contexte }}</dd>
@@ -195,7 +201,7 @@
           role="status"
           data-testid="apercu-rendu-resume"
         >
-          {{ rendu.length === 0 ? 'Aucun débordement ni recouvrement de texte détecté.' : `${rendu.length} problème(s) d'affichage :` }}
+          {{ rendu.length === 0 ? 'Aucun problème détecté par les contrôles automatiques.' : `${rendu.length} problème(s) d'affichage :` }}
           <template v-if="envoi">
             {{ envoi }}
           </template>
