@@ -1,0 +1,18 @@
+{% set brief = field.value %}
+{% if brief is empty %}
+    Pas de brief (diaporama préparé avant le 22 novembre 2026, ou brief non enregistré).
+{% else %}
+    <dl>
+        <dt>Statut</dt><dd>{{ brief.statut == 'confirme' ? 'Confirmé par la personne' : 'Proposé (pas encore confirmé)' }}</dd>
+        <dt>Public</dt><dd>{{ brief.public }}</dd>
+        <dt>Durée indicative</dt><dd>{{ brief.dureeMinutes }} min</dd>
+        <dt>Objectif</dt><dd>{{ brief.objectif }}</dd>
+        {% if brief.contexte %}<dt>Contexte</dt><dd>{{ brief.contexte }}</dd>{% endif %}
+        <dt>Thème</dt><dd>{{ brief.theme }}</dd>
+        <dt>Intention</dt><dd>{{ brief.intention }}</dd>
+    </dl>
+    {% if brief.deductions is not empty %}
+        <p>Valeurs déduites :</p>
+        <ul>{% for d in brief.deductions %}<li>{{ d.champ }} : {{ d.origine }}</li>{% endfor %}</ul>
+    {% endif %}
+{% endif %}

@@ -24,6 +24,12 @@ final class DiaporamaService
     private const MAX_SLIDES = 30;
     private const MAX_NOTES_LENGTH = 2000;
     private const MAX_TEXT_LENGTH = 300;
+    public const A_RELIRE = [
+        'Lisibilité de loin : une idée par diapositive, texte projeté court, captures lisibles.',
+        'Variété des compositions et rythme (alternance explication, démonstration, pratique).',
+        'Fidélité aux sources : rien d\'affirmé qui ne soit dans les cours exploités ; couverture annoncée.',
+        'Pertinence pédagogique : le scénario suit le brief, les scènes servent une notion, les visuels sont justifiés et signalés comme simulés si besoin.',
+    ];
 
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -31,8 +37,10 @@ final class DiaporamaService
         private CourseMediaRepositoryInterface $captures,
         private DiaporamaSource $source = new DiaporamaSource(),
         private ?SceneCatalogue $scenes = null,
+        private ?DiaporamaVisuels $visuels = null,
     ) {
         $this->scenes ??= new SceneCatalogue(\dirname(__DIR__, 3).'/regles/scenes/catalogue.json');
+        $this->visuels ??= new DiaporamaVisuels($captures);
     }
 
     /**
@@ -73,9 +81,12 @@ final class DiaporamaService
             'cible' => $this->targetSummary($diaporama),
             'public' => $this->audience($diaporama),
             'diapositivesAttendues' => DiaporamaChecker::NOMBRE[(string) $diaporama->getTypeCible()],
-            'modeles' => DiaporamaChecker::MODELES,
+            'briefPropose' => DiaporamaBrief::proposer($diaporama, $cours, DiaporamaChecker::NOMBRE[(string) $diaporama->getTypeCible()], (string) $this->targetSummary($diaporama)['titre']),
+            'demarche' => 'Présentez le brief proposé à la personne et faites-le corriger ; proposez ensuite un scénario (verifier_scenario_diaporama) et faites-le valider avant de créer le diaporama (DIA-11).',
+            'modeles' => $this->checker->modeles()->resume(),
             'themes' => Diaporama::THEMES,
             'scenes' => array_map(static fn (array $s) => ['type' => $s['type'], 'usage' => $s['usage'], 'peutInduireEnErreur' => $s['peutInduireEnErreur']], $this->scenes()['scenes']),
+            'guideScenes' => $this->guideScenes(),
             'couverture' => [
                 'exploites' => \count($cours),
                 'total' => \count($inventaire),
@@ -96,6 +107,9 @@ final class DiaporamaService
 
                 return $capture === null ? null : ['id' => $id, 'legende' => $capture->getCaption(), 'texteAlternatif' => $capture->getAltText()];
             }, array_values(array_unique(array_map('intval', $markers[1])))))),
+            // DIA-12 : fiche complète de chaque visuel des cours exploités ; aucun visuel n'est inventé
+            'visuels' => $this->visuels()->inventaire($cours),
+            'consigneVisuels' => 'Proposez les visuels qui servent une partie du scénario et dites en une phrase pourquoi (voir_visuel pour les examiner). Signalez une interface simulée. Si aucun ne convient, dites-le : n\'inventez ni capture ni métadonnée.',
             'coursNonPublies' => $this->source->coursNonPublies($diaporama),
             'diaporamaExistant' => $existant === null ? null : $this->summary($existant),
         ];
@@ -114,9 +128,138 @@ final class DiaporamaService
     /**
      * @return array<string, mixed>
      */
-    public function show(int $id): array
+    public function show(int $id, ?int $numeroDiapositive = null): array
     {
-        return $this->detail($this->diaporama($id));
+        $diaporama = $this->diaporama($id);
+        if ($numeroDiapositive === null) {
+            return $this->detail($diaporama);
+        }
+
+        return $this->slideDetail($diaporama, $numeroDiapositive);
+    }
+
+    /**
+     * Inspection d'une diapositive : contenu, partie du scénario, rendus prévus et problèmes de rendu mesurés.
+     *
+     * @return array<string, mixed>
+     */
+    private function slideDetail(Diaporama $diaporama, int $numero): array
+    {
+        $diapositives = $diaporama->getDiapositives();
+        if ($numero < 1 || $numero > \count($diapositives)) {
+            throw new RedactionError(sprintf('Diapositive %d introuvable : le diaporama en compte %d.', $numero, \count($diapositives)), RedactionError::NOT_FOUND);
+        }
+        $diapo = $diapositives[$numero - 1];
+        $partieId = \is_array($diapo) ? ($diapo['scenarioPartie'] ?? null) : null;
+        $partie = null;
+        foreach ($diaporama->getScenario()['parties'] ?? [] as $p) {
+            if ($p['id'] === $partieId) {
+                $partie = $p;
+            }
+        }
+        $rendu = DiaporamaChecker::etatRendu($diaporama);
+        $modele = \is_array($diapo) && \is_string($diapo['modele'] ?? null) ? $diapo['modele'] : null;
+
+        return [
+            'diaporamaId' => $diaporama->getId(),
+            'numero' => $numero,
+            'nombreDeDiapositives' => \count($diapositives),
+            'diapositive' => $diapo,
+            'partieDuScenario' => $partie,
+            'rendusPrevus' => $modele !== null && $this->checker->modeles()->modele($modele) !== null ? $this->checker->modeles()->rendus($modele) : null,
+            'controleRendu' => ['etat' => $rendu['etat'], 'le' => $rendu['le'], 'problemes' => array_values(array_filter($rendu['problemes'], static fn (array $p) => ($p['diapositive'] ?? null) === $numero))],
+            'controles' => array_values(array_filter($this->checker->check($diaporama), static fn (array $c) => str_starts_with($c['message'], sprintf('Diapositive %d ', $numero)) || str_starts_with($c['message'], sprintf('Diapositive %d :', $numero)))),
+            'apercuUrl' => '/spa/diaporamas/apercu/'.$diaporama->getId().'?diapositive='.$numero,
+        ];
+    }
+
+    /**
+     * Vérifie un brief et un scénario avant la création du brouillon (rien n'est enregistré) : forme, sources, visuels,
+     * couverture réelle et durée. L'agent présente le résultat à la personne, qui corrige le scénario.
+     *
+     * @param array<string, mixed> $data coursId | moduleId | parcoursId, brief, scenario
+     * @return array<string, mixed>
+     */
+    public function checkScenario(array $data): array
+    {
+        $diaporama = (new Diaporama('lecture'))->setCible(...$this->target(
+            isset($data['coursId']) ? (int) $data['coursId'] : null,
+            isset($data['moduleId']) ? (int) $data['moduleId'] : null,
+            isset($data['parcoursId']) ? (int) $data['parcoursId'] : null,
+        ));
+        [$brief, $erreursBrief] = DiaporamaBrief::normaliser($data['brief'] ?? null);
+        [$scenario, $erreursScenario] = DiaporamaScenario::normaliser($data['scenario'] ?? null, $this->sceneCatalogue()->types());
+        if ($scenario === null && $erreursScenario === []) {
+            $erreursScenario[] = ['champ' => 'scenario', 'message' => 'Scénario attendu.'];
+        }
+        if ($erreursBrief !== [] || $erreursScenario !== []) {
+            throw RedactionError::invalid([...$erreursBrief, ...$erreursScenario]);
+        }
+        $analyse = DiaporamaScenario::analyser($scenario, $this->source->inventaire($diaporama), fn (int $id) => $this->captures->findById($id) !== null, $brief);
+
+        return [
+            'cible' => $this->targetSummary($diaporama),
+            'valide' => !DraftChecker::hasBlockingIssue($analyse['controles']),
+            'brief' => $brief,
+            'scenario' => $scenario,
+            'couverture' => $analyse['couverture'],
+            'controles' => $analyse['controles'],
+            'suite' => 'Présentez le scénario et sa couverture à la personne ; après sa validation, passez brief et scenario à creer_diaporama (ou modifier_diaporama), et reliez chaque diapositive à sa partie (scenarioPartie).',
+        ];
+    }
+
+    /**
+     * Aperçu d'un visuel pour l'agent (image réduite et fiche), sans chemin libre : seulement un visuel du back-office.
+     *
+     * @return array{fiche: array<string, mixed>, image: ?array{data: string, mimeType: string}, raison: ?string}
+     */
+    public function visuel(int $id): array
+    {
+        return $this->visuels()->apercu($id);
+    }
+
+    /**
+     * Rapport du contrôle de rendu mesuré dans l'aperçu d'un administrateur. Le serveur ne garde que la forme
+     * attendue et calcule lui-même l'empreinte du contenu contrôlé ; la relecture n'est pas touchée.
+     *
+     * @param array<string, mixed> $rapport {formats, navigateur, problemes}
+     * @return array<string, mixed> état du rendu enregistré
+     */
+    public function recordRenderReport(int $id, array $rapport): array
+    {
+        $diaporama = $this->diaporama($id);
+        $problemes = [];
+        foreach (\array_slice(\is_array($rapport['problemes'] ?? null) ? array_values($rapport['problemes']) : [], 0, 200) as $p) {
+            if (!\is_array($p) || !\in_array($p['probleme'] ?? null, ['debordement', 'sortie', 'recouvrement'], true)) {
+                continue;
+            }
+            $zone = \is_array($p['mesure']['zone'] ?? null) ? $p['mesure']['zone'] : [];
+            $problemes[] = [
+                'diapositive' => max(1, (int) ($p['diapositive'] ?? 1)),
+                'etape' => max(1, (int) ($p['etape'] ?? 1)),
+                'format' => ($p['format'] ?? null) === 'etroit' ? 'etroit' : 'large',
+                'element' => [
+                    'role' => mb_substr((string) ($p['element']['role'] ?? ''), 0, 30),
+                    'extrait' => mb_substr(strip_tags((string) ($p['element']['extrait'] ?? '')), 0, 60),
+                ],
+                'probleme' => $p['probleme'],
+                'mesure' => [
+                    'depassementPx' => round((float) ($p['mesure']['depassementPx'] ?? 0), 1),
+                    'zone' => array_map(static fn ($v) => round(max(-50, min(150, (float) $v)), 1), array_intersect_key($zone + ['x' => 0, 'y' => 0, 'w' => 0, 'h' => 0], ['x' => 1, 'y' => 1, 'w' => 1, 'h' => 1])),
+                ],
+            ];
+        }
+        $formats = array_values(array_intersect(['large', 'etroit'], \is_array($rapport['formats'] ?? null) ? $rapport['formats'] : []));
+        $diaporama->setControleRendu([
+            'empreinte' => $diaporama->getEmpreinteRendu(),
+            'le' => (new \DateTimeImmutable())->format(\DATE_ATOM),
+            'formats' => $formats === [] ? ['large'] : $formats,
+            'navigateur' => mb_substr(strip_tags((string) ($rapport['navigateur'] ?? '')), 0, 80) ?: null,
+            'problemes' => $problemes,
+        ]);
+        $this->entityManager->flush();
+
+        return DiaporamaChecker::etatRendu($diaporama);
     }
 
     /**
@@ -230,7 +373,7 @@ final class DiaporamaService
     }
 
     /**
-     * @return array{sansControleBloquant: bool, publiable: bool, controles: list<array<string, mixed>>}
+     * @return array{sansControleBloquant: bool, publiable: bool, controles: list<array<string, mixed>>, controlesNavigateur: array<string, mixed>, aRelire: list<string>, apercuUrl: ?string}
      */
     public function check(int $id): array
     {
@@ -242,6 +385,11 @@ final class DiaporamaService
             'sansControleBloquant' => !DraftChecker::hasBlockingIssue($issues),
             'publiable' => !$diaporama->isPublished() && !DraftChecker::hasBlockingIssue($all),
             'controles' => $all,
+            // Contrôles mesurés dans un navigateur (aperçu) : dépendent des polices et du rendu
+            'controlesNavigateur' => DiaporamaChecker::etatRendu($diaporama),
+            // Ce qu'aucun contrôle automatique ne juge : à vérifier par le relecteur (autre connecteur)
+            'aRelire' => self::A_RELIRE,
+            'apercuUrl' => $diaporama->getId() === null ? null : '/spa/diaporamas/apercu/'.$diaporama->getId(),
         ];
     }
 
@@ -397,6 +545,23 @@ final class DiaporamaService
         if (\array_key_exists('objectif', $data)) {
             $diaporama->setObjectif(\is_string($data['objectif']) ? $data['objectif'] : null);
         }
+        if (\array_key_exists('brief', $data)) {
+            [$brief, $erreursBrief] = DiaporamaBrief::normaliser($data['brief']);
+            array_push($errors, ...$erreursBrief);
+            $diaporama->setBrief($brief);
+            // Le thème du brief sert de thème au diaporama s'il n'est pas donné à part
+            if ($brief !== null && !\array_key_exists('theme', $data)) {
+                $diaporama->setTheme($brief['theme']);
+            }
+            if ($brief !== null && !\array_key_exists('objectif', $data) && $diaporama->getObjectif() === null) {
+                $diaporama->setObjectif($brief['objectif']);
+            }
+        }
+        if (\array_key_exists('scenario', $data)) {
+            [$scenario, $erreursScenario] = DiaporamaScenario::normaliser($data['scenario'], $this->sceneCatalogue()->types());
+            array_push($errors, ...$erreursScenario);
+            $diaporama->setScenario($scenario);
+        }
         if ($errors !== []) {
             throw RedactionError::invalid($errors);
         }
@@ -437,6 +602,56 @@ final class DiaporamaService
         }
 
         return $raw;
+    }
+
+    private function visuels(): DiaporamaVisuels
+    {
+        \assert($this->visuels !== null);
+
+        return $this->visuels;
+    }
+
+    private function sceneCatalogue(): SceneCatalogue
+    {
+        \assert($this->scenes !== null);
+
+        return $this->scenes;
+    }
+
+    /**
+     * Pour chaque scène : la notion qu'elle aide à comprendre, les cas trompeurs, les paramètres, les rendus web,
+     * .pptx et PDF, et l'alternative fixe. Un mot-clé seul ne justifie jamais une scène (DIA-07).
+     *
+     * @return array<string, mixed>
+     */
+    private function guideScenes(): array
+    {
+        $scenes = [];
+        foreach ($this->sceneCatalogue()->resume() as $scene) {
+            $rendus = \is_array($scene['rendus']) ? $scene['rendus'] : [];
+            $scenes[] = [
+                'type' => $scene['type'],
+                'notion' => $scene['usage'],
+                'convient' => $scene['convient'],
+                'peutInduireEnErreur' => $scene['peutInduireEnErreur'],
+                'parametres' => $scene['champs'],
+                'rendus' => [
+                    'web' => 'Animation par étapes (rejouable), vue fixe légendée et lecture sans mouvement.',
+                    'pptx' => ($rendus['pptx'] ?? null) === 'etapes'
+                        ? 'Une diapositive fixe par étape (« Étape n/N » dans les notes) : ce ne sont pas des animations PowerPoint.'
+                        : 'La vue fixe sur une diapositive (formes modifiables), sans animation.',
+                    'pdf' => 'La vue fixe, puis les étapes numérotées avec leurs légendes.',
+                    'catalogue' => $rendus,
+                ],
+                'alternativeFixe' => 'Sans scène, utilisez la même diapositive (notion, etapes ou exercice) avec ses points : la description de la scène doit suffire à comprendre.',
+            ];
+        }
+
+        return [
+            'regle' => 'Proposez une scène seulement quand l\'ordre, le trajet, le tri ou la décision se comprend mieux en le voyant se dérouler (DIA-07). Pour chaque scène proposée : notion, justification courte, paramètres, alternative fixe. Un mot du titre ne suffit pas.',
+            'champNotion' => 'scene.notion (facultatif, 80 caractères) : la notion que la scène aide à comprendre.',
+            'scenes' => $scenes,
+        ];
     }
 
     private function audience(Diaporama $diaporama): ?string
@@ -484,6 +699,9 @@ final class DiaporamaService
             'public' => $this->audience($diaporama),
             'couverture' => $diaporama->getCouverture(),
             'coursSources' => $diaporama->getCoursSources(),
+            'brief' => $diaporama->getBrief(),
+            'scenario' => $diaporama->getScenario(),
+            'controleRendu' => DiaporamaChecker::etatRendu($diaporama),
             // Aperçu réservé aux administrateurs : projection, vue fixe et contrôles de rendu dans le navigateur
             'apercuUrl' => $diaporama->getId() === null ? null : '/spa/diaporamas/apercu/'.$diaporama->getId(),
             'diapositives' => $diaporama->getDiapositives(),

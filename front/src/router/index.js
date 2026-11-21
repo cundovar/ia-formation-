@@ -71,7 +71,7 @@ const routes = [
     path: '/diaporamas/apercu/:id(\\d+)',
     name: 'diaporama-apercu',
     component: DiaporamaProjectionPage,
-    props: (route) => ({ id: Number(route.params.id), apercu: true })
+    props: (route) => ({ id: Number(route.params.id), apercu: true, diapositive: Number(route.query.diapositive) || null })
   },
   {
     path: '/diaporamas/:id(\\d+)/projection',

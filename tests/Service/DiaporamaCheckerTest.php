@@ -30,6 +30,10 @@ final class DiaporamaCheckerTest extends TestCase
     {
         $captures = [
             42 => (new CourseMedia())->setKind(CourseMedia::KIND_CAPTURE)->setAltText('Conversation fictive'),
+            109 => (new CourseMedia())->setKind(CourseMedia::KIND_CAPTURE)->setAltText('Outlook simulé'),
+            110 => (new CourseMedia())->setKind(CourseMedia::KIND_CAPTURE)->setAltText('Teams simulé'),
+            111 => (new CourseMedia())->setKind(CourseMedia::KIND_CAPTURE)->setAltText('Excel simulé'),
+            113 => (new CourseMedia())->setKind(CourseMedia::KIND_CAPTURE)->setAltText('Word simulé'),
             43 => (new CourseMedia())->setKind(CourseMedia::KIND_CAPTURE)->setAltText(''),
         ];
         $repository = $this->createMock(CourseMediaRepositoryInterface::class);
@@ -37,9 +41,19 @@ final class DiaporamaCheckerTest extends TestCase
         $this->checker = new DiaporamaChecker($repository);
     }
 
+    // Avertissements d'un diaporama préparé sans brief, sans scénario ni contrôle de rendu (avant le 21 novembre 2026)
+    private const PREPARATION_ABSENTE = ['DIAPO_BRIEF_MANQUANT', 'DIAPO_SCENARIO_MANQUANT', 'DIAPO_RENDU_ABSENT'];
+
     public function testDemoDiaporamaPassesWithoutIssue(): void
     {
-        self::assertSame([], $this->checker->check($this->demo()));
+        self::assertSame([], $this->codes($this->demo()));
+    }
+
+    public function testOldDiaporamaWithoutBriefOrScenarioOnlyWarns(): void
+    {
+        $issues = $this->checker->check($this->demo());
+        self::assertSame(self::PREPARATION_ABSENTE, array_column($issues, 'code'));
+        self::assertSame([DraftChecker::WARNING], array_values(array_unique(array_column($issues, 'niveau'))));
     }
 
     public function testTargetTitleAndSlideCountAreBlocking(): void
@@ -107,7 +121,7 @@ final class DiaporamaCheckerTest extends TestCase
     {
         // Neuf mots du cours, avec une autre casse et une autre ponctuation
         $copie = $this->demoWith(2, ['points' => ['Répond toujours à la question exacte que la personne, lui', 'Le contexte change tout']]);
-        $issues = $this->checker->check($copie);
+        $issues = $this->issues($copie);
         self::assertSame(['DIAPO_COPIE'], array_column($issues, 'code'));
         self::assertStringContainsString('Diapositive 3 (notion)', $issues[0]['message']);
 
@@ -139,7 +153,7 @@ final class DiaporamaCheckerTest extends TestCase
         $chapitre->addPageContent($this->cours()->setTitle('Deuxième cours')->setStatus(PageContent::STATUS_DRAFT));
         $diaporama = $this->demo()->setCible(null, $chapitre);
 
-        $issues = $this->checker->check($diaporama);
+        $issues = $this->issues($diaporama);
         self::assertSame(['DIAPO_CHAPITRE_INCOMPLET'], array_column($issues, 'code'));
         self::assertStringContainsString('Deuxième cours', $issues[0]['message']);
 
@@ -305,6 +319,87 @@ final class DiaporamaCheckerTest extends TestCase
             ->setCode(self::COURS);
     }
 
+    public function testCopilotPilotWithTheFiveCompositionsHasNoBlockingIssue(): void
+    {
+        $diaporama = $this->pilote();
+        self::assertSame([], $this->codes($diaporama, DraftChecker::BLOCKING));
+        self::assertNotContains('DIAPO_COMPOSITIONS_REPETITIVES', $this->codes($diaporama));
+        self::assertContains('DIAPO_BRIEF_NON_CONFIRME', $this->codes($diaporama), 'Le brief du pilote reste « propose » tant que la personne ne l\'a pas confirmé');
+    }
+
+    /**
+     * @return iterable<string, array{0: int, 1: array<string, mixed>, 2: string}>
+     */
+    public static function invalidCompositions(): iterable
+    {
+        yield 'exemple trop long' => [6, ['exemple' => str_repeat('a ', 60)], 'DIAPO_MODELE_CHAMP_LONG'];
+        yield 'commentaire trop long' => [6, ['commentaires' => [str_repeat('b', 51)]], 'DIAPO_MODELE_CHAMP_LONG'];
+        yield 'sans commentaire' => [6, ['commentaires' => []], 'DIAPO_CHAMP_MANQUANT'];
+        yield 'avant sans texte' => [4, ['avant' => ['libelle' => 'Avant']], 'DIAPO_CHAMP_MANQUANT'];
+        yield 'une seule étape' => [3, ['etapes' => [['action' => 'Seule étape']]], 'DIAPO_CHAMP_MANQUANT'];
+        yield 'étape sans action' => [3, ['etapes' => [['verification' => 'x'], ['action' => 'y']]], 'DIAPO_CHAMP_MANQUANT'];
+        yield 'capture inconnue dans une étape' => [3, ['etapes' => [['action' => 'a', 'capture' => 999], ['action' => 'b']]], 'CAPTURE_INCONNUE'];
+        yield 'numéro hors limites' => [2, ['numero' => 12], 'DIAPO_CHAMP_MANQUANT'];
+        yield 'partie de scénario mal formée' => [4, ['scenarioPartie' => 'Partie Une'], 'DIAPO_CHAMP_MANQUANT'];
+        yield 'modèle inventé' => [4, ['modele' => 'carrousel'], 'DIAPO_MODELE_INCONNU'];
+    }
+
+    /**
+     * @dataProvider invalidCompositions
+     *
+     * @param array<string, mixed> $changes
+     */
+    public function testInvalidCompositionIsBlocked(int $index, array $changes, string $code): void
+    {
+        $diaporama = $this->withSlide($this->pilote(), $index, $changes);
+        self::assertContains($code, $this->codes($diaporama, DraftChecker::BLOCKING));
+    }
+
+    public function testRepetitiveCompositionsWarn(): void
+    {
+        $diaporama = $this->demo();
+        $diapositives = $diaporama->getDiapositives();
+        $notion = $diapositives[2];
+        $diaporama->setDiapositives([$diapositives[0], $notion, $notion, $notion, $notion, $notion, $diapositives[\count($diapositives) - 1]]);
+        self::assertContains('DIAPO_COMPOSITIONS_REPETITIVES', $this->codes($diaporama, DraftChecker::WARNING));
+    }
+
+    public function testScenarioPartsAndRenderReportAreChecked(): void
+    {
+        $diaporama = $this->pilote();
+        $diaporama->setScenario(['objectifGeneral' => 'O', 'parties' => [['id' => 'outlook', 'titre' => 'Outlook', 'coursSources' => [], 'verifications' => [], 'activite' => null, 'visuels' => [], 'dureeMinutes' => 10]]]);
+        $codes = $this->codes($diaporama);
+        self::assertContains('DIAPO_SCENARIO_PARTIE_INCONNUE', $codes, 'Les diapositives citent des parties absentes du scénario');
+        self::assertContains('DIAPO_SCENARIO_SANS_SOURCE', $codes);
+
+        $diaporama = $this->pilote();
+        $diaporama->setControleRendu(['empreinte' => $diaporama->getEmpreinteRendu(), 'le' => '2026-11-22T10:00:00+01:00', 'formats' => ['large'], 'problemes' => []]);
+        self::assertNotContains('DIAPO_RENDU_ABSENT', array_column($this->checker->check($diaporama), 'code'));
+        self::assertSame('a_jour', DiaporamaChecker::etatRendu($diaporama)['etat']);
+        $diaporama->setTitre('Autre titre');
+        self::assertSame('perime', DiaporamaChecker::etatRendu($diaporama)['etat']);
+        self::assertContains('DIAPO_RENDU_PERIME', array_column($this->checker->check($diaporama), 'code'));
+    }
+
+    /**
+     * Pilote du chapitre Copilot (front/src/diaporamas/pilote), sans son scénario, sur un chapitre publié.
+     */
+    private function pilote(): Diaporama
+    {
+        /** @var array{titre: string, sousTitre: string, brief: array<string, mixed>, diapositives: list<array<string, mixed>>} $pilote */
+        $pilote = json_decode((string) file_get_contents(__DIR__.'/../../front/src/diaporamas/pilote/copilot-fil-rouge.json'), true, flags: \JSON_THROW_ON_ERROR);
+        $chapitre = (new Menus())->setLabel('3. Utiliser Microsoft 365 Copilot');
+        $chapitre->addPageContent($this->cours());
+
+        return (new Diaporama('connecteur:Claude#1'))
+            ->setCible(null, $chapitre)
+            ->setTitre($pilote['titre'])
+            ->setSousTitre($pilote['sousTitre'])
+            ->setTheme('atelier_visuel')
+            ->setBrief($pilote['brief'])
+            ->setDiapositives($pilote['diapositives']);
+    }
+
     private function demo(): Diaporama
     {
         /** @var array{titre: string, sousTitre: string, diapositives: list<array<string, mixed>>} $demo */
@@ -341,11 +436,21 @@ final class DiaporamaCheckerTest extends TestCase
      */
     private function codes(Diaporama $diaporama, ?string $level = null): array
     {
-        $issues = $this->checker->check($diaporama);
+        $issues = $this->issues($diaporama);
         if ($level !== null) {
             $issues = array_filter($issues, static fn (array $issue) => $issue['niveau'] === $level);
         }
 
         return array_values(array_column($issues, 'code'));
+    }
+
+    /**
+     * Contrôles sans les avertissements d'un diaporama préparé sans brief, scénario ni contrôle de rendu.
+     *
+     * @return list<array{code: string, regle: ?string, niveau: string, message: string}>
+     */
+    private function issues(Diaporama $diaporama): array
+    {
+        return array_values(array_filter($this->checker->check($diaporama), static fn (array $issue) => !\in_array($issue['code'], self::PREPARATION_ABSENTE, true)));
     }
 }

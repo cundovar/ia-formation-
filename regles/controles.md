@@ -47,7 +47,7 @@ La plausibilité des réponses fausses, la justesse de la bonne réponse et le t
 
 ## Contrôles d'un diaporama
 
-Le serveur les applique à un diaporama (`src/Service/Redaction/DiaporamaChecker.php`) ; le connecteur les applique à chaque création, modification, vérification et publication. Les champs de chaque modèle sont listés dans `DiaporamaChecker::MODELES`.
+Le serveur les applique à un diaporama (`src/Service/Redaction/DiaporamaChecker.php`) ; le connecteur les applique à chaque création, modification, vérification et publication. Les champs, limites et rendus de chaque modèle sont décrits dans le catalogue partagé `regles/diaporamas/modeles.json` (lu par le serveur, `ModeleCatalogue.php`, et par le site).
 
 | Code | Règle | Niveau | Ce qui est vérifié |
 | --- | --- | --- | --- |
@@ -79,7 +79,19 @@ Le serveur les applique à un diaporama (`src/Service/Redaction/DiaporamaChecker
 | `DIAPO_COUVERTURE_PARTIELLE` | `DIA-10` | avertissement | Le parcours a des cours non publiés : le diaporama annonce sa couverture. |
 | `DIAPO_SCENE_JUSTIFICATION` | `DIA-07` | avertissement | La scène dit en une phrase pourquoi elle aide (`justification`). |
 | `DIAPO_SCENES_NOMBREUSES` | `DIA-07` | avertissement | Une scène pour trois diapositives au plus. |
+| `DIAPO_MODELE_CHAMP_LONG` | `DIA-13`, `DIA-05` | bloquant | Les champs d'une composition de l'Atelier visuel respectent les limites du catalogue des modèles (exemple, commentaires, avant/après, étapes d'une démonstration, questions d'une étude de cas, numéro d'un séparateur). |
+| `DIAPO_SCENARIO_PARTIE_INCONNUE` | `DIA-11` | bloquant | Le champ `scenarioPartie` d'une diapositive renvoie à une partie du scénario. |
+| `DIAPO_SCENARIO_SOURCE` | `DIA-11`, `DIA-10` | bloquant | Les sources d'une partie du scénario sont des cours de la cible, publiés. |
+| `DIAPO_SCENARIO_VISUEL` | `DIA-12` | bloquant | Les visuels prévus par le scénario existent dans le back-office. |
+| `DIAPO_BRIEF_MANQUANT`, `DIAPO_BRIEF_NON_CONFIRME` | `DIA-11` | avertissement | Le diaporama a un brief, confirmé par la personne (les valeurs déduites restent `propose`). |
+| `DIAPO_SCENARIO_MANQUANT` | `DIA-11` | avertissement | Le diaporama a un scénario pédagogique. |
+| `DIAPO_SCENARIO_SANS_SOURCE`, `DIAPO_SCENARIO_SANS_VERIFICATION` | `DIA-11` | avertissement | Chaque partie cite ses sources ; le scénario prévoit au moins un moment de vérification. |
+| `DIAPO_SCENARIO_DUREE` | `DIA-11` | avertissement | La somme des durées des parties reste à 20 % près de la durée du brief. |
+| `DIAPO_SCENARIO_PARTIE_VIDE` | `DIA-11` | avertissement | Chaque partie du scénario a au moins une diapositive. |
+| `DIAPO_COMPOSITIONS_REPETITIVES` | `DIA-13` | avertissement | Pas plus de trois diapositives de suite sur le même modèle, ni plus de la moitié sur un seul modèle (à partir de 6 diapositives ; ouverture, fin et séparateurs exclus). |
+| `DIAPO_SANS_VISUEL` | `DIA-12` | avertissement | Un diaporama d'intention « illustrée » montre au moins une capture. |
+| `DIAPO_RENDU_ABSENT`, `DIAPO_RENDU_PERIME`, `DIAPO_RENDU_PROBLEME` | `DIA-05` | avertissement | Le contrôle du rendu dans le navigateur a été fait sur la version actuelle et n'a rien signalé. |
 
 La qualité de la synthèse, le choix des idées et la clarté des notes ne se vérifient pas automatiquement : ils relèvent de la relecture. La pertinence d'une scène (`DIA-07`) aussi : le relecteur vérifie qu'elle n'induit pas en erreur.
 
-Ces contrôles tournent à l'enregistrement, sans navigateur. Les scènes sont validées par la même logique côté serveur (`SceneValidator.php`) et côté site (`front/src/diaporamas/scenes/valider.js`), sur le jeu d'exemples `regles/scenes/exemples/`. Le rendu réel (débordement, chevauchement, sortie du cadre) se vérifie dans le navigateur : le bouton « Vérifier toutes les diapositives » de l'aperçu administrateur parcourt chaque étape de chaque scène. Les limites du catalogue sont choisies pour tenir dans le thème ; les tests du site les éprouvent aux longueurs maximales, en 16:9 et en lecture mobile, et vérifient les contrastes du thème (4,5:1 pour le texte, 3:1 pour les traits).
+Ces contrôles tournent à l'enregistrement, sans navigateur. Les scènes sont validées par la même logique côté serveur (`SceneValidator.php`) et côté site (`front/src/diaporamas/scenes/valider.js`), sur le jeu d'exemples `regles/scenes/exemples/`. Le rendu réel (débordement, chevauchement, sortie du cadre) se vérifie dans le navigateur : à l'ouverture de l'aperçu administrateur, chaque diapositive et chaque étape de scène est mesurée en 16:9 (et en lecture étroite pour l'Atelier visuel) ; le rapport structuré (diapositive, élément, problème, mesure) est enregistré avec l'empreinte du contenu, lu par `verifier_diaporama` et `voir_diaporama`, et marqué périmé dès que le diaporama change. Le bouton « Relancer la vérification » le refait. Ce contrôle dépend du navigateur et des polices : c'est un avertissement, jamais un blocage. Les limites du catalogue sont choisies pour tenir dans le thème ; les tests du site les éprouvent aux longueurs maximales, en 16:9 et en lecture mobile, et vérifient les contrastes du thème (4,5:1 pour le texte, 3:1 pour les traits).

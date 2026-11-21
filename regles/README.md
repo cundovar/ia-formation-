@@ -1,6 +1,6 @@
 # Référentiel de la formation à l'IA
 
-**Statut : premier jet du 16 octobre 2026, adapté du référentiel de la médiation numérique, complété le 17 octobre 2026 (laboratoires) le 19 octobre 2026 (mode IA réelle, `LAB-08`) le 26 octobre 2026 (diaporamas, `DIA`) et le 21 novembre 2026 (diaporamas de parcours et scènes animées, `DIA-07` à `DIA-10`, catalogue `scenes/catalogue.json`), à valider par le responsable éditorial.**
+**Statut : premier jet du 16 octobre 2026, adapté du référentiel de la médiation numérique, complété le 17 octobre 2026 (laboratoires) le 19 octobre 2026 (mode IA réelle, `LAB-08`) le 26 octobre 2026 (diaporamas, `DIA`), le 21 novembre 2026 (diaporamas de parcours et scènes animées, `DIA-07` à `DIA-10`, catalogue `scenes/catalogue.json`, puis brief, scénario, visuels et compositions des diaporamas, `DIA-11` à `DIA-13`, catalogue `diaporamas/modeles.json`), à valider par le responsable éditorial.**
 Tant qu'il n'est pas validé, il sert de base de travail ; une règle contestée se corrige ici avant d'être appliquée.
 
 Ce référentiel dit ce qu'un cours, un QCM, un laboratoire ou un diaporama du site doit respecter. Il est lu par les personnes qui rédigent et par l'assistant de rédaction (MCP), et les contrôles automatiques renvoient à ses identifiants.
@@ -18,6 +18,7 @@ Ce référentiel dit ce qu'un cours, un QCM, un laboratoire ou un diaporama du s
 | [07-laboratoires.md](07-laboratoires.md) | Laboratoires : simulation annoncée, données fictives, critères, sécurité, mode IA réelle avec sa propre clé | `LAB` |
 | [08-diaporamas.md](08-diaporamas.md) | Diaporamas de cours, de chapitre et de parcours : synthèse, notes de présentation, accessibilité, licence, scènes animées | `DIA` |
 | [scenes/catalogue.json](scenes/catalogue.json) | Catalogue versionné des six scènes animées : usages, limites, champs, exemples (lu par le site et le connecteur) | `DIA-07` à `DIA-09` |
+| [diaporamas/modeles.json](diaporamas/modeles.json) | Catalogue des modèles de diapositive : champs, limites, ordre de lecture, rendus web, .pptx et PDF (lu par le site et le connecteur) | `DIA-03`, `DIA-13` |
 | [controles.md](controles.md) | Contrôles automatiques et leur état | — |
 | [modeles/](modeles/) | Gabarits : cours « apprendre », cours « former », fiche d'outil | — |
 | [sources.md](sources.md) | Documents de référence, avec leur date de consultation | — |

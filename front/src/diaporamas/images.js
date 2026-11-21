@@ -2,10 +2,18 @@
 // pour être intégrées au fichier .pptx. Une capture introuvable (supprimée, hors ligne)
 // laisse un cadre « Capture à ajouter » au lieu de casser le diaporama.
 
+// Captures citées : modèle capture, compositions (exemple commenté) et étapes d'une démonstration
+const estId = (valeur) => valeur !== null && valeur !== undefined && Number.isInteger(Number(valeur)) && Number(valeur) > 0
+
 export const capturesDuDiaporama = (diaporama) => [...new Set(
   (Array.isArray(diaporama?.diapositives) ? diaporama.diapositives : [])
-    .filter((diapo) => diapo?.modele === 'capture' && Number.isInteger(Number(diapo.capture)))
-    .map((diapo) => Number(diapo.capture)),
+    .filter((diapo) => diapo && typeof diapo === 'object')
+    .flatMap((diapo) => [
+      diapo.capture,
+      ...(Array.isArray(diapo.etapes) ? diapo.etapes.map((etape) => etape?.capture) : []),
+    ])
+    .filter(estId)
+    .map(Number),
 )]
 
 const dateCourte = (iso) => {

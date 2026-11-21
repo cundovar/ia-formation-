@@ -1,0 +1,341 @@
+{
+  "version": 1,
+  "date": "2026-11-21",
+  "description": "Catalogue de référence des modèles de diapositive (docs/PLAN_DIAPORAMAS.md § 4 et § 14, regles/08-diaporamas.md). Lu par le serveur (DiaporamaChecker, schéma du connecteur) et par le site (front/src/diaporamas/modeles.js). L'agent choisit un modèle et fournit le contenu ; le thème du site fixe les positions, tailles et couleurs. Les limites des compositions sont choisies pour tenir dans les deux thèmes, en 16:9 et en lecture étroite (tests Vitest aux longueurs maximales).",
+  "rendusParDefaut": {
+    "web": "diapositive fixe",
+    "pptx": "une diapositive modifiable",
+    "pdf": "une page avec les notes en option"
+  },
+  "modeles": {
+    "titre": {
+      "usage": "Première diapositive : titre, sous-titre, public, durée indicative, objectif.",
+      "champs": [
+        "titre",
+        "sousTitre",
+        "public",
+        "duree",
+        "objectif"
+      ],
+      "titreFacultatif": true,
+      "notesFacultatives": true,
+      "ordreLecture": [
+        "titre",
+        "sousTitre",
+        "objectif",
+        "public",
+        "duree"
+      ]
+    },
+    "objectifs": {
+      "usage": "Ce que l'on saura faire.",
+      "champs": [
+        "titre",
+        "points"
+      ],
+      "points": [
+        2,
+        4
+      ],
+      "ordreLecture": [
+        "titre",
+        "points"
+      ]
+    },
+    "notion": {
+      "usage": "Une idée, une définition ; peut porter une scène animée.",
+      "champs": [
+        "titre",
+        "points",
+        "scene"
+      ],
+      "points": [
+        1,
+        4
+      ],
+      "ordreLecture": [
+        "titre",
+        "scene",
+        "points"
+      ]
+    },
+    "etapes": {
+      "usage": "Une démarche en étapes numérotées ; peut porter une scène animée.",
+      "champs": [
+        "titre",
+        "points",
+        "scene"
+      ],
+      "points": [
+        2,
+        5
+      ],
+      "ordreLecture": [
+        "titre",
+        "scene",
+        "points"
+      ]
+    },
+    "comparaison": {
+      "usage": "Deux colonnes de listes (à faire / à éviter).",
+      "champs": [
+        "titre",
+        "colonnes"
+      ],
+      "colonnes": true,
+      "ordreLecture": [
+        "titre",
+        "colonne 1",
+        "colonne 2"
+      ]
+    },
+    "capture": {
+      "usage": "Montrer l'outil avec une capture du back-office.",
+      "champs": [
+        "titre",
+        "capture",
+        "points"
+      ],
+      "points": [
+        0,
+        2
+      ],
+      "capture": "obligatoire",
+      "ordreLecture": [
+        "titre",
+        "capture",
+        "légende",
+        "points"
+      ]
+    },
+    "exercice": {
+      "usage": "Faire pratiquer (POS-06) ; peut porter une scène animée.",
+      "champs": [
+        "titre",
+        "consigne",
+        "duree",
+        "points",
+        "scene"
+      ],
+      "points": [
+        0,
+        4
+      ],
+      "obligatoires": [
+        "consigne"
+      ],
+      "ordreLecture": [
+        "titre",
+        "consigne",
+        "durée",
+        "points"
+      ]
+    },
+    "question": {
+      "usage": "Question de QCM ou de discussion ; la réponse est dans les notes.",
+      "champs": [
+        "titre",
+        "question",
+        "reponses"
+      ],
+      "reponses": [
+        2,
+        4
+      ],
+      "obligatoires": [
+        "question"
+      ],
+      "ordreLecture": [
+        "titre",
+        "question",
+        "réponses"
+      ]
+    },
+    "a_retenir": {
+      "usage": "Synthèse.",
+      "champs": [
+        "titre",
+        "points"
+      ],
+      "points": [
+        2,
+        5
+      ],
+      "ordreLecture": [
+        "titre",
+        "points"
+      ]
+    },
+    "fin": {
+      "usage": "Clôture : lien vers le cours complet, sources, date, licence.",
+      "champs": [
+        "titre",
+        "lien",
+        "sources",
+        "date"
+      ],
+      "titreFacultatif": true,
+      "notesFacultatives": true,
+      "ordreLecture": [
+        "titre",
+        "lien",
+        "sources",
+        "date",
+        "licence"
+      ]
+    },
+    "exemple_commente": {
+      "composition": true,
+      "usage": "Montrer un exemple concret (une demande, une réponse, un extrait) et le commenter en 1 à 3 remarques numérotées. Avec une capture, l'exemple est affiché sous l'image (100 caractères au plus).",
+      "champs": [
+        "titre",
+        "exemple",
+        "commentaires",
+        "capture"
+      ],
+      "obligatoires": [
+        "exemple"
+      ],
+      "textes": {
+        "exemple": 220
+      },
+      "listes": {
+        "commentaires": {
+          "min": 1,
+          "max": 3,
+          "longueur": 50
+        }
+      },
+      "capture": "facultatif",
+      "ordreLecture": [
+        "titre",
+        "exemple",
+        "capture",
+        "commentaires"
+      ],
+      "textesAvecCapture": {
+        "exemple": 100
+      }
+    },
+    "avant_apres": {
+      "composition": true,
+      "usage": "Montrer une amélioration : une version de départ, une version corrigée, et ce qui a changé. Les mots « Avant » et « Après » sont écrits, pas seulement suggérés par la couleur.",
+      "champs": [
+        "titre",
+        "avant",
+        "apres",
+        "explication"
+      ],
+      "obligatoires": [
+        "avant",
+        "apres"
+      ],
+      "objets": {
+        "avant": {
+          "libelle": 24,
+          "texte": 140
+        },
+        "apres": {
+          "libelle": 24,
+          "texte": 140
+        }
+      },
+      "textes": {
+        "explication": 90
+      },
+      "ordreLecture": [
+        "titre",
+        "avant",
+        "après",
+        "explication"
+      ]
+    },
+    "demonstration": {
+      "composition": true,
+      "usage": "Une démonstration dans l'outil, en 2 à 4 étapes : l'action, une capture facultative et ce qu'on vérifie.",
+      "champs": [
+        "titre",
+        "etapes"
+      ],
+      "obligatoires": [
+        "etapes"
+      ],
+      "etapes": {
+        "min": 2,
+        "max": 4,
+        "champs": {
+          "action": 45,
+          "verification": 45
+        },
+        "obligatoires": [
+          "action"
+        ],
+        "capture": "facultatif"
+      },
+      "ordreLecture": [
+        "titre",
+        "étape 1 (action, capture, vérification)",
+        "étapes suivantes"
+      ],
+      "rendus": {
+        "web": "étapes révélées une à une (flèches du clavier) ; la vérification de l'étape s'affiche en légende ; vue d'ensemble à la fin",
+        "pptx": "une diapositive fixe par étape, « Étape n/N » en tête des notes ; aucune animation PowerPoint native",
+        "pdf": "vue d'ensemble (toutes les étapes, dernière capture), puis les étapes numérotées avec leur vérification"
+      }
+    },
+    "etude_de_cas": {
+      "composition": true,
+      "usage": "Une situation professionnelle fictive à analyser en groupe, avec 1 à 3 questions.",
+      "champs": [
+        "titre",
+        "contexte",
+        "questions",
+        "duree"
+      ],
+      "obligatoires": [
+        "contexte"
+      ],
+      "textes": {
+        "contexte": 200
+      },
+      "listes": {
+        "questions": {
+          "min": 1,
+          "max": 3,
+          "longueur": 60
+        }
+      },
+      "ordreLecture": [
+        "titre",
+        "situation",
+        "questions",
+        "durée"
+      ]
+    },
+    "separateur": {
+      "composition": true,
+      "usage": "Ouvrir une nouvelle partie du scénario : numéro, titre et une phrase de transition.",
+      "champs": [
+        "numero",
+        "titre",
+        "sousTitre"
+      ],
+      "obligatoires": [
+        "numero"
+      ],
+      "numero": [
+        1,
+        9
+      ],
+      "textes": {
+        "sousTitre": 90
+      },
+      "notesFacultatives": true,
+      "ordreLecture": [
+        "numéro",
+        "titre",
+        "sous-titre"
+      ]
+    }
+  }
+}

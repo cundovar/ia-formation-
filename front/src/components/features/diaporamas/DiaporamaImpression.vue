@@ -56,7 +56,7 @@ import DiapositiveHtml from './DiapositiveHtml.vue'
 
 // Équivalent fixe d'une scène : description, puis étapes numérotées
 const SceneLegendes = (props) => h('div', { class: 'diaporama-impression__scene' }, [
-  h('p', [h('strong', 'Schéma : '), props.scene.description]),
+  h('p', [h('strong', props.scene.genre === 'demonstration' ? 'Démonstration : ' : 'Schéma : '), props.scene.description]),
   h('ol', props.scene.etapes.map((etape, i) => h('li', { key: i }, etape.legende))),
 ])
 SceneLegendes.props = { scene: { type: Object, required: true } }

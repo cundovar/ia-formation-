@@ -7,7 +7,7 @@
     class="scene-calque"
     :class="{ 'scene-calque--sans-mouvement': !mouvement }"
     role="group"
-    :aria-label="`Schéma : ${scene.description}`"
+    :aria-label="`${scene.genre === 'demonstration' ? 'Démonstration' : 'Schéma'} : ${scene.description}`"
     :data-scene="scene.type"
   >
     <TransitionGroup
@@ -26,6 +26,14 @@
           :style="styleForme(element, format)"
           :data-id="element.id"
         />
+        <img
+          v-else-if="element.type === 'image'"
+          class="scene-calque__image"
+          :src="element.data"
+          alt=""
+          :style="zone(element, format)"
+          :data-id="element.id"
+        >
         <DiapositiveTexte
           v-else-if="element.type === 'texte'"
           :element="element.attenue ? { ...element, couleur: couleurAttenuee } : element"
@@ -78,7 +86,7 @@
       aria-hidden="true"
     />
     <p class="sr-only">
-      {{ fixe ? `${scene.description} ${scene.fixe.legendes.join(' ')}` : `Étape ${etape + 1} sur ${scene.etapes.length} : ${scene.etapes[etape].legende}` }}
+      {{ fixe ? `${scene.description} ${scene.fixe.legendes.join(' ')}` : `Étape ${etape + 1} sur ${scene.etapes.length} : ${scene.etapes[etape].legende}${scene.etapes[etape].alt ? ` Visuel : ${scene.etapes[etape].alt}` : ''}` }}
     </p>
   </div>
 </template>
@@ -86,7 +94,7 @@
 <script setup>
 import { computed, inject, unref, useId } from 'vue'
 import DiapositiveTexte from './DiapositiveTexte.vue'
-import { CLE_FORMAT, styleForme } from './geometrie'
+import { CLE_FORMAT, styleForme, zone } from './geometrie'
 import { FORMAT } from '@/diaporamas/theme'
 import { elementsEtape, estFixe, legendeCourte } from '@/diaporamas/scenes'
 
@@ -145,9 +153,14 @@ const elementLegende = computed(() => ({
   overflow: visible;
 }
 
-.scene-calque__forme {
+.scene-calque__forme,
+.scene-calque__image {
   position: absolute;
   box-sizing: border-box;
+}
+
+.scene-calque__image {
+  object-fit: contain;
 }
 
 /* Le mouvement guide le regard vers l'étape en cours */

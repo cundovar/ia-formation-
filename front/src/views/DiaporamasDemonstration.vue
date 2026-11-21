@@ -45,13 +45,14 @@
       >
         <ProjectionDiaporama
           :diaporama="diaporama"
+          :images="images"
           :site="siteName"
         />
         <DiaporamaActions
           :diaporama="diaporama"
           :audience="diaporama.audience"
           cible="parcours"
-          :charger-captures="sansCaptures"
+          :charger-captures="choix === 'copilot' ? chargerCaptures : sansCaptures"
         />
       </section>
     </template>
@@ -65,17 +66,21 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import ProjectionDiaporama from '@/components/features/diaporamas/ProjectionDiaporama.vue'
 import DiaporamaActions from '@/components/features/diaporamas/DiaporamaActions.vue'
 import pilote from '@/diaporamas/pilote/automatiser.json'
 import galerie from '@/diaporamas/pilote/scenes.json'
+import copilot from '@/diaporamas/pilote/copilot-fil-rouge.json'
+import { chargerCaptures } from '@/services/captures'
+import { chargerImages } from '@/diaporamas/images'
 import { useData } from '@/utils/fetchDataPwa'
 import { useCustomization } from '@/composables/ui/useCustomization'
 
 const EXEMPLES = {
   pilote: { libelle: 'Pilote : 3 diapositives', diaporama: pilote },
   scenes: { libelle: 'Les six scènes', diaporama: galerie },
+  copilot: { libelle: 'Pilote Copilot : brief, scénario, compositions', diaporama: copilot },
 }
 
 const { user } = useData()
@@ -84,6 +89,18 @@ const choix = ref('pilote')
 const diaporama = computed(() => EXEMPLES[choix.value].diaporama)
 const autorise = computed(() => import.meta.env.DEV || Boolean(user.value?.roles?.includes('ROLE_ADMIN')))
 const sansCaptures = async () => []
+// Le pilote Copilot cite des captures du back-office : chargées depuis le site, jamais inventées
+const images = ref({})
+watch(diaporama, async (d) => {
+  images.value = {}
+  if (d === copilot) {
+    try {
+      images.value = await chargerImages(d, { chargerCaptures })
+    } catch {
+      images.value = {}
+    }
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

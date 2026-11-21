@@ -16,23 +16,6 @@ use App\Entity\Diaporama;
  */
 final class DiaporamaChecker
 {
-    /**
-     * Modèles de diapositive et leurs champs (garder aligné avec front/src/diaporamas/modeles.js) :
-     * nombre de points ou de réponses [min, max] et textes obligatoires.
-     */
-    public const MODELES = [
-        'titre' => [],
-        'objectifs' => ['points' => [2, 4]],
-        'notion' => ['points' => [1, 4]],
-        'etapes' => ['points' => [2, 5]],
-        'comparaison' => ['colonnes' => true],
-        'capture' => ['points' => [0, 2], 'capture' => true],
-        'exercice' => ['points' => [0, 4], 'textes' => ['consigne']],
-        'question' => ['reponses' => [2, 4], 'textes' => ['question']],
-        'a_retenir' => ['points' => [2, 5]],
-        'fin' => [],
-    ];
-
     // Nombre de diapositives par cible (DIA-01)
     public const NOMBRE = [Diaporama::TARGET_COURSE => [6, 12], Diaporama::TARGET_CHAPTER => [10, 20], Diaporama::TARGET_PATH => [12, 26]];
     public const MAX_TITLE_LENGTH = 60;
@@ -46,8 +29,11 @@ final class DiaporamaChecker
     // DIA-02 : aucun passage de plus de 8 mots repris à l'identique
     public const COPY_WORDS = 9;
 
-    // Modèles dont le titre vient du diaporama ou du thème
-    private const TITRE_FACULTATIF = ['titre', 'fin'];
+    // DIA-13 : au-delà, la suite de diapositives paraît répétitive
+    public const MEME_MODELE_CONSECUTIF = 3;
+    public const PART_MAX_MODELE = 0.5;
+    // Modèles qui ne portent pas de contenu (ouverture, clôture, séparation) : hors du calcul de variété
+    private const HORS_VARIETE = ['titre', 'fin', 'separateur'];
     private const PRATIQUE = ['exercice', 'question'];
 
     public function __construct(
@@ -55,8 +41,17 @@ final class DiaporamaChecker
         private DiaporamaSource $source = new DiaporamaSource(),
         private PersonalDataChecker $personalData = new PersonalDataChecker(),
         private ?SceneValidator $scenes = null,
+        private ?ModeleCatalogue $modeles = null,
     ) {
         $this->scenes ??= new SceneValidator(new SceneCatalogue(\dirname(__DIR__, 3).'/regles/scenes/catalogue.json'));
+        $this->modeles ??= ModeleCatalogue::parDefaut();
+    }
+
+    public function modeles(): ModeleCatalogue
+    {
+        \assert($this->modeles !== null);
+
+        return $this->modeles;
     }
 
     /**
@@ -114,6 +109,7 @@ final class DiaporamaChecker
             && array_filter($diapositives, static fn ($d) => \is_array($d) && \in_array($d['modele'] ?? null, self::PRATIQUE, true)) === []) {
             $issues[] = $this->issue('DIAPO_SANS_PRATIQUE', 'DIA-04', DraftChecker::WARNING, 'Ajoutez une diapositive « exercice » ou « question » : le cours fait pratiquer.');
         }
+        array_push($issues, ...$this->checkPreparation($diaporama));
         if ($this->source->estPerime($diaporama)) {
             $issues[] = $this->issue('DIAPO_SOURCE_PERIMEE', null, DraftChecker::WARNING, 'Le cours a changé depuis la synthèse : relisez le diaporama et mettez-le à jour.');
         }
@@ -132,21 +128,143 @@ final class DiaporamaChecker
     }
 
     /**
+     * Brief, scénario, variété des compositions, visuels et dernier contrôle de rendu (DIA-11 à DIA-13).
+     * Un diaporama sans brief ni scénario (créé avant le 21 novembre 2026) reste valide : avertissements seulement.
+     *
+     * @return list<array{code: string, regle: ?string, niveau: string, message: string}>
+     */
+    private function checkPreparation(Diaporama $diaporama): array
+    {
+        $issues = [];
+        $diapositives = array_values(array_filter($diaporama->getDiapositives(), 'is_array'));
+        $brief = $diaporama->getBrief();
+        if ($brief === null) {
+            $issues[] = $this->issue('DIAPO_BRIEF_MANQUANT', 'DIA-11', DraftChecker::WARNING, 'Aucun brief : proposez public, durée, objectif, contexte, thème et intention à la personne (briefPropose de preparer_diaporama), puis enregistrez-le avec modifier_diaporama.');
+        } elseif (($brief['statut'] ?? null) !== 'confirme') {
+            $issues[] = $this->issue('DIAPO_BRIEF_NON_CONFIRME', 'DIA-11', DraftChecker::WARNING, 'Le brief est encore « propose » : faites-le confirmer ou corriger par la personne.');
+        }
+
+        $scenario = $diaporama->getScenario();
+        if ($scenario === null) {
+            $issues[] = $this->issue('DIAPO_SCENARIO_MANQUANT', 'DIA-11', DraftChecker::WARNING, 'Aucun scénario : proposez-le (verifier_scenario_diaporama), faites-le valider, puis enregistrez-le.');
+        } else {
+            $analyse = DiaporamaScenario::analyser($scenario, $this->source->inventaire($diaporama), fn (int $id) => $this->captures->findById($id) !== null, $brief);
+            array_push($issues, ...$analyse['controles']);
+            $ids = DiaporamaScenario::idsParties($scenario);
+            $utilises = [];
+            foreach ($diapositives as $i => $diapo) {
+                $partie = $diapo['scenarioPartie'] ?? null;
+                if (\is_string($partie) && !\in_array($partie, $ids, true)) {
+                    $issues[] = $this->issue('DIAPO_SCENARIO_PARTIE_INCONNUE', 'DIA-11', DraftChecker::BLOCKING, sprintf('Diapositive %d : la partie « %s » n\'existe pas dans le scénario (%s).', $i + 1, $partie, implode(', ', $ids)));
+                }
+                $utilises[(string) $partie] = true;
+            }
+            foreach ($scenario['parties'] as $partie) {
+                if (!isset($utilises[$partie['id']])) {
+                    $issues[] = $this->issue('DIAPO_SCENARIO_PARTIE_VIDE', 'DIA-11', DraftChecker::WARNING, sprintf('La partie « %s » du scénario n\'a aucune diapositive (champ scenarioPartie).', $partie['titre']));
+                }
+            }
+        }
+
+        // DIA-13 : variété des compositions sur les diapositives de contenu
+        $modeles = array_values(array_filter(array_map(static fn (array $d) => $d['modele'] ?? null, $diapositives), static fn ($m) => \is_string($m) && !\in_array($m, self::HORS_VARIETE, true)));
+        $suite = 1;
+        $signale = false;
+        foreach ($modeles as $i => $modele) {
+            $suite = $i > 0 && $modeles[$i - 1] === $modele ? $suite + 1 : 1;
+            if ($suite > self::MEME_MODELE_CONSECUTIF && !$signale) {
+                $issues[] = $this->issue('DIAPO_COMPOSITIONS_REPETITIVES', 'DIA-13', DraftChecker::WARNING, sprintf('Plus de %d diapositives de contenu « %s » à la suite : variez les compositions (exemple commenté, avant / après, démonstration, étude de cas…).', self::MEME_MODELE_CONSECUTIF, $modele));
+                $signale = true;
+            }
+        }
+        $compte = array_count_values($modeles);
+        arsort($compte);
+        $dominant = array_key_first($compte);
+        if (!$signale && \count($modeles) >= 6 && $dominant !== null && $compte[$dominant] / \count($modeles) > self::PART_MAX_MODELE) {
+            $issues[] = $this->issue('DIAPO_COMPOSITIONS_REPETITIVES', 'DIA-13', DraftChecker::WARNING, sprintf('« %s » occupe %d diapositives de contenu sur %d : variez les compositions.', $dominant, $compte[$dominant], \count($modeles)));
+        }
+
+        // DIA-12 : une présentation « illustrée » montre les outils
+        if (($brief['intention'] ?? null) === 'illustree' && self::capturesUtilisees($diapositives) === []) {
+            $issues[] = $this->issue('DIAPO_SANS_VISUEL', 'DIA-12', DraftChecker::WARNING, 'Le brief prévoit une présentation illustrée, mais aucune capture n\'est utilisée : choisissez des visuels existants (visuels de preparer_diaporama), ou dites pourquoi aucun ne convient.');
+        }
+
+        // Contrôle de rendu mesuré dans le navigateur (aperçu) : dépend du rendu, d'où un avertissement
+        $rendu = self::etatRendu($diaporama);
+        $issues[] = match ($rendu['etat']) {
+            'absent' => $this->issue('DIAPO_RENDU_ABSENT', 'DIA-05', DraftChecker::WARNING, 'Le rendu n\'a pas encore été contrôlé : demandez à un administrateur d\'ouvrir l\'aperçu (apercuUrl), qui mesure chaque diapositive, puis relancez verifier_diaporama.'),
+            'perime' => $this->issue('DIAPO_RENDU_PERIME', 'DIA-05', DraftChecker::WARNING, 'Le dernier contrôle de rendu porte sur une version antérieure : faites rouvrir l\'aperçu pour le relancer.'),
+            default => $rendu['problemes'] === []
+                ? null
+                : $this->issue('DIAPO_RENDU_PROBLEME', 'DIA-05', DraftChecker::WARNING, sprintf('%d problème(s) d\'affichage mesuré(s) dans l\'aperçu (voir controlesNavigateur) : raccourcissez les textes concernés ou changez de composition.', \count($rendu['problemes']))),
+        };
+
+        return array_values(array_filter($issues));
+    }
+
+    /**
+     * État du dernier contrôle de rendu : absent, à jour (même contenu) ou périmé.
+     *
+     * @return array{etat: string, le: ?string, formats: list<string>, navigateur: ?string, problemes: list<array<string, mixed>>}
+     */
+    public static function etatRendu(Diaporama $diaporama): array
+    {
+        $rapport = $diaporama->getControleRendu();
+        if ($rapport === null) {
+            return ['etat' => 'absent', 'le' => null, 'formats' => [], 'navigateur' => null, 'problemes' => []];
+        }
+
+        return [
+            'etat' => ($rapport['empreinte'] ?? null) === $diaporama->getEmpreinteRendu() ? 'a_jour' : 'perime',
+            'le' => $rapport['le'] ?? null,
+            'formats' => $rapport['formats'] ?? [],
+            'navigateur' => $rapport['navigateur'] ?? null,
+            'problemes' => $rapport['problemes'] ?? [],
+        ];
+    }
+
+    /**
+     * Identifiants des captures citées par les diapositives (capture d'une diapositive ou d'une étape).
+     *
+     * @param list<mixed> $diapositives
+     * @return list<int>
+     */
+    public static function capturesUtilisees(array $diapositives): array
+    {
+        $ids = [];
+        foreach ($diapositives as $diapo) {
+            if (!\is_array($diapo)) {
+                continue;
+            }
+            if (\is_int($diapo['capture'] ?? null)) {
+                $ids[] = $diapo['capture'];
+            }
+            foreach (\is_array($diapo['etapes'] ?? null) ? $diapo['etapes'] : [] as $etape) {
+                if (\is_array($etape) && \is_int($etape['capture'] ?? null)) {
+                    $ids[] = $etape['capture'];
+                }
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * @param array<string, true> $sourceShingles
      * @return list<array{code: string, regle: ?string, niveau: string, message: string}>
      */
     private function checkSlide(mixed $diapo, int $numero, bool $extremite, array $sourceShingles): array
     {
         $modele = \is_array($diapo) ? ($diapo['modele'] ?? null) : null;
-        if (!\is_string($modele) || !isset(self::MODELES[$modele])) {
-            return [$this->issue('DIAPO_MODELE_INCONNU', null, DraftChecker::BLOCKING, sprintf('Diapositive %d : modèle inconnu. Modèles possibles : %s.', $numero, implode(', ', array_keys(self::MODELES))))];
+        $spec = $this->modeles()->modele($modele);
+        if (!\is_string($modele) || $spec === null) {
+            return [$this->issue('DIAPO_MODELE_INCONNU', null, DraftChecker::BLOCKING, sprintf('Diapositive %d : modèle inconnu. Modèles possibles : %s.', $numero, implode(', ', $this->modeles()->ids())))];
         }
-        $spec = self::MODELES[$modele];
         $issues = [];
         $prefixe = sprintf('Diapositive %d (%s) : ', $numero, $modele);
 
         $titre = self::texte($diapo['titre'] ?? null);
-        if ($titre === '' && !\in_array($modele, self::TITRE_FACULTATIF, true)) {
+        if ($titre === '' && empty($spec['titreFacultatif'])) {
             $issues[] = $this->issue('DIAPO_TITRE_MANQUANT', 'DIA-05', DraftChecker::BLOCKING, $prefixe.'ajoutez un titre.');
         } elseif (mb_strlen($titre) > self::MAX_TITLE_LENGTH) {
             $issues[] = $this->issue('DIAPO_TITRE_LONG', 'DIA-01', DraftChecker::BLOCKING, $prefixe.sprintf('le titre dépasse %d caractères.', self::MAX_TITLE_LENGTH));
@@ -183,13 +301,18 @@ final class DiaporamaChecker
                 }
             }
         }
-        foreach ($spec['textes'] ?? [] as $champ) {
-            if (self::texte($diapo[$champ] ?? null) === '') {
+        foreach ($spec['obligatoires'] ?? [] as $champ) {
+            // Les objets, listes d'étapes et numéros sont contrôlés par checkComposition
+            if (!isset($spec['objets'][$champ]) && $champ !== 'etapes' && $champ !== 'numero' && self::texte($diapo[$champ] ?? null) === '') {
                 $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', null, DraftChecker::BLOCKING, $prefixe.sprintf('le champ « %s » est vide.', $champ));
             }
         }
-        if (isset($spec['capture'])) {
+        if (($spec['capture'] ?? null) === 'obligatoire' || (($spec['capture'] ?? null) === 'facultatif' && ($diapo['capture'] ?? null) !== null)) {
             array_push($issues, ...$this->checkCapture($diapo['capture'] ?? null, $prefixe));
+        }
+        array_push($issues, ...$this->checkComposition($diapo, $spec, $prefixe));
+        if (\array_key_exists('scenarioPartie', $diapo) && (!\is_string($diapo['scenarioPartie']) || preg_match('/^[a-z0-9_-]{1,30}$/', $diapo['scenarioPartie']) !== 1)) {
+            $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', 'DIA-11', DraftChecker::BLOCKING, $prefixe.'scenarioPartie est l\'identifiant d\'une partie du scénario.');
         }
         $partie = $diapo['partie'] ?? null;
         if ($partie !== null && (!\is_string($partie) || mb_strlen($partie) > self::MAX_PARTIE_LENGTH || preg_match('/<\s*\/?\s*[a-z!?]/i', $partie) === 1)) {
@@ -200,7 +323,7 @@ final class DiaporamaChecker
         }
 
         $notes = self::texte($diapo['notes'] ?? null);
-        if (!$extremite && $notes === '') {
+        if (!$extremite && empty($spec['notesFacultatives']) && $notes === '') {
             $issues[] = $this->issue('DIAPO_NOTES_MANQUANTES', 'DIA-03', DraftChecker::BLOCKING, $prefixe.'ajoutez les notes de présentation : c\'est là que va le détail du cours.');
         } elseif ($notes !== '' && (mb_strlen($notes) < self::NOTES_LENGTH[0] || mb_strlen($notes) > self::NOTES_LENGTH[1])) {
             $issues[] = $this->issue('DIAPO_NOTES_LONGUEUR', 'DIA-03', DraftChecker::WARNING, $prefixe.sprintf('les notes font %d caractères ; visez de %d à %d.', mb_strlen($notes), ...self::NOTES_LENGTH));
@@ -209,6 +332,88 @@ final class DiaporamaChecker
         $copie = $this->passageCopie(self::texteVisible($diapo), $sourceShingles);
         if ($copie !== null) {
             $issues[] = $this->issue('DIAPO_COPIE', 'DIA-02', DraftChecker::BLOCKING, $prefixe.sprintf('« %s… » reprend le cours mot pour mot : reformulez.', $copie));
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Champs des compositions décrits par le catalogue des modèles : textes limités, listes, objets « avant / après »,
+     * étapes d'une démonstration, numéro d'un séparateur. Les limites garantissent que le texte tient dans le thème.
+     *
+     * @param array<string, mixed> $diapo
+     * @param array<string, mixed> $spec
+     * @return list<array{code: string, regle: ?string, niveau: string, message: string}>
+     */
+    private function checkComposition(array $diapo, array $spec, string $prefixe): array
+    {
+        $issues = [];
+        $obligatoires = $spec['obligatoires'] ?? [];
+        $long = fn (string $champ, string $valeur, int $max) => $this->issue('DIAPO_MODELE_CHAMP_LONG', 'DIA-13', DraftChecker::BLOCKING, $prefixe.sprintf('« %s » dépasse %d caractères (%d) : il ne tiendrait pas dans la mise en page ; le détail va dans les notes.', $champ, $max, mb_strlen($valeur)));
+        // Avec une capture, certains textes ont moins de place (textesAvecCapture)
+        $limitesTextes = ($diapo['capture'] ?? null) !== null ? ($spec['textesAvecCapture'] ?? []) + ($spec['textes'] ?? []) : ($spec['textes'] ?? []);
+        foreach ($limitesTextes as $champ => $max) {
+            $valeur = self::texte($diapo[$champ] ?? null);
+            if (mb_strlen($valeur) > $max) {
+                $issues[] = $long($champ, $valeur, $max);
+            }
+        }
+        foreach ($spec['listes'] ?? [] as $champ => $limites) {
+            $elements = self::liste($diapo[$champ] ?? null);
+            if (\count($elements) < $limites['min']) {
+                $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', null, DraftChecker::BLOCKING, $prefixe.sprintf('%d « %s » au moins.', $limites['min'], $champ));
+            } elseif (\count($elements) > $limites['max']) {
+                $issues[] = $this->issue('DIAPO_TROP_DE_POINTS', 'DIA-01', DraftChecker::BLOCKING, $prefixe.sprintf('%d « %s » au plus.', $limites['max'], $champ));
+            }
+            foreach ($elements as $element) {
+                if (mb_strlen($element) > $limites['longueur']) {
+                    $issues[] = $long($champ, $element, $limites['longueur']);
+                }
+            }
+        }
+        foreach ($spec['objets'] ?? [] as $champ => $limites) {
+            $objet = $diapo[$champ] ?? null;
+            if (!\is_array($objet) || self::texte($objet['texte'] ?? null) === '') {
+                if (\in_array($champ, $obligatoires, true)) {
+                    $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', null, DraftChecker::BLOCKING, $prefixe.sprintf('« %s » attend un objet {libelle, texte} avec un texte.', $champ));
+                }
+                continue;
+            }
+            foreach ($limites as $sous => $max) {
+                $valeur = self::texte($objet[$sous] ?? null);
+                if (mb_strlen($valeur) > $max) {
+                    $issues[] = $long("$champ.$sous", $valeur, $max);
+                }
+            }
+        }
+        if (isset($spec['etapes'])) {
+            $limites = $spec['etapes'];
+            $etapes = \is_array($diapo['etapes'] ?? null) && array_is_list($diapo['etapes']) ? $diapo['etapes'] : [];
+            if (\count($etapes) < $limites['min'] || \count($etapes) > $limites['max']) {
+                $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', null, DraftChecker::BLOCKING, $prefixe.sprintf('une démonstration a de %d à %d étapes {action, capture?, verification?} (%d actuellement).', $limites['min'], $limites['max'], \count($etapes)));
+            }
+            foreach ($etapes as $i => $etape) {
+                if (!\is_array($etape) || self::texte($etape['action'] ?? null) === '') {
+                    $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', null, DraftChecker::BLOCKING, $prefixe.sprintf('l\'étape %d n\'a pas d\'action.', $i + 1));
+                    continue;
+                }
+                foreach ($limites['champs'] as $sous => $max) {
+                    $valeur = self::texte($etape[$sous] ?? null);
+                    if (mb_strlen($valeur) > $max) {
+                        $issues[] = $long(sprintf('étape %d · %s', $i + 1, $sous), $valeur, $max);
+                    }
+                }
+                if (($etape['capture'] ?? null) !== null) {
+                    array_push($issues, ...$this->checkCapture($etape['capture'], $prefixe.sprintf('étape %d : ', $i + 1)));
+                }
+            }
+        }
+        if (isset($spec['numero'])) {
+            [$min, $max] = $spec['numero'];
+            $numero = $diapo['numero'] ?? null;
+            if (!\is_int($numero) || $numero < $min || $numero > $max) {
+                $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', null, DraftChecker::BLOCKING, $prefixe.sprintf('le numéro de partie est un entier de %d à %d.', $min, $max));
+            }
         }
 
         return $issues;
@@ -290,6 +495,21 @@ final class DiaporamaChecker
         foreach (\is_array($diapo['colonnes'] ?? null) ? $diapo['colonnes'] : [] as $colonne) {
             if (\is_array($colonne)) {
                 array_push($textes, self::texte($colonne['titre'] ?? null), ...self::liste($colonne['points'] ?? null));
+            }
+        }
+        // Compositions (regles/diaporamas/modeles.json)
+        foreach (['exemple', 'explication', 'contexte', 'sousTitre'] as $champ) {
+            $textes[] = self::texte($diapo[$champ] ?? null);
+        }
+        array_push($textes, ...self::liste($diapo['commentaires'] ?? null), ...self::liste($diapo['questions'] ?? null));
+        foreach (['avant', 'apres'] as $champ) {
+            if (\is_array($diapo[$champ] ?? null)) {
+                array_push($textes, self::texte($diapo[$champ]['libelle'] ?? null), self::texte($diapo[$champ]['texte'] ?? null));
+            }
+        }
+        foreach (\is_array($diapo['etapes'] ?? null) ? $diapo['etapes'] : [] as $etape) {
+            if (\is_array($etape)) {
+                array_push($textes, self::texte($etape['action'] ?? null), self::texte($etape['verification'] ?? null));
             }
         }
         // Libellés projetés d'une scène et sa description (lue par les lecteurs d'écran et imprimée)
