@@ -6,6 +6,7 @@ import { hauteurTexte } from './mesure'
 import { LICENCE } from './theme'
 import { COULEURS, COULEURS_SCENE, ESPACE_PARAGRAPHE, FORMATS, RAYONS, TAILLES, ZONES } from './themes/atelierVisuel'
 import { planifierScene } from './scenes'
+import { COMPOSITIONS_PAR_MODELE, composer } from './compositions'
 
 export const MODELES_AVEC_SCENE = ['notion', 'etapes', 'exercice']
 
@@ -97,38 +98,51 @@ const ouverture = (diapo, ctx) => {
       taille: TAILLES.surtitre, couleur: COULEURS.texteDoux, role: 'repere', valign: 'middle',
     }),
   ]
+  const x = ctx.zones.titre.x
+  const sousTitre = texte(diapo.sousTitre) || texte(ctx.diaporama.sousTitre)
+  const infos = [texte(diapo.public) || PUBLICS[ctx.audience], duree(diapo.duree)].filter(Boolean).join(' · ')
+  const objectif = texte(ctx.diaporama.objectif)
+  // Bas utile : au-dessus du pied de page
+  const bas = ctx.zones.pied.y - 0.1
+  // Place le sous-titre, les informations et l'objectif sur une largeur donnée ; renvoie les éléments et le bas atteint
+  const placer = (largeur) => {
+    const sortie = []
+    let y = large ? 3.95 : 5.1
+    // Hauteurs ajustées au texte : sur mobile, une ligne de projection en fait souvent deux
+    const ajuste = (contenu, taille) => hauteurTexte([paragraphe(contenu)], largeur, taille, ESPACE_PARAGRAPHE) + 0.1
+    if (sousTitre) {
+      const h = ajuste(sousTitre, TAILLES.sousTitreOuverture)
+      sortie.push(bloc({ x, y, w: largeur, h }, [paragraphe(sousTitre)], { taille: TAILLES.sousTitreOuverture, couleur: COULEURS.texte }))
+      y += h + 0.1
+    }
+    const hInfos = ajuste(infos, TAILLES.corpsDense)
+    sortie.push(bloc({ x, y, w: largeur, h: hInfos }, [paragraphe(infos)], { taille: TAILLES.corpsDense, couleur: COULEURS.texteDoux }))
+    y += hInfos
+    if (objectif) {
+      y += 0.2
+      const paragraphes = [paragraphe(`Objectif : ${objectif}`)]
+      const h = Math.min(large ? 1.4 : 3.2, hauteurTexte(paragraphes, largeur - 0.4, TAILLES.corpsDense, ESPACE_PARAGRAPHE) + 0.3)
+      sortie.push(
+        forme('roundRect', { x, y, w: largeur, h }, COULEURS.synthese, { rayon: RAYONS.encadre }),
+        bloc({ x: x + 0.2, y: y + 0.15, w: largeur - 0.4, h: h - 0.3 }, paragraphes, { taille: TAILLES.corpsDense, valign: 'middle' }),
+      )
+      y += h
+    }
+    return { sortie, y }
+  }
+  let place = placer(large ? 8.4 : ctx.dims.largeur - 2 * FORMATS.etroit.marge)
+  // En 16:9, si le texte touche le pied de page, il prend toute la largeur et les blocs décoratifs s'effacent
+  const pleineLargeur = large && place.y > bas
+  if (pleineLargeur) place = placer(ctx.zones.titre.w)
   // Blocs décoratifs légèrement inclinés (comme les pictogrammes du prototype)
-  if (large) {
+  if (large && !pleineLargeur) {
     elements.push(
       forme('roundRect', { x: 9.75, y: 1.35, w: 2.2, h: 2.2 }, COULEURS.picto, { rotation: -4 }),
       forme('roundRect', { x: 10.75, y: 3.15, w: 1.8, h: 1.8 }, COULEURS.actif, { rotation: 5 }),
       forme('roundRect', { x: 9.35, y: 4.15, w: 1.35, h: 1.35 }, COULEURS.synthese, { rotation: -3 }),
     )
   }
-  const largeur = large ? 8.4 : ctx.dims.largeur - 2 * FORMATS.etroit.marge
-  const x = ctx.zones.titre.x
-  let y = large ? 3.95 : 5.1
-  // Hauteurs ajustées au texte : sur mobile, une ligne de projection en fait souvent deux
-  const ajuste = (contenu, taille) => hauteurTexte([paragraphe(contenu)], largeur, taille, ESPACE_PARAGRAPHE) + 0.1
-  const sousTitre = texte(diapo.sousTitre) || texte(ctx.diaporama.sousTitre)
-  if (sousTitre) {
-    const h = ajuste(sousTitre, TAILLES.sousTitreOuverture)
-    elements.push(bloc({ x, y, w: largeur, h }, [paragraphe(sousTitre)], { taille: TAILLES.sousTitreOuverture, couleur: COULEURS.texte }))
-    y += h + 0.1
-  }
-  const infos = [texte(diapo.public) || PUBLICS[ctx.audience], duree(diapo.duree)].filter(Boolean).join(' · ')
-  const hInfos = ajuste(infos, TAILLES.corpsDense)
-  elements.push(bloc({ x, y, w: largeur, h: hInfos }, [paragraphe(infos)], { taille: TAILLES.corpsDense, couleur: COULEURS.texteDoux }))
-  y += hInfos + 0.25
-  const objectif = texte(ctx.diaporama.objectif)
-  if (objectif) {
-    const paragraphes = [paragraphe(`Objectif : ${objectif}`)]
-    const h = Math.min(large ? 1.4 : 3.2, hauteurTexte(paragraphes, largeur - 0.4, TAILLES.corpsDense, ESPACE_PARAGRAPHE) + 0.3)
-    elements.push(
-      forme('roundRect', { x, y, w: largeur, h }, COULEURS.synthese, { rayon: RAYONS.encadre }),
-      bloc({ x: x + 0.2, y: y + 0.15, w: largeur - 0.4, h: h - 0.3 }, paragraphes, { taille: TAILLES.corpsDense, valign: 'middle' }),
-    )
-  }
+  elements.push(...place.sortie)
   return { elements }
 }
 
@@ -312,7 +326,8 @@ const aRetenir = (diapo, ctx) => {
   const points = liste(diapo.points)
   const taille = tailleCorps(points.length)
   const paragraphes = points.map((p) => paragraphe(p, 'coche'))
-  const h = Math.min(C.h, Math.max(2, hauteurTexte(paragraphes, C.w - 0.9, taille, ESPACE_PARAGRAPHE) + 0.8))
+  // 0,2 pouce de marge : le rendu web (polices, interlignage) dépasse parfois l’estimation de quelques pixels
+  const h = Math.min(C.h, Math.max(2, hauteurTexte(paragraphes, C.w - 0.9, taille, ESPACE_PARAGRAPHE) + 1.0))
   return {
     elements: [
       surtitre(diapo, ctx),
@@ -329,26 +344,32 @@ const fin = (diapo, ctx) => {
   let y = C.y
   const lien = lienSur(diapo.lien)
   if (lien) {
-    elements.push(bloc({ x: C.x, y, w: C.w, h: 0.8 }, [paragraphe(`Cours complet : ${lien}`, null, lien)], { taille: TAILLES.corpsDense }))
-    y += 0.9
+    // Une adresse longue se coupe sur deux lignes : la hauteur suit le texte
+    const paragraphes = [paragraphe(`Cours complet : ${lien}`, null, lien)]
+    const h = Math.min(1.3, Math.max(0.8, hauteurTexte(paragraphes, C.w, TAILLES.corpsDense, ESPACE_PARAGRAPHE) + 0.05))
+    elements.push(bloc({ x: C.x, y, w: C.w, h }, paragraphes, { taille: TAILLES.corpsDense }))
+    y += h + 0.1
   }
   const sources = (Array.isArray(diapo.sources) ? diapo.sources : [])
     .map((source) => ({ libelle: texte(source?.libelle), url: lienSur(source?.url) }))
     .filter((source) => source.libelle)
     .slice(0, 4)
   if (sources.length > 0) {
+    const paragraphesSources = sources.map((s) => paragraphe(s.libelle, 'point', s.url))
+    const hSources = hauteurTexte(paragraphesSources, C.w, TAILLES.corpsDense, ESPACE_PARAGRAPHE) + 0.1
     elements.push(
       bloc({ x: C.x, y, w: C.w, h: 0.55 }, [paragraphe('Sources')], { taille: TAILLES.intertitre, gras: true, role: 'intertitre' }),
-      bloc({ x: C.x, y: y + 0.6, w: C.w, h: 1.7 }, sources.map((s) => paragraphe(s.libelle, 'point', s.url)), { taille: TAILLES.corpsDense }),
+      bloc({ x: C.x, y: y + 0.6, w: C.w, h: hSources }, paragraphesSources, { taille: TAILLES.corpsDense }),
     )
-    y += 2.4
+    y += 0.7 + hSources
   }
   if (texte(diapo.date)) {
     elements.push(bloc({ x: C.x, y, w: C.w, h: 0.5 }, [paragraphe(`Diaporama du ${texte(diapo.date)}`)], {
       taille: TAILLES.corpsDense, couleur: COULEURS.texteDoux,
     }))
   }
-  const hLicence = ctx.format === 'large' ? 1.05 : 2.4
+  // Trois lignes de 24 points en projection
+  const hLicence = ctx.format === 'large' ? 1.3 : 2.4
   elements.push(
     forme('roundRect', { x: C.x, y: C.y + C.h - hLicence, w: C.w, h: hLicence }, COULEURS.synthese, { rayon: RAYONS.encadre }),
     bloc({ x: C.x + 0.3, y: C.y + C.h - hLicence, w: C.w - 0.6, h: hLicence }, [paragraphe(LICENCE)], { taille: TAILLES.corpsDense, valign: 'middle' }),
@@ -356,7 +377,35 @@ const fin = (diapo, ctx) => {
   return { elements }
 }
 
+// Jetons du thème pour les compositions de formation (compositions.js)
+export const jetonsAtelier = (ctx) => ({
+  format: ctx.format,
+  contenu: ctx.zones.contenu,
+  zones: ctx.zones,
+  dims: ctx.dims,
+  couleurs: {
+    texte: COULEURS.texte,
+    texteDoux: COULEURS.texteDoux,
+    fondA: COULEURS.schema,
+    fondB: COULEURS.synthese,
+    actif: COULEURS.actif,
+    actifBordure: COULEURS.actifBordure,
+    pastille: COULEURS.picto,
+  },
+  tailles: { corps: TAILLES.corpsDense, intertitre: TAILLES.intertitre, repere: TAILLES.repere, grandNumero: 72, sousTitre: TAILLES.sousTitreOuverture },
+  formeEncadre: 'roundRect',
+  rayon: RAYONS.encadre,
+  bordureEncadre: null,
+})
+
+// Le séparateur a sa propre ouverture ; les autres compositions gardent le repère de partie en haut
+const composition = (modele) => (diapo, ctx) => {
+  const resultat = composer(modele, diapo, ctx, jetonsAtelier(ctx))
+  return modele === 'separateur' ? resultat : { ...resultat, elements: [surtitre(diapo, ctx), ...resultat.elements] }
+}
+
 export const DISPOSITIONS_ATELIER = {
+  ...Object.fromEntries(Object.keys(COMPOSITIONS_PAR_MODELE).map((modele) => [modele, composition(modele)])),
   titre: ouverture,
   objectifs,
   notion,

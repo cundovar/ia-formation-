@@ -211,3 +211,48 @@ Le besoin réel (six scènes 2D, étapes discrètes, équivalent fixe, exports .
 - S5 (fait) Exports .pptx et PDF des scènes ; conversion LibreOffice et impression Chrome vérifiées localement.
 - S6 (fait) Panneau « Présentation du parcours » sur la page du parcours.
 - S7 (à faire) Validation éditoriale de `DIA-07` à `DIA-10` et du catalogue ; essai réel d'un diaporama de parcours rédigé par ia2 et relu par l'autre connecteur ; ouverture dans PowerPoint et Google Slides (non vérifiée).
+
+## 14. Préparer avant d'écrire : brief, scénario, visuels, compositions et contrôle du rendu (21 novembre 2026)
+
+### 14.1 Ce qui existait et ce qui a été ajouté
+
+| Besoin | Avant | Ajouté |
+| --- | --- | --- |
+| Cadrer la demande | Objectif et thème seulement | **Brief** (`DiaporamaBrief.php`) : public, durée, objectif, contexte professionnel, thème, intention ; proposé par `preparer_diaporama` avec l'origine de chaque valeur déduite, statut `propose` puis `confirme` |
+| Construire la progression | Aucune étape entre la source et les diapositives | **Scénario** (`DiaporamaScenario.php`) : 2 à 8 parties (transition, démonstration, vérification, activité, durée, sources, visuels) ; `verifier_scenario_diaporama` ; chaque diapositive porte `scenarioPartie` |
+| Choisir les images | Liste des captures du site | **Inventaire des visuels des cours** (`DiaporamaVisuels.php`) : fiche complète, cours et passage, indice d'interface simulée tiré de la légende ; `voir_visuel` renvoie un aperçu réduit |
+| Varier la mise en page | 10 modèles, très textuels | **Cinq compositions** de l'Atelier visuel (exemple commenté, avant/après, démonstration en étapes, étude de cas, séparateur), décrites dans `regles/diaporamas/modeles.json` (lu par `ModeleCatalogue.php` et `front/src/diaporamas/modeles.js`) ; mise en page dans `front/src/diaporamas/compositions.js` |
+| Guider les scènes | Catalogue et justification | Champ `notion`, rendus web, .pptx et PDF annoncés par modèle ; la démonstration réutilise le rendu par étapes des scènes |
+| Vérifier le rendu | Bouton manuel, résultat non gardé | **Boucle de contrôle** : mesure à l'ouverture de l'aperçu (16:9 et étroit), rapport structuré enregistré (`POST /api/apercu-diaporamas/{id}/controle-rendu`, CSRF), empreinte du contenu, avertissements `DIAPO_RENDU_*` relus par `verifier_diaporama` |
+
+Entité : `brief`, `scenario` et `controle_rendu` (JSON, migration `Version20261122100000`), hors API publique. Un ancien diaporama reste valide : l'absence de brief ou de scénario n'est qu'un avertissement.
+
+### 14.2 Trois niveaux de contrôle
+
+| Niveau | Exemples | Effet |
+| --- | --- | --- |
+| Automatique et fiable (serveur, sans navigateur) | Champs et limites des compositions, partie de scénario inconnue, source hors cible, visuel inexistant | Bloquant |
+| Mesuré dans le navigateur | Débordement, sortie du cadre, chevauchement, par diapositive et par élément | Avertissement (dépend du navigateur et des polices) |
+| Relecture éditoriale | Fidélité au cours, pertinence du fil rouge et des visuels, interface simulée bien annoncée | Avis de l'autre connecteur, puis du responsable éditorial |
+
+### 14.3 Décisions
+
+1. Le serveur propose le brief, la personne le confirme : l'agent n'invente ni le contexte professionnel ni la durée.
+2. Aucune capture n'est créée pour un diaporama : seules les captures du back-office, de préférence celles des cours exploités (`DIA-12`).
+3. Le .pptx garde des diapositives fixes : une démonstration y devient une diapositive par étape (« Étape n/N »), jamais une animation PowerPoint native.
+4. Pilote : chapitre 19 « 3. Utiliser Microsoft 365 Copilot », fil rouge fictif (Outlook, Teams, Word, Excel), gardé dans le code (`front/src/diaporamas/pilote/copilot-fil-rouge.json`) et appliqué en brouillon au diaporama existant du chapitre, sans publication.
+
+### 14.4 Tâches
+
+- T1 (fait) Brief, scénario, entité et migration ; contrôles `DIAPO_BRIEF_*`, `DIAPO_SCENARIO_*` ; tests PHPUnit.
+- T2 (fait) Inventaire des visuels et `voir_visuel` ; tests fonctionnels.
+- T3 (fait) Catalogue des modèles et cinq compositions ; validation serveur (`DIAPO_MODELE_CHAMP_LONG`) et rendu web, .pptx et PDF ; tests Vitest aux longueurs maximales.
+- T4 (fait) Contrôle du rendu enregistré et relu par le connecteur ; tests.
+- T5 (fait) Consignes `rediger_diaporama` (7 temps) et `relire_diaporama` mises à jour ; règles `DIA-11` à `DIA-13`.
+- T6 (à faire) Validation éditoriale de `DIA-11` à `DIA-13` ; relecture du pilote par l'autre connecteur ; ouverture des exports dans PowerPoint et Google Slides.
+
+### 14.5 Limites connues
+
+- L'indice « interface simulée » ne lit que la légende et le texte alternatif.
+- Le contrôle du rendu n'a lieu que lorsqu'un administrateur ouvre l'aperçu ; ses mesures varient selon le navigateur et les polices installées.
+- Le .pptx n'a pas été ouvert dans PowerPoint ni dans Google Slides ; seule la conversion LibreOffice est vérifiable localement.

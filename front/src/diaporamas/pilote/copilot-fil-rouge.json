@@ -1,0 +1,229 @@
+{
+  "proposition": "Pilote du 21 novembre 2026 : brief, scénario et compositions de formation pour le chapitre « 3. Utiliser Microsoft 365 Copilot » (module 19). Proposition non publiée, à relire par un autre connecteur ; les faits viennent des cours 260, 261, 262, 263, 47, 48 et 264.",
+  "titre": "Copilot au fil d’une semaine de travail",
+  "sousTitre": "Outlook, Teams, Word et Excel, avec vérification",
+  "objectif": "Utiliser Copilot dans quatre outils et vérifier chaque résultat.",
+  "audience": "apprendre",
+  "theme": "atelier_visuel",
+  "cible": { "type": "chapitre", "id": 19 },
+  "brief": {
+    "public": "apprendre",
+    "dureeMinutes": 75,
+    "objectif": "Utiliser Copilot dans Outlook, Teams, Word et Excel, et vérifier chaque résultat avant de s’en servir.",
+    "contexte": "Une équipe de service fictive (« Service Exemple ») qui traite des dossiers et prépare un atelier pilote.",
+    "theme": "atelier_visuel",
+    "intention": "illustree",
+    "statut": "propose",
+    "deductions": [
+      { "champ": "public", "origine": "Public du parcours « Travailler avec l’IA » (apprendre)." },
+      { "champ": "dureeMinutes", "origine": "Durées indicatives des cours Outlook, Teams, Word et Excel (20 + 20 + 20 + 15 min)." },
+      { "champ": "contexte", "origine": "Personnages fictifs déjà utilisés par les cours (Service Exemple, Animateur Exemple)." }
+    ]
+  },
+  "scenario": {
+    "objectifGeneral": "Voir que la même démarche (demander, contrôler, corriger, vérifier) s’applique à quatre outils, sans jamais laisser Copilot ajouter un fait.",
+    "filRouge": "Une semaine fictive du Service Exemple : un message à traiter, une réunion qui lance un atelier pilote, la fiche de cet atelier, puis le suivi des dossiers.",
+    "progression": "Du plus guidé (résumer un fil) au plus technique (vérifier une formule), puis synthèse sur la vérification.",
+    "parties": [
+      {
+        "id": "ouverture", "titre": "Une semaine, quatre outils", "intention": "Poser le fil rouge et la démarche commune.", "dureeMinutes": 5,
+        "transition": "Lundi, un message attend une réponse.", "coursSources": [260, 261],
+        "demonstrations": [], "verifications": ["Demander au groupe ce qu’il vérifie déjà avant d’envoyer un texte."], "visuels": []
+      },
+      {
+        "id": "outlook", "titre": "Lundi : répondre sans rien promettre", "intention": "Distinguer le résumé d’un fil et le brouillon de réponse.", "dureeMinutes": 18,
+        "transition": "Mardi, l’équipe se réunit pour lancer un pilote.", "coursSources": [262],
+        "demonstrations": ["Résumer le fil fictif en trois rubriques", "Préparer une réponse courte sans l’envoyer"],
+        "verifications": ["Aucun délai ni indemnisation n’apparaît dans le brouillon"],
+        "activite": { "consigne": "Repérer dans un brouillon fictif la phrase qui promet trop.", "dureeMinutes": 5 },
+        "visuels": [{ "captureId": 109, "raison": "Simulation en trois écrans du résumé puis du brouillon ; interface signalée comme fictive." }]
+      },
+      {
+        "id": "teams", "titre": "Mardi : décisions ou propositions ?", "intention": "Séparer décisions, propositions et actions sans inventer de responsable.", "dureeMinutes": 18,
+        "transition": "Mercredi, il faut rédiger la fiche du pilote.", "coursSources": [263],
+        "demonstrations": ["Demander la séparation des décisions et des propositions"],
+        "verifications": ["Le recueil des retours reste sans responsable tant que personne n’est désigné"],
+        "visuels": [{ "captureId": 110, "raison": "Simulation Teams : récapitulatif, synthèse puis ajout d’un responsable connu." }]
+      },
+      {
+        "id": "word", "titre": "Mercredi : une fiche fidèle aux notes", "intention": "Transformer des notes en fiche et contrôler chaque fait.", "dureeMinutes": 17,
+        "transition": "Jeudi, on suit les dossiers dans un tableau.", "coursSources": [47],
+        "demonstrations": ["Demander une fiche à partir des seules notes", "Faire rétablir la durée oubliée"],
+        "verifications": ["Les cinq faits des notes sont présents, rien n’est ajouté"],
+        "visuels": [{ "captureId": 113, "raison": "Simulation Word où le premier aperçu oublie les 45 minutes : utile pour montrer la vérification." }]
+      },
+      {
+        "id": "excel", "titre": "Jeudi : une formule qu’on comprend", "intention": "Demander une formule simple et contrôler ses références.", "dureeMinutes": 12,
+        "transition": "Vendredi, on fait le point sur ce qu’il faut toujours vérifier.", "coursSources": [48],
+        "demonstrations": ["Demander la formule du taux de traitement"],
+        "verifications": ["Les résultats attendus sont 75 %, 80 % et 100 %", "Le cas zéro sur zéro affiche « à vérifier »"],
+        "activite": { "consigne": "Analyser en groupe une semaine fictive du Service Exemple.", "dureeMinutes": 6 },
+        "visuels": [{ "captureId": 111, "raison": "Simulation Excel : tableau, formule proposée, valeurs contrôlées ; cellules non exécutées." }]
+      },
+      {
+        "id": "verifier", "titre": "Vendredi : vérifier avant d’utiliser", "intention": "Ancrer le contrôle humain comme condition d’utilisation.", "dureeMinutes": 5,
+        "coursSources": [264],
+        "demonstrations": [], "verifications": ["Question finale sur ce qui bloque l’utilisation d’un brouillon"],
+        "visuels": [],
+        "scene": { "type": "sas_validation", "notion": "Un brouillon n’est utilisé qu’après accord humain", "justification": "Le refus bloque vraiment l’utilisation : la scène rend visible cette condition commune aux quatre outils.", "alternativeFixe": "Diapositive notion avec les trois questions de contrôle." }
+      }
+    ]
+  },
+  "diapositives": [
+    {
+      "modele": "titre",
+      "scenarioPartie": "ouverture",
+      "partie": "Utiliser Microsoft 365 Copilot",
+      "titre": "Copilot au fil d’une semaine de travail",
+      "sousTitre": "Outlook, Teams, Word et Excel, avec vérification",
+      "duree": "Atelier d’environ 75 minutes",
+      "notes": "Présenter le fil rouge : une semaine fictive d’une équipe de service. Chaque jour, un outil et une tâche. Rappeler que toutes les données sont inventées et que l’on travaille sur le compte autorisé pour l’atelier."
+    },
+    {
+      "modele": "etapes",
+      "scenarioPartie": "ouverture",
+      "partie": "Le fil rouge",
+      "titre": "Une démarche commune aux quatre outils",
+      "points": ["Demander avec une consigne précise", "Contrôler la proposition reçue", "Corriger ce qui manque ou dépasse", "Vérifier avant toute utilisation"],
+      "notes": "Copilot propose, la personne décide. Dans Outlook comme dans Excel, on retrouve le même enchaînement : une demande qui dit d’où viennent les informations et ce qu’il ne faut pas ajouter, une lecture attentive de la proposition, une demande de correction ciblée, puis un dernier contrôle. Demander au groupe : qu’est-ce que vous vérifiez déjà avant d’envoyer un message ? Noter deux ou trois réponses au tableau : on y reviendra vendredi."
+    },
+    {
+      "modele": "separateur",
+      "scenarioPartie": "outlook",
+      "numero": 1,
+      "titre": "Lundi dans Outlook",
+      "sousTitre": "Un fil de messages à résumer, une réponse à préparer sans rien promettre"
+    },
+    {
+      "modele": "demonstration",
+      "scenarioPartie": "outlook",
+      "partie": "Lundi · Outlook",
+      "titre": "Du fil de messages au brouillon",
+      "etapes": [
+        { "action": "Ouvrir le fil fictif du sociétaire", "capture": 109, "verification": "Dossier reçu, photos manquantes" },
+        { "action": "Demander un résumé en trois rubriques", "verification": "Faits, manques, demande : rien d’autre" },
+        { "action": "Préparer une réponse courte", "verification": "Pas de délai ni d’indemnisation promis" }
+      ],
+      "notes": "La capture est une simulation : les écrans sont fictifs et la position des commandes est indicative. Selon les accès, on fait la manipulation dans Outlook ou dans Copilot Chat avec le même texte. Étape 1 : lire le fil à voix haute. Étape 2 : le résumé doit séparer ce qui est confirmé, ce qui manque et ce qui est demandé. Étape 3 : le brouillon confirme la réception et rappelle les photos attendues ; il ne garantit aucune indemnisation. Le bouton Envoyer reste inutilisé pendant tout l’exercice."
+    },
+    {
+      "modele": "avant_apres",
+      "scenarioPartie": "outlook",
+      "partie": "Lundi · Outlook",
+      "titre": "Une phrase qui promet trop",
+      "avant": { "libelle": "brouillon trop rapide", "texte": "Votre dossier est complet et votre indemnisation sera versée sous huit jours." },
+      "apres": { "libelle": "brouillon vérifié", "texte": "Nous avons bien reçu votre dossier. Les photos restent à nous transmettre ; nous reviendrons vers vous ensuite." },
+      "explication": "On retire tout engagement que le fil ne contient pas.",
+      "notes": "La version de gauche est inventée pour l’exercice : elle illustre deux erreurs fréquentes, un fait faux (le dossier n’est pas complet, les photos manquent) et une promesse que personne n’a faite. Activité de cinq minutes : faire repérer ces deux erreurs avant d’afficher la version corrigée. Rappeler que le cours demande une réponse brève, qui confirme la réception, signale les photos attendues et ne se prononce pas sur l’indemnisation."
+    },
+    {
+      "modele": "separateur",
+      "scenarioPartie": "teams",
+      "numero": 2,
+      "titre": "Mardi dans Teams",
+      "sousTitre": "Une réunion qui lance un atelier pilote : qui fait quoi, et qu’est-ce qui reste ouvert ?"
+    },
+    {
+      "modele": "exemple_commente",
+      "scenarioPartie": "teams",
+      "partie": "Mardi · Teams",
+      "titre": "Décision, proposition ou action ?",
+      "exemple": "« Nous validons un pilote de huit personnes. » « Il faudrait demander des retours. »",
+      "capture": 110,
+      "commentaires": ["« Valider » signale une décision", "« Il faudrait » reste une proposition", "Pas de responsable inventé pour les retours"],
+      "notes": "La capture montre une simulation de Teams : récapitulatif fictif, synthèse demandée à Copilot, puis ajout d’une décision connue. Faire lire les deux phrases et demander au groupe de les classer. Point de vigilance : la date affichée est celle de la réunion, pas celle du pilote, qui reste à fixer. Sans accès à une réunion de démonstration, on colle les notes fictives dans Copilot Chat. Ne jamais lancer l’enregistrement d’une vraie réunion pour l’exercice."
+    },
+    {
+      "modele": "separateur",
+      "scenarioPartie": "word",
+      "numero": 3,
+      "titre": "Mercredi dans Word",
+      "sousTitre": "La fiche du pilote, rédigée à partir des seules notes"
+    },
+    {
+      "modele": "demonstration",
+      "scenarioPartie": "word",
+      "partie": "Mercredi · Word",
+      "titre": "Des notes à une fiche fidèle",
+      "etapes": [
+        { "action": "Saisir les cinq notes de l’atelier", "verification": "Débutants, 45 min, binômes, lieu ouvert" },
+        { "action": "Demander une fiche sans date ni lieu", "capture": 113, "verification": "Le premier aperçu oublie la durée" },
+        { "action": "Faire rétablir les 45 minutes", "verification": "Chaque fait correspond aux notes" }
+      ],
+      "notes": "La capture est une simulation de Word : elle sert à montrer un oubli fréquent. Le premier aperçu ne reprend pas la durée de 45 minutes ; on demande alors de la rétablir sans rien changer d’autre. Avant d’accepter, comparer la fiche aux notes, fait par fait : public débutant, durée, objectif de vérification d’un mail, un ordinateur par binôme, date et lieu encore à confirmer. Sans Copilot intégré, on travaille dans le chat puis on reporte le texte validé dans Word."
+    },
+    {
+      "modele": "separateur",
+      "scenarioPartie": "excel",
+      "numero": 4,
+      "titre": "Jeudi dans Excel",
+      "sousTitre": "Suivre les dossiers avec une formule qu’on sait relire"
+    },
+    {
+      "modele": "exemple_commente",
+      "scenarioPartie": "excel",
+      "partie": "Jeudi · Excel",
+      "titre": "Relire la formule avant de la recopier",
+      "exemple": "=SI(B2=0;\"à vérifier\";C2/B2)",
+      "capture": 111,
+      "commentaires": ["B2 est le dénominateur : dossiers reçus", "Résultats attendus : 75 %, 80 %, 100 %", "Zéro sur zéro affiche « à vérifier »"],
+      "notes": "La capture est une simulation : les cellules ne viennent pas d’un classeur réellement calculé. Faire saisir le petit tableau fictif, puis la formule à la main en D2, la recopier jusqu’à D4 et appliquer le format pourcentage. Chaque personne compare ses résultats aux valeurs attendues. Demander ensuite pourquoi un rapport de zéro sur zéro ne doit pas afficher 0 %. Selon la langue d’Excel, le nom de la fonction et le séparateur peuvent changer."
+    },
+    {
+      "modele": "etude_de_cas",
+      "scenarioPartie": "excel",
+      "partie": "Jeudi · Excel",
+      "titre": "Une semaine du Service Exemple",
+      "contexte": "Copilot résume la semaine : « Le taux baisse parce que l’équipe était en formation. » Le tableau ne contient que des dossiers reçus et traités.",
+      "questions": ["Quel chiffre le tableau permet-il d’affirmer ?", "Quelle phrase ajoute une cause inventée ?", "Que demander à Copilot pour corriger ?"],
+      "duree": 6,
+      "notes": "Situation inventée pour l’exercice. Le cours insiste sur un point : interpréter des données sans inventer de cause. Le tableau permet de calculer un taux de traitement, pas d’expliquer pourquoi il varie. En groupe, faire repérer la phrase qui avance une explication absente des données, puis rédiger une demande de correction : s’en tenir aux chiffres du tableau et signaler ce qui reste à vérifier auprès de l’équipe."
+    },
+    {
+      "modele": "notion",
+      "scenarioPartie": "verifier",
+      "partie": "Vendredi · Vérifier",
+      "titre": "Rien ne part sans votre accord",
+      "points": ["Les faits viennent-ils de la source ?", "Rien d’ajouté ni de promis ?", "Le texte est-il utile tel quel ?"],
+      "scene": {
+        "type": "sas_validation",
+        "version": 1,
+        "fiche": "Brouillon",
+        "action": "Utiliser le brouillon",
+        "question": "Les faits sont-ils exacts ?",
+        "decision": "refus",
+        "suiteAccord": "Le brouillon peut être utilisé",
+        "suiteRefus": "Retour à la correction",
+        "description": "Un brouillon arrive au contrôle humain et s’arrête. Tant que les faits ne sont pas vérifiés, la réponse est non : le brouillon retourne à la correction.",
+        "justification": "Le refus bloque vraiment l’utilisation : la scène rend visible la condition commune aux quatre outils.",
+        "notion": "Un brouillon n’est utilisé qu’après accord humain"
+      },
+      "notes": "Revenir sur les réponses notées au début de la séance. Dans les quatre outils, le dernier mot revient à la personne : Copilot ne fait que proposer. La scène montre un brouillon arrêté au contrôle ; tant que la réponse est non, il repart en correction. En projection, on peut simuler l’accord pour montrer la suite. Les trois questions à l’écran résument le contrôle : la source, les ajouts ou promesses, l’utilité réelle du texte."
+    },
+    {
+      "modele": "question",
+      "scenarioPartie": "verifier",
+      "partie": "Vendredi · Vérifier",
+      "titre": "Pour vérifier",
+      "question": "Copilot propose une fiche qui ajoute une date de séance. Que faites-vous ?",
+      "reponses": ["Je la garde, elle semble logique", "Je la retire et je le signale", "Je l’envoie, on corrigera après"],
+      "notes": "Bonne réponse : la deuxième. Une date absente des notes est un fait ajouté : on la retire, puis on demande à Copilot de s’en tenir aux notes. La première réponse fait confiance à une information inventée ; la troisième reporte la vérification après la diffusion, alors que le contrôle doit précéder toute utilisation. Laisser le groupe argumenter avant de donner la réponse."
+    },
+    {
+      "modele": "a_retenir",
+      "scenarioPartie": "verifier",
+      "partie": "À retenir",
+      "titre": "À retenir",
+      "points": ["Citer la source et ce qu’il ne faut pas ajouter", "Relire chaque proposition, fait par fait", "Demander une correction précise", "Ne rien envoyer ni recopier avant vérification"],
+      "notes": "Faire reformuler ces quatre gestes par une ou deux personnes. Rappeler que les intitulés des commandes changent selon les versions et les accès : ce qui reste stable, c’est la démarche. Proposer de refaire l’un des exercices dans l’outil le plus utilisé au quotidien, toujours avec des données fictives."
+    },
+    {
+      "modele": "fin",
+      "scenarioPartie": "verifier",
+      "titre": "Pour aller plus loin",
+      "lien": "https://ia.varascundo.com/spa/category/Travailler%20avec%20l%E2%80%99IA",
+      "sources": [{ "libelle": "Cours du chapitre « Utiliser Microsoft 365 Copilot »" }],
+      "date": "21 novembre 2026"
+    }
+  ]
+}

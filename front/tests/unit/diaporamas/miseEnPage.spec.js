@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hauteurTexte, nomFichier, planDiaporama } from '@/diaporamas/miseEnPage'
-import { MODELES } from '@/diaporamas/modeles'
+import { COMPOSITIONS, MODELES } from '@/diaporamas/modeles'
 import { FORMAT, LICENCE, TAILLE_MINIMALE_PROJETEE } from '@/diaporamas/theme'
 import demo from './demo.json'
 
@@ -11,8 +11,8 @@ const textes = (diapositive) => diapositive.elements.filter((element) => element
 describe('planDiaporama', () => {
   const plan = planDiaporama(demo, { images: { 42: IMAGE } })
 
-  it('couvre chaque modèle de diapositive', () => {
-    expect(new Set(plan.diapositives.map((d) => d.modele))).toEqual(new Set(Object.keys(MODELES)))
+  it('couvre chaque modèle classique (les compositions sont éprouvées dans compositions.spec.js)', () => {
+    expect(new Set(plan.diapositives.map((d) => d.modele))).toEqual(new Set(Object.keys(MODELES).filter((m) => !COMPOSITIONS.includes(m))))
   })
 
   it('ne produit aucune diapositive vide ni sans titre', () => {

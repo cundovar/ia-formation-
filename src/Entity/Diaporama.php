@@ -86,6 +86,20 @@ class Diaporama
     #[ORM\Column(name: 'cours_sources', type: Types::JSON, nullable: true)]
     private ?array $coursSources = null;
 
+    // Brief et scénario pédagogique (DIA-11) : outils éditoriaux, jamais servis par l'API publique
+    /** @var array<string, mixed>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $brief = null;
+
+    /** @var array<string, mixed>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $scenario = null;
+
+    // Dernier contrôle de rendu mesuré dans le navigateur d'un administrateur (aperçu), avec l'empreinte du contenu contrôlé
+    /** @var array<string, mixed>|null */
+    #[ORM\Column(name: 'controle_rendu', type: Types::JSON, nullable: true)]
+    private ?array $controleRendu = null;
+
     #[ORM\Column(length: 255)]
     #[Groups(['diaporama:read'])]
     private string $titre = '';
@@ -290,6 +304,69 @@ class Diaporama
             'exploites' => \count(array_filter($this->coursSources, static fn (array $c) => $c['exploite'])),
             'total' => \count($this->coursSources),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getBrief(): ?array
+    {
+        return $this->brief;
+    }
+
+    /**
+     * @param array<string, mixed>|null $brief
+     */
+    public function setBrief(?array $brief): static
+    {
+        $this->brief = $brief;
+
+        return $this;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getScenario(): ?array
+    {
+        return $this->scenario;
+    }
+
+    /**
+     * @param array<string, mixed>|null $scenario
+     */
+    public function setScenario(?array $scenario): static
+    {
+        $this->scenario = $scenario;
+
+        return $this;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getControleRendu(): ?array
+    {
+        return $this->controleRendu;
+    }
+
+    /**
+     * @param array<string, mixed>|null $controleRendu
+     */
+    public function setControleRendu(?array $controleRendu): static
+    {
+        $this->controleRendu = $controleRendu;
+
+        return $this;
+    }
+
+    /**
+     * Empreinte de ce que le rendu dépend : diapositives, titre, sous-titre et thème. Un rapport de rendu
+     * mesuré sur une autre empreinte est périmé.
+     */
+    public function getEmpreinteRendu(): string
+    {
+        return hash('sha256', json_encode([$this->titre, $this->sousTitre, $this->theme, $this->objectif, $this->diapositives], \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR));
     }
 
     public function getTitre(): string

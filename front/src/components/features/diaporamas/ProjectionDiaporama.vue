@@ -150,10 +150,10 @@
     <section
       v-if="sceneCourante"
       class="projection__etapes"
-      aria-label="Étapes du schéma"
+      :aria-label="sceneCourante.genre === 'demonstration' ? 'Étapes de la démonstration' : 'Étapes du schéma'"
       data-testid="projection-etapes"
     >
-      <h3>Le schéma, étape par étape</h3>
+      <h3>{{ sceneCourante.titreEtapes ?? 'Le schéma, étape par étape' }}</h3>
       <p>{{ sceneCourante.description }}</p>
       <ol>
         <li
@@ -212,13 +212,15 @@ const fixe = ref(false)
 const notesVisibles = ref(false)
 const pleinEcran = ref(false)
 const etroit = ref(false)
+const formatForce = ref(null)
 const variantesChoisies = ref({})
 const preferenceReduite = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const mouvement = ref(!preferenceReduite)
 
 const plan = computed(() => planDiaporama(props.diaporama, {
   images: props.images,
-  format: etroit.value && !pleinEcran.value ? 'etroit' : 'large',
+  // formatForce : imposé par le contrôle de rendu de l'aperçu, qui mesure les deux formats
+  format: formatForce.value ?? (etroit.value && !pleinEcran.value ? 'etroit' : 'large'),
   variantes: variantesChoisies.value,
 }))
 const decors = computed(() => maitres(plan.value, props.site))
@@ -358,7 +360,7 @@ onBeforeUnmount(() => {
 // Un autre diaporama : on repart du début
 watch(() => props.diaporama, () => allerA(0))
 
-defineExpose({ suivant, precedent, allerA, rejouer, index, etape, mouvement })
+defineExpose({ suivant, precedent, allerA, rejouer, index, etape, mouvement, formatForce })
 </script>
 
 <style scoped>

@@ -1,0 +1,22 @@
+{% set scenario = field.value %}
+{% if scenario is empty %}
+    Pas de scénario enregistré.
+{% else %}
+    <p><strong>{{ scenario.objectifGeneral }}</strong></p>
+    {% if scenario.filRouge %}<p>Fil rouge : {{ scenario.filRouge }}</p>{% endif %}
+    {% if scenario.progression %}<p>Progression : {{ scenario.progression }}</p>{% endif %}
+    <ol>
+        {% for partie in scenario.parties %}
+            <li>
+                <strong>{{ partie.titre }}</strong> ({{ partie.dureeMinutes }} min, <code>{{ partie.id }}</code>) — {{ partie.intention }}
+                {% if partie.coursSources is not empty %}<br>Sources : cours {{ partie.coursSources|join(', ') }}{% endif %}
+                {% if partie.demonstrations is not empty %}<br>Démonstrations : {{ partie.demonstrations|join(' ; ') }}{% endif %}
+                {% if partie.verifications is not empty %}<br>Vérifications : {{ partie.verifications|join(' ; ') }}{% endif %}
+                {% if partie.activite %}<br>Activité : {{ partie.activite.consigne }} ({{ partie.activite.dureeMinutes }} min){% endif %}
+                {% for v in partie.visuels %}<br>Visuel {{ v.captureId }} : {{ v.raison }}{% endfor %}
+                {% if partie.scene %}<br>Scène {{ partie.scene.type }} : {{ partie.scene.notion }} — {{ partie.scene.justification }}{% endif %}
+                {% if partie.transition %}<br><em>Transition : {{ partie.transition }}</em>{% endif %}
+            </li>
+        {% endfor %}
+    </ol>
+{% endif %}

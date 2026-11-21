@@ -44,6 +44,20 @@ export async function chargerApercuDiaporama(id) {
   return data
 }
 
+/**
+ * Envoie au serveur le contrôle de rendu mesuré dans l'aperçu (administrateurs) : le connecteur le relit avec
+ * verifier_diaporama. Le jeton CSRF vient de l'aperçu.
+ * @param {number} id
+ * @param {{ formats: string[], navigateur: string, problemes: object[] }} rapport
+ * @param {string} jeton
+ */
+export async function enregistrerControleRendu(id, rapport, jeton) {
+  const { data } = await api.post(`/apercu-diaporamas/${Number(id)}/controle-rendu`, rapport, {
+    headers: { 'X-CSRF-Token': jeton, 'Content-Type': 'application/json' },
+  })
+  return data
+}
+
 // Identifiant d'une cible, qu'elle soit donnée par un nombre, une IRI (/api/menus/3) ou un objet
 export const idCible = (cible) => {
   if (cible && typeof cible === 'object') return Number(cible.id)

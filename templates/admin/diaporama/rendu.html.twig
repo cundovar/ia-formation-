@@ -1,0 +1,20 @@
+{% set diaporama = entity.instance %}
+{% set rapport = field.value %}
+{% if rapport is empty %}
+    Pas encore mesuré : ouvrez l'aperçu du diaporama, qui contrôle chaque diapositive.
+{% else %}
+    <p>
+        Mesuré le {{ rapport.le|date('d/m/Y H:i') }}{% if rapport.navigateur %} ({{ rapport.navigateur }}){% endif %},
+        formats : {{ rapport.formats|join(', ') }} —
+        {{ rapport.empreinte == diaporama.empreinteRendu ? 'à jour' : 'périmé : le diaporama a changé depuis' }}.
+    </p>
+    {% if rapport.problemes is empty %}
+        <p>Aucun débordement ni recouvrement détecté.</p>
+    {% else %}
+        <ul>
+            {% for p in rapport.problemes %}
+                <li>Diapositive {{ p.diapositive }}{% if p.etape > 1 %}, étape {{ p.etape }}{% endif %} ({{ p.format }}) : {{ p.probleme }} — « {{ p.element.extrait }} »{% if p.mesure.depassementPx > 0 %}, {{ p.mesure.depassementPx }} px{% endif %}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endif %}

@@ -56,7 +56,7 @@ final class SceneValidator
         $textes = [];
         if (\is_array($scene)) {
             array_walk_recursive($scene, static function ($valeur, $cle) use (&$textes) {
-                if (\is_string($valeur) && !\in_array($cle, ['type', 'id', 'decision', 'brancheSuivie', 'justification'], true)) {
+                if (\is_string($valeur) && !\in_array($cle, ['type', 'id', 'decision', 'brancheSuivie', 'justification', 'notion'], true)) {
                     $textes[] = $valeur;
                 }
             });

@@ -15,7 +15,8 @@
     "type": { "type": "choix", "obligatoire": true, "valeurs": ["escalier", "chaine_traitement", "aiguillage", "entonnoir", "loupe", "sas_validation"] },
     "version": { "type": "entier", "obligatoire": true, "min": 1, "max": 1 },
     "description": { "type": "texte", "obligatoire": true, "min": 40, "max": 300, "aide": "Équivalent fixe et accessible : ce que montre la scène, du début à la fin, sans parler de mouvement ni de couleur (DIA-09)." },
-    "justification": { "type": "texte", "obligatoire": false, "max": 200, "aide": "Pourquoi cette scène aide à comprendre (DIA-07). Non projetée : affichée dans l'aperçu et à côté de la projection." }
+    "justification": { "type": "texte", "obligatoire": false, "max": 200, "aide": "Pourquoi cette scène aide à comprendre (DIA-07). Non projetée : affichée dans l'aperçu et à côté de la projection." },
+    "notion": { "type": "texte", "obligatoire": false, "max": 80, "aide": "La notion que la scène aide à comprendre (DIA-07), en quelques mots. Non projetée : affichée dans l'aperçu et lue par le relecteur." }
   },
   "modelesAutorises": ["notion", "etapes", "exercice"],
   "limitesDiapositive": { "pointsMax": 3, "longueurPointMax": 44 },

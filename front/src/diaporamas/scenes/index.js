@@ -31,7 +31,7 @@ export const variantesDe = (scene) => {
 /**
  * @param {object} scene données de la scène (type, version, description, champs du modèle)
  * @param {{ zone: {x,y,w,h}, couleurs: object, variante?: object }} options
- * @returns {{ type, description, justification, etapes: {legende, elements}[], fixe: {elements, legendes: string[]} } | null}
+ * @returns {{ type, description, justification, notion, etapes: {legende, elements}[], fixe: {elements, legendes: string[]} } | null}
  */
 export const planifierScene = (scene, { zone, couleurs, variante = {} }) => {
   if (!scene || !estSceneConnue(scene.type)) return null
@@ -41,6 +41,7 @@ export const planifierScene = (scene, { zone, couleurs, variante = {} }) => {
     type: scene.type,
     description: texte(scene.description),
     justification: texte(scene.justification),
+    notion: texte(scene.notion),
     etapes,
     // Équivalent fixe : la dernière étape montre tout ; les légendes numérotées racontent le trajet
     fixe: {

@@ -138,8 +138,10 @@ const joindre = (...blocs) => blocs.filter(Boolean).join('\n\n')
 export const vuesDiapositive = (diapositive, couleur = '353B49') => {
   const { scene } = diapositive
   if (!scene) return [{ elements: [], notes: diapositive.notes }]
-  const mode = sceneDuCatalogue(scene.type)?.rendus?.pptx ?? 'fixe'
-  const scenePourNotes = joindre(`Scène « ${scene.type} » : ${scene.description}`, scene.fixe.legendes.join('\n'))
+  // Une démonstration (composition) déclare son rendu ; une scène suit le catalogue
+  const mode = scene.rendusPptx ?? sceneDuCatalogue(scene.type)?.rendus?.pptx ?? 'fixe'
+  const intitule = scene.genre === 'demonstration' ? 'Démonstration' : `Scène « ${scene.type} »`
+  const scenePourNotes = joindre(`${intitule} : ${scene.description}`, scene.fixe.legendes.join('\n'))
   if (mode === 'etapes') {
     return scene.etapes.map((etape, i) => ({
       elements: [...elementsEtape(scene, i), ...(scene.legende ? [elementLegende(scene, i, couleur)] : [])],

@@ -2,9 +2,10 @@
 // devient une liste d'éléments positionnés (formes, textes, images), sans PptxGenJS ni Vue.
 // La même mise en page servira au .pptx et à la vue d'impression (PDF).
 import { estModeleConnu } from './modeles'
-import { COULEURS, ESPACE_PARAGRAPHE, FORMAT, LICENCE, TAILLES, ZONES, couleursPublic } from './theme'
+import { COULEURS, ESPACE_PARAGRAPHE, FORMAT, LICENCE, MARGE, TAILLES, ZONES, couleursPublic } from './theme'
 import { DISPOSITIONS_ATELIER, MODELES_AVEC_SCENE, contexteAtelier, maitresAtelier } from './miseEnPageAtelier'
 import { planifierScene } from './scenes'
+import { composer, estComposition } from './compositions'
 import { couleursScene, idTheme } from './themes'
 
 const texte = (valeur) => (typeof valeur === 'string' ? valeur.trim() : '')
@@ -326,6 +327,27 @@ export const maitres = (plan, site) => {
   }
 }
 
+// Jetons du thème standard pour les compositions de formation (compositions.js)
+const jetonsStandard = (ctx) => ({
+  format: 'large',
+  contenu: C,
+  zones: { surtitre: { x: 0.9, y: 0.9, w: 8, h: 0.4 }, titre: { x: 0.9 } },
+  dims: { ...FORMAT, marge: MARGE },
+  couleurs: {
+    texte: COULEURS.texte,
+    texteDoux: COULEURS.texteDoux,
+    fondA: COULEURS.carte,
+    fondB: ctx.couleurs.pastel,
+    actif: COULEURS.aFaire.fond,
+    actifBordure: COULEURS.aFaire.titre,
+    pastille: ctx.couleurs.accent,
+  },
+  tailles: { corps: TAILLES.corpsDense, intertitre: TAILLES.intertitre, repere: TAILLES.repere, grandNumero: 72, sousTitre: TAILLES.sousTitreCouverture },
+  formeEncadre: 'rect',
+  rayon: 0,
+  bordureEncadre: COULEURS.bordure,
+})
+
 const TITRES_PAR_DEFAUT = { fin: 'Pour aller plus loin', a_retenir: 'À retenir', objectifs: 'Ce que vous saurez faire' }
 
 /**
@@ -353,11 +375,12 @@ export const planDiaporama = (diaporama, { images = {}, format = 'large', varian
       const contexte = { ...ctx, index }
       let resultat
       if (atelier) resultat = DISPOSITIONS_ATELIER[modele](source, contexte)
+      else if (estComposition(modele)) resultat = composer(modele, source, contexte, jetonsStandard(contexte))
       else if (source.scene) resultat = avecSceneStandard(source, contexte)
       else resultat = { elements: DISPOSITIONS[modele](source, contexte) }
       return {
         modele,
-        maitre: modele === 'titre' ? 'COUVERTURE' : 'CONTENU',
+        maitre: modele === 'titre' || modele === 'separateur' ? 'COUVERTURE' : 'CONTENU',
         // DIA-05 : chaque diapositive a un titre
         titre: texte(diapo.titre) || TITRES_PAR_DEFAUT[modele] || titreDiaporama,
         notes: texte(diapo.notes),

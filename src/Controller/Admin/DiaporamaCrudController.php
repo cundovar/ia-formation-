@@ -112,6 +112,9 @@ final class DiaporamaCrudController extends AbstractCrudController
             yield DateTimeField::new('publishedAt', 'Publié le');
             yield TextField::new('titre', 'Contrôles')
                 ->formatValue(fn ($value, Diaporama $diaporama) => $this->describeIssues($this->checker->check($diaporama)));
+            yield ArrayField::new('brief', 'Brief')->setTemplatePath('admin/diaporama/brief.html.twig');
+            yield ArrayField::new('scenario', 'Scénario')->setTemplatePath('admin/diaporama/scenario.html.twig');
+            yield ArrayField::new('controleRendu', 'Contrôle de rendu')->setTemplatePath('admin/diaporama/rendu.html.twig');
             yield ArrayField::new('reviewReport', 'Relecture')->setTemplatePath('admin/diaporama/relecture.html.twig');
             yield ArrayField::new('diapositives', 'Aperçu')->setTemplatePath('admin/diaporama/apercu.html.twig');
         }

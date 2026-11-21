@@ -170,7 +170,7 @@ Limites de cette première version :
 
 Un diaporama est une synthèse d'un cours, d'un chapitre (module) ou d'un parcours entier, téléchargeable en PowerPoint et en PDF depuis la page publique et projetable sur le site. L'agent écrit seulement le contenu structuré des diapositives et choisit l'identifiant d'un thème du site (`standard` ou `atelier_visuel`) ; il peut ajouter une scène animée du catalogue sur une diapositive, si elle aide à comprendre. Les règles sont dans [`regles/08-diaporamas.md`](../regles/08-diaporamas.md) et le plan dans [`PLAN_DIAPORAMAS.md`](PLAN_DIAPORAMAS.md).
 
-1. Dans Claude, lancer la consigne **`rediger_diaporama`** (cible `cours`, `module` ou `parcours`, identifiant). L'assistant suit une méthode en 5 temps : lire les sources et leur statut (`preparer_diaporama`), écrire l'idée et l'effet de chaque diapositive, proposer une scène seulement si elle aide (`lister_scenes`), en donner les paramètres ou garder une diapositive fixe, puis créer le brouillon (`creer_diaporama`), le contrôler et donner l'aperçu.
+1. Dans Claude, lancer la consigne **`rediger_diaporama`** (cible `cours`, `module` ou `parcours`, identifiant). L'assistant suit une méthode en 7 temps : lire les sources, leur statut et les visuels des cours (`preparer_diaporama`) ; présenter le **brief** proposé (valeurs déduites signalées) et le faire corriger ; écrire le **scénario pédagogique** et le contrôler (`verifier_scenario_diaporama`) ; regarder les visuels utiles (`voir_visuel`) ; écrire chaque diapositive avec sa partie du scénario, en variant les compositions ; proposer une scène seulement si elle aide (`lister_scenes`), avec sa notion et sa justification ; créer le brouillon (`creer_diaporama`, avec `brief` et `scenario`), le contrôler et donner l'aperçu. Ouvrir l'aperçu enregistre le contrôle du rendu, que `verifier_diaporama` relit ensuite.
 2. Dans ChatGPT, lancer **`relire_diaporama`** (identifiant du diaporama). Le relecteur enregistre son avis avec `enregistrer_relecture_diaporama`.
 3. Revenir dans Claude : corriger si besoin (`modifier_diaporama`, qui efface la relecture), puis `publier_diaporama` après un avis favorable.
 
@@ -178,7 +178,9 @@ Un diaporama est une synthèse d'un cours, d'un chapitre (module) ou d'un parcou
 | --- | --- |
 | `lister_scenes` | Catalogue des scènes : usage, cas où elles induisent en erreur, champs, limites, étapes, rendu .pptx et PDF, exemple ; thèmes et modèles qui acceptent une scène |
 | `preparer_diaporama` | Texte du cours, des cours du chapitre ou des cours publiés du parcours ; public ; couverture et inventaire des cours ; nombre de diapositives attendu ; modèles, thèmes, scènes ; captures disponibles ; cours non publiés et diaporama existant |
-| `lister_diaporamas`, `voir_diaporama` | Diaporamas (`brouillon`, `a_corriger`, `publie`) ; leurs identifiants sont distincts de ceux des cours. `voir_diaporama` donne `apercuUrl` : l'aperçu mis en forme, réservé aux administrateurs |
+| `lister_diaporamas`, `voir_diaporama` | Diaporamas (`brouillon`, `a_corriger`, `publie`) ; leurs identifiants sont distincts de ceux des cours. `voir_diaporama` donne le brief, le scénario, le dernier contrôle du rendu et `apercuUrl` (aperçu mis en forme, réservé aux administrateurs) ; avec `diapositive`, le détail d'une seule diapositive |
+| `verifier_scenario_diaporama` | Contrôle d'un scénario avant d'écrire les diapositives : sources hors cible ou non publiées, visuels inexistants, durée, vérifications, couverture réelle ; n'enregistre rien |
+| `voir_visuel` | Fiche d'une capture (légende, alternative, source, date, indice d'interface simulée) et aperçu réduit de l'image ; rien n'est inventé |
 | `creer_diaporama`, `modifier_diaporama` | Écriture ; refusée, sans rien enregistrer, si un contrôle bloquant apparaît. Une cible n'a qu'un diaporama |
 | `verifier_diaporama` | Contrôles automatiques et état de la relecture : dit si le diaporama est publiable |
 | `enregistrer_relecture_diaporama` | Avis d'un autre connecteur ; avec des réserves ou un avis défavorable, le diaporama passe `a_corriger` |
@@ -192,6 +194,8 @@ Ce que fait le site :
 - un diaporama qui copie le cours (`DIAPO_COPIE`), contient une donnée personnelle (`DON-04`) ou n'a pas de notes de l'animateur n'est jamais enregistré ;
 - un diaporama publié reste modifiable par le connecteur : il reste en ligne et sa relecture est effacée ;
 - si le cours change après la rédaction, `DIAPO_SOURCE_PERIMEE` signale le diaporama à mettre à jour.
+- le brief, le scénario et le contrôle du rendu ne sont jamais servis par l'API publique ; le rapport de rendu n'est accepté que d'un administrateur connecté, avec un jeton CSRF, et devient périmé dès que le contenu projeté change ;
+- les compositions de l'Atelier visuel (exemple commenté, avant/après, démonstration, étude de cas, séparateur) suivent les limites de `regles/diaporamas/modeles.json`, appliquées par le serveur et par le site.
 
 ## Cours et QCM personnalisés
 
@@ -240,3 +244,7 @@ Un contenu personnalisé suit les mêmes règles que les autres : jamais de nom,
 ### Demande prête à copier pour ia2
 
 > Prépare le diaporama du parcours « Automatiser des tâches avec l'IA » avec la consigne `rediger_diaporama` (cible `parcours`, identifiant donné par `lister_catalogue`), thème `atelier_visuel`. Appuie-toi uniquement sur les cours publiés et annonce la couverture réelle. Propose une scène animée seulement là où elle aide à comprendre, avec une justification courte, et garde une diapositive fixe sinon. Crée le brouillon, lance `verifier_diaporama`, donne l'adresse de l'aperçu et le compte rendu (diapositives, scènes et justifications, couverture, avertissements). Ne publie pas : laisse le diaporama en brouillon et demande une relecture `relire_diaporama` à l'autre connecteur.
+
+### Demande prête à copier pour ia3
+
+> Prépare le diaporama du chapitre « 3. Utiliser Microsoft 365 Copilot » (module 19, vérifier avec `lister_catalogue`) avec la consigne `rediger_diaporama`. Commence par `preparer_diaporama`, puis présente-moi le brief proposé en signalant chaque valeur déduite : public, durée, objectif, contexte professionnel, thème `atelier_visuel`, intention. Attends que je le corrige avant d'écrire le scénario. Écris ensuite un scénario avec un fil rouge fictif qui traverse Outlook, Teams, Word et Excel (personne et organisation inventées, aucune donnée réelle), des sources publiées pour chaque partie, au moins un moment de vérification et des durées qui tiennent dans le brief ; contrôle-le avec `verifier_scenario_diaporama`. Regarde les captures des cours avec `voir_visuel` et n'utilise que celles qui existent, en signalant les interfaces simulées. Varie les compositions (exemple commenté, avant/après, démonstration en étapes, étude de cas, séparateur) et ne propose une scène que si elle aide à comprendre, avec sa notion et sa justification. Crée le brouillon avec le brief et le scénario, lance `verifier_diaporama`, puis donne l'adresse de l'aperçu et un compte rendu : diapositives par partie, visuels utilisés, scènes, couverture, avertissements et problèmes de rendu. Ne publie pas : laisse le diaporama en brouillon et demande une relecture `relire_diaporama` à l'autre connecteur.

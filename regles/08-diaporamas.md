@@ -1,6 +1,6 @@
 # Diaporamas
 
-Un diaporama du site présente un cours, un chapitre ou un parcours entier devant un groupe. Ce n'est pas le cours recopié : c'est une **synthèse pensée pour être projetée**. L'écran montre l'essentiel, en peu de mots ; le détail est dans les notes de la personne qui présente. Le diaporama est rédigé par l'assistant de rédaction, relu par un autre connecteur, puis mis en forme par le site avec l'un de ses thèmes (`docs/PLAN_DIAPORAMAS.md`). Une diapositive peut porter une scène animée du catalogue `regles/scenes/catalogue.json` (`DIA-07` à `DIA-09`).
+Un diaporama du site présente un cours, un chapitre ou un parcours entier devant un groupe. Ce n'est pas le cours recopié : c'est une **synthèse pensée pour être projetée**. L'écran montre l'essentiel, en peu de mots ; le détail est dans les notes de la personne qui présente. Le diaporama est rédigé par l'assistant de rédaction, relu par un autre connecteur, puis mis en forme par le site avec l'un de ses thèmes (`docs/PLAN_DIAPORAMAS.md`). Une diapositive peut porter une scène animée du catalogue `regles/scenes/catalogue.json` (`DIA-07` à `DIA-09`). Un brief et un scénario précèdent les diapositives (`DIA-11`), les visuels viennent des cours (`DIA-12`) et le thème Atelier visuel propose des compositions variées (`DIA-13`).
 
 ## DIA-01 — Une idée par diapositive
 
@@ -111,3 +111,39 @@ Un diaporama du site présente un cours, un chapitre ou un parcours entier devan
 - Un parcours réservé reste réservé : son diaporama suit les mêmes règles d'accès, aperçu et exports compris.
 
 **Source.** [PLAN] : décision du 21 novembre 2026 ; `RED` : ne pas affirmer ce que le site ne contient pas.
+
+## DIA-11 — Un brief et un scénario avant les diapositives
+
+**Règle.** Avant d'écrire les diapositives, l'agent établit avec la personne un **brief** (public, durée indicative, objectif, contexte professionnel, thème, intention : explicative, illustrée ou atelier), puis un **scénario pédagogique** (objectif, progression, de 2 à 8 parties avec leurs transitions, démonstrations, moments de vérification, activités et durées, sources de chaque partie). Une valeur déduite par le serveur est présentée comme telle et reste `propose` tant que la personne ne l'a pas confirmée. Chaque diapositive indique la partie du scénario qu'elle sert (`scenarioPartie`). *Règle du projet, à valider par le responsable éditorial.*
+
+**Dans un diaporama.**
+- Le brief et le scénario sont gardés avec le diaporama, affichés dans l'aperçu et lus par le relecteur ; ils ne sont jamais projetés ni servis par l'API publique.
+- Les sources d'une partie sont des cours publiés de la cible ; la couverture réelle est annoncée, comme en `DIA-10`.
+- Prévoir au moins un moment où le groupe vérifie un résultat (`LIM`) : c'est le cœur d'une formation à l'IA.
+- Un diaporama ancien, sans brief ni scénario, reste valide : les contrôles le signalent par un avertissement.
+
+**Source.** [PLAN] : décision du 21 novembre 2026 ; `POS` : faire pratiquer et vérifier.
+
+## DIA-12 — Seulement des visuels qui existent
+
+**Règle.** Une capture d'un diaporama est une capture du back-office, de préférence l'une de celles des cours exploités (inventaire de `preparer_diaporama`, avec légende, texte alternatif, source, date, cours et passage). L'agent ne crée ni capture ni métadonnée : un champ absent reste vide. Une image d'interface simulée est présentée comme une simulation. *Règle du projet, à valider par le responsable éditorial.*
+
+**Dans un diaporama.**
+- Regarder l'image (`voir_visuel`) avant de la placer, et la placer là où le cours l'utilise.
+- L'indice « interface simulée » est tiré de la seule légende et du texte alternatif : en cas de doute, le dire dans les notes.
+- Sans visuel adapté, une diapositive sans image vaut mieux qu'une capture hors sujet ; une capture manquante se demande au responsable éditorial (`CAP`).
+
+**Source.** `CAP` ; `AGENTS.md` : captures de pages publiques ou de conversations fictives.
+
+## DIA-13 — Des compositions variées et lisibles
+
+**Règle.** Le thème Atelier visuel propose, en plus des modèles d'origine, cinq compositions : exemple commenté, avant/après, démonstration en étapes, étude de cas et séparateur de partie. Chaque composition a ses champs, ses limites et son ordre de lecture dans `regles/diaporamas/modeles.json`. Un diaporama évite d'enchaîner plus de trois diapositives du même modèle. *Règle du projet, à valider par le responsable éditorial.*
+
+**Dans un diaporama.**
+- Démonstration : de 2 à 4 étapes (action, puis vérification) ; le site les montre une à une, le .pptx en fait des diapositives fixes « Étape n/N » (aucune animation PowerPoint native), le PDF une vue d'ensemble puis les étapes numérotées.
+- Avant/après : deux versions d'un même texte, libellées ; la différence se lit aussi sans couleur.
+- Étude de cas : un contexte fictif (`DON`) et de 1 à 3 questions pour le groupe.
+- Séparateur : annonce une partie du scénario ; ses notes sont facultatives (exception à `DIA-03`).
+- Une scène animée indique sa `notion` (l'idée qu'elle illustre) : elle n'est jamais choisie d'après un mot-clé.
+
+**Source.** [PLAN] : décision du 21 novembre 2026 ; [RGAA] critères 3 (couleurs) et 10 (présentation de l'information).

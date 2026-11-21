@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Mcp;
 
 use App\Entity\Category;
+use App\Entity\CourseMedia;
 use App\Entity\Diaporama;
 use App\Entity\Menus;
 use App\Entity\Page;
@@ -261,6 +262,189 @@ final class DiaporamaConnectorTest extends McpTestCase
         self::assertSame([], $this->publicPathDiaporamas());
     }
 
+    public function testBriefIsProposedCorrectedAndKeptForTheReviewer(): void
+    {
+        $source = $this->tool(self::CLAUDE, 'preparer_diaporama', ['coursId' => $this->cours->getId()]);
+        $brief = $source['data']['briefPropose'];
+        self::assertSame('propose', $brief['statut']);
+        self::assertSame('apprendre', $brief['public']);
+        self::assertSame('illustree', $brief['intention']);
+        self::assertContains('dureeMinutes', array_column($brief['deductions'], 'champ'));
+        self::assertArrayHasKey('demonstration', $source['data']['modeles']);
+        self::assertStringContainsString('aucune animation PowerPoint native', $source['data']['modeles']['demonstration']['rendus']['pptx']);
+        self::assertStringContainsString('Un mot du titre ne suffit pas', $source['data']['guideScenes']['regle']);
+
+        // La personne corrige la durée et le contexte, puis confirme
+        $corrige = ['dureeMinutes' => 30, 'contexte' => 'Équipe d\'accueil fictive', 'statut' => 'confirme'] + array_diff_key($brief, ['intentionsPossibles' => 1, 'themesPossibles' => 1]);
+        $created = $this->tool(self::CLAUDE, 'creer_diaporama', ['coursId' => $this->cours->getId(), 'brief' => $corrige] + $this->demo());
+        self::assertFalse($created['error'], $created['text']);
+        self::assertSame(30, $created['data']['brief']['dureeMinutes']);
+        self::assertSame('atelier_visuel', $created['data']['theme'], 'Le thème du brief devient celui du diaporama');
+        self::assertNotContains('DIAPO_BRIEF_MANQUANT', array_column($created['data']['controles'], 'code'));
+        self::assertContains('DIAPO_SCENARIO_MANQUANT', array_column($created['data']['controles'], 'code'));
+
+        // Le relecteur (autre connecteur) lit le même brief ; une modification le garde
+        $id = $created['data']['id'];
+        self::assertSame('Équipe d\'accueil fictive', $this->tool(self::CHATGPT, 'voir_diaporama', ['id' => $id])['data']['brief']['contexte']);
+        $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'titre' => 'Une consigne claire']);
+        self::assertSame(30, $this->tool(self::CHATGPT, 'voir_diaporama', ['id' => $id])['data']['brief']['dureeMinutes']);
+
+        $invalide = $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'brief' => ['public' => 'tous', 'dureeMinutes' => 2, 'objectif' => 'x', 'intention' => 'spectacle']]);
+        self::assertTrue($invalide['error']);
+        self::assertStringContainsString('brief', $invalide['text']);
+    }
+
+    public function testScenarioIsCheckedThenReadByTheReviewer(): void
+    {
+        $brouillon = $this->course('cours-non-publie', PageContent::STATUS_DRAFT);
+        $this->entityManager->flush();
+        $scenario = $this->scenario([(int) $this->cours->getId()]);
+
+        $verifie = $this->tool(self::CLAUDE, 'verifier_scenario_diaporama', ['coursId' => $this->cours->getId(), 'scenario' => $scenario, 'brief' => $this->brief()]);
+        self::assertFalse($verifie['error'], $verifie['text']);
+        self::assertTrue($verifie['data']['valide']);
+        self::assertSame(1, $verifie['data']['couverture']['coursCites']);
+        self::assertSame(0, $this->entityManager->getRepository(Diaporama::class)->count([]), 'La vérification n\'enregistre rien');
+
+        // Une source hors cible ou non publiée bloque ; un visuel inventé aussi
+        $mauvais = $this->scenario([(int) $brouillon->getId()]);
+        $mauvais['parties'][1]['visuels'] = [['captureId' => 9999, 'raison' => 'Capture qui n\'existe pas']];
+        $refuse = $this->tool(self::CLAUDE, 'verifier_scenario_diaporama', ['coursId' => $this->cours->getId(), 'scenario' => $mauvais]);
+        self::assertFalse($refuse['data']['valide']);
+        self::assertSame(['DIAPO_SCENARIO_SOURCE', 'DIAPO_SCENARIO_VISUEL'], array_values(array_unique(array_intersect(array_column($refuse['data']['controles'], 'code'), ['DIAPO_SCENARIO_SOURCE', 'DIAPO_SCENARIO_VISUEL']))));
+        $sceneInconnue = $this->scenario([(int) $this->cours->getId()]);
+        $sceneInconnue['parties'][0]['scene'] = ['type' => 'feu_artifice', 'notion' => 'n', 'justification' => 'j'];
+        self::assertStringContainsString('scene/type', $this->tool(self::CLAUDE, 'verifier_scenario_diaporama', ['coursId' => $this->cours->getId(), 'scenario' => $sceneInconnue])['text']);
+
+        // Création avec le scénario validé : chaque diapositive est reliée à sa partie
+        $demo = $this->demo();
+        foreach ($demo['diapositives'] as $i => $diapo) {
+            $demo['diapositives'][$i]['scenarioPartie'] = $i < 5 ? 'comprendre' : 'pratiquer';
+        }
+        $created = $this->tool(self::CLAUDE, 'creer_diaporama', ['coursId' => $this->cours->getId(), 'brief' => $this->brief(), 'scenario' => $scenario] + $demo);
+        self::assertFalse($created['error'], $created['text']);
+        $codes = array_column($created['data']['controles'], 'code');
+        self::assertNotContains('DIAPO_SCENARIO_MANQUANT', $codes);
+        self::assertNotContains('DIAPO_SCENARIO_PARTIE_VIDE', $codes);
+
+        $relu = $this->tool(self::CHATGPT, 'voir_diaporama', ['id' => $created['data']['id']]);
+        self::assertSame('Une semaine fictive du service accueil', $relu['data']['scenario']['filRouge']);
+        self::assertSame(['comprendre', 'pratiquer'], array_column($relu['data']['scenario']['parties'], 'id'));
+        $verif = $this->tool(self::CHATGPT, 'verifier_diaporama', ['id' => $created['data']['id']]);
+        self::assertSame('absent', $verif['data']['controlesNavigateur']['etat']);
+        self::assertNotEmpty($verif['data']['aRelire']);
+
+        // Une partie inconnue est refusée sans rien changer
+        $demo['diapositives'][2]['scenarioPartie'] = 'inexistante';
+        $refuse = $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $created['data']['id'], 'diapositives' => $demo['diapositives']]);
+        self::assertStringContainsString('DIAPO_SCENARIO_PARTIE_INCONNUE', $refuse['text']);
+    }
+
+    public function testVisualsComeOnlyFromTheBackOfficeWithTheirMetadata(): void
+    {
+        $simulee = (new CourseMedia())->setKind(CourseMedia::KIND_CAPTURE)->setCaption('Simulation fictive en trois écrans.')->setAltText('Trois écrans simulés')->setService('Outil');
+        $illustration = (new CourseMedia())->setKind(CourseMedia::KIND_ILLUSTRATION)->setCaption('Schéma des rôles')->setAltText('Quatre rôles');
+        $this->entityManager->persist($simulee);
+        $this->entityManager->persist($illustration);
+        $this->entityManager->flush();
+        $this->cours->setCode(self::COURS.'<p>Avant la capture.</p><p>[capture:'.$simulee->getId().']</p><p>Après la capture. [capture:'.$illustration->getId().']</p>');
+        $this->entityManager->flush();
+
+        $visuels = array_column($this->tool(self::CLAUDE, 'preparer_diaporama', ['coursId' => $this->cours->getId()])['data']['visuels'], null, 'id');
+        self::assertCount(2, $visuels);
+        $v = $visuels[$simulee->getId()];
+        self::assertSame('capture', $v['type']);
+        self::assertTrue($v['interfaceSimulee']);
+        self::assertNull($v['dateCapture'], 'Une date absente reste absente');
+        self::assertSame($this->cours->getId(), $v['usages'][0]['coursId']);
+        self::assertStringContainsString('Avant la capture. [visuel] Après la capture.', $v['usages'][0]['passage']);
+        self::assertNull($visuels[$illustration->getId()]['interfaceSimulee']);
+
+        $fiche = $this->tool(self::CLAUDE, 'voir_visuel', ['id' => $simulee->getId()]);
+        self::assertFalse($fiche['error'], $fiche['text']);
+        self::assertSame('Trois écrans simulés', $fiche['data']['texteAlternatif']);
+        self::assertSame('Fichier image absent sur le serveur.', $fiche['data']['apercuIndisponible']);
+        self::assertTrue($this->tool(self::CLAUDE, 'voir_visuel', ['id' => 99999])['error']);
+
+        // « Aucun visuel adapté » est permis : une présentation illustrée sans capture n'est qu'un avertissement
+        $created = $this->tool(self::CLAUDE, 'creer_diaporama', ['coursId' => $this->cours->getId(), 'brief' => $this->brief()] + $this->demo());
+        self::assertFalse($created['error'], $created['text']);
+        self::assertContains('DIAPO_SANS_VISUEL', array_column($created['data']['controles'], 'code'));
+    }
+
+    public function testCompositionsAreCheckedAndInspectedSlideBySlide(): void
+    {
+        $demo = $this->demo();
+        $demo['diapositives'][3] = ['modele' => 'avant_apres', 'titre' => 'Une consigne précisée', 'avant' => ['texte' => 'Écris un mail.'], 'apres' => ['texte' => 'Rédige un mail court pour annoncer un atelier fictif.'], 'explication' => 'On précise le but et le format.', 'notes' => $demo['diapositives'][3]['notes']];
+        $demo['diapositives'][4] = ['modele' => 'demonstration', 'titre' => 'Essayer dans l\'outil', 'etapes' => [['action' => 'Saisir la consigne', 'verification' => 'Rien de personnel'], ['action' => 'Lire la réponse']], 'notes' => $demo['diapositives'][4]['notes']];
+        $created = $this->tool(self::CLAUDE, 'creer_diaporama', ['coursId' => $this->cours->getId()] + $demo);
+        self::assertFalse($created['error'], $created['text']);
+        $id = $created['data']['id'];
+
+        $diapo = $this->tool(self::CHATGPT, 'voir_diaporama', ['id' => $id, 'diapositive' => 5]);
+        self::assertSame('demonstration', $diapo['data']['diapositive']['modele']);
+        self::assertStringContainsString('une diapositive fixe par étape', $diapo['data']['rendusPrevus']['pptx']);
+        self::assertStringEndsWith('?diapositive=5', $diapo['data']['apercuUrl']);
+        self::assertTrue($this->tool(self::CHATGPT, 'voir_diaporama', ['id' => $id, 'diapositive' => 40])['error']);
+
+        // Texte trop long pour la mise en page, modèle inconnu : refusés sans rien changer
+        // Avec une capture, l'exemple d'un exemple commenté a moins de place (100 caractères) que ce que permet le schéma
+        $capture = (new CourseMedia())->setKind(CourseMedia::KIND_CAPTURE)->setCaption('Capture fictive')->setAltText('Capture fictive');
+        $this->entityManager->persist($capture);
+        $this->entityManager->flush();
+        $trop = $demo;
+        $trop['diapositives'][3] = ['modele' => 'exemple_commente', 'titre' => 'Un exemple', 'exemple' => str_repeat('Exemple trop long ', 8), 'capture' => $capture->getId(), 'commentaires' => ['Un commentaire'], 'notes' => $demo['diapositives'][3]['notes']];
+        self::assertStringContainsString('DIAPO_MODELE_CHAMP_LONG', $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id] + $trop)['text']);
+        $inconnu = $demo;
+        $inconnu['diapositives'][3]['modele'] = 'carrousel';
+        $refus = $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id] + $inconnu);
+        self::assertTrue($refus['error']);
+        self::assertSame('avant_apres', $this->tool(self::CLAUDE, 'voir_diaporama', ['id' => $id])['data']['diapositives'][3]['modele']);
+    }
+
+    public function testRenderReportFromThePreviewReachesTheConnector(): void
+    {
+        $id = $this->tool(self::CLAUDE, 'creer_diaporama', ['coursId' => $this->cours->getId(), 'theme' => 'atelier_visuel'] + $this->demo())['data']['id'];
+        $rapport = ['formats' => ['large', 'etroit'], 'navigateur' => 'Chrome/140', 'problemes' => [
+            ['diapositive' => 3, 'etape' => 1, 'format' => 'etroit', 'element' => ['role' => 'corps', 'extrait' => '<b>Point</b> long'], 'probleme' => 'debordement', 'mesure' => ['depassementPx' => 12.34, 'zone' => ['x' => 5, 'y' => 40, 'w' => 90, 'h' => 12]]],
+            ['probleme' => 'inconnu'],
+        ]];
+
+        // Sans compte administrateur, ou sans jeton, le rapport est refusé
+        $this->client->request('POST', '/api/apercu-diaporamas/'.$id.'/controle-rendu', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($rapport, \JSON_THROW_ON_ERROR));
+        self::assertResponseStatusCodeSame(401);
+        $admin = (new User())->setUsername('editeur')->setRoles(['ROLE_ADMIN'])->setPassword('inutilise');
+        $this->entityManager->persist($admin);
+        $this->entityManager->flush();
+        $this->client->loginUser($admin, 'main');
+        $this->client->request('POST', '/api/apercu-diaporamas/'.$id.'/controle-rendu', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($rapport, \JSON_THROW_ON_ERROR));
+        self::assertResponseStatusCodeSame(403);
+
+        $this->client->request('GET', '/api/apercu-diaporamas/'.$id);
+        $jeton = json_decode((string) $this->client->getResponse()->getContent(), true)['jetonControleRendu'];
+        $this->client->request('POST', '/api/apercu-diaporamas/'.$id.'/controle-rendu', [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_CSRF_TOKEN' => $jeton], json_encode($rapport, \JSON_THROW_ON_ERROR));
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('no-store', (string) $this->client->getResponse()->headers->get('Cache-Control'));
+        $this->client->request('GET', '/logout');
+
+        $verif = $this->tool(self::CLAUDE, 'verifier_diaporama', ['id' => $id]);
+        $rendu = $verif['data']['controlesNavigateur'];
+        self::assertSame('a_jour', $rendu['etat']);
+        self::assertCount(1, $rendu['problemes'], 'Un problème inconnu est écarté');
+        self::assertSame(['role' => 'corps', 'extrait' => 'Point long'], $rendu['problemes'][0]['element']);
+        self::assertSame(12.3, $rendu['problemes'][0]['mesure']['depassementPx']);
+        self::assertContains('DIAPO_RENDU_PROBLEME', array_column($verif['data']['controles'], 'code'));
+        self::assertCount(1, $this->tool(self::CLAUDE, 'voir_diaporama', ['id' => $id, 'diapositive' => 3])['data']['controleRendu']['problemes']);
+
+        // Après correction, le rapport est périmé jusqu'à une nouvelle mesure ; la relecture n'est pas en cause
+        $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'titre' => 'Version corrigée']);
+        self::assertSame('perime', $this->tool(self::CLAUDE, 'verifier_diaporama', ['id' => $id])['data']['controlesNavigateur']['etat']);
+
+        // Le brouillon, son brief et son rapport restent hors de l'API publique
+        $this->client->request('GET', '/api/diaporamas/'.$id, [], [], ['HTTP_ACCEPT' => 'application/ld+json']);
+        self::assertResponseStatusCodeSame(404);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -337,5 +521,29 @@ final class DiaporamaConnectorTest extends McpTestCase
         self::assertResponseIsSuccessful();
 
         return json_decode((string) $this->client->getResponse()->getContent(), true)['member'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function brief(): array
+    {
+        return ['public' => 'apprendre', 'dureeMinutes' => 30, 'objectif' => 'Écrire une consigne claire et vérifier la réponse.', 'contexte' => 'Service accueil fictif', 'theme' => 'atelier_visuel', 'intention' => 'illustree', 'statut' => 'confirme'];
+    }
+
+    /**
+     * @param list<int> $sources
+     * @return array<string, mixed>
+     */
+    private function scenario(array $sources): array
+    {
+        return [
+            'objectifGeneral' => 'Passer d\'une consigne vague à une consigne claire.',
+            'filRouge' => 'Une semaine fictive du service accueil',
+            'parties' => [
+                ['id' => 'comprendre', 'titre' => 'Comprendre', 'intention' => 'Voir ce qui rend une consigne claire.', 'dureeMinutes' => 15, 'coursSources' => $sources, 'verifications' => ['Question au groupe']],
+                ['id' => 'pratiquer', 'titre' => 'Pratiquer', 'intention' => 'Réécrire une consigne.', 'dureeMinutes' => 15, 'coursSources' => $sources, 'activite' => ['consigne' => 'Réécrire une consigne fictive', 'dureeMinutes' => 10]],
+            ],
+        ];
     }
 }
