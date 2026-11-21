@@ -83,7 +83,7 @@ On peut inverser les rôles. Deux connecteurs ajoutés dans le même outil fonct
 | `capturer_page` | Capture d'une page officielle autorisée, avec repères numérotés (voir plus bas) |
 | `preparer_depot_image` | Fiche d'une image de l'ordinateur et adresse de dépôt à usage unique (voir plus bas) |
 
-Consignes : `rediger_cours`, `relire_brouillon`, `rediger_qcm`, `relire_qcm`, `rediger_diaporama`, `relire_diaporama`. Ressources : chaque fichier de `regles/` sous `regles:///<fichier>`.
+Consignes : `rediger_cours`, `relire_brouillon`, `rediger_qcm`, `relire_qcm`, `rediger_diaporama`, `relire_diaporama`. Ressources : chaque fichier de `regles/` sous `regles:///<fichier>`, et le catalogue des scènes sous `scenes:///catalogue.json`.
 
 Règles appliquées par le site, quel que soit l'assistant :
 
@@ -168,16 +168,17 @@ Limites de cette première version :
 
 ## Diaporamas
 
-Un diaporama est une synthèse d'un cours ou d'un chapitre (module), téléchargeable en PowerPoint et en PDF depuis la page publique. L'agent écrit seulement le contenu structuré des diapositives ; le site applique un thème fixe. Les règles sont dans [`regles/08-diaporamas.md`](../regles/08-diaporamas.md) et le plan dans [`PLAN_DIAPORAMAS.md`](PLAN_DIAPORAMAS.md).
+Un diaporama est une synthèse d'un cours, d'un chapitre (module) ou d'un parcours entier, téléchargeable en PowerPoint et en PDF depuis la page publique et projetable sur le site. L'agent écrit seulement le contenu structuré des diapositives et choisit l'identifiant d'un thème du site (`standard` ou `atelier_visuel`) ; il peut ajouter une scène animée du catalogue sur une diapositive, si elle aide à comprendre. Les règles sont dans [`regles/08-diaporamas.md`](../regles/08-diaporamas.md) et le plan dans [`PLAN_DIAPORAMAS.md`](PLAN_DIAPORAMAS.md).
 
-1. Dans Claude, lancer la consigne **`rediger_diaporama`** (cible `cours` ou `module`, identifiant). L'assistant lit le texte source (`preparer_diaporama`), puis crée le diaporama (`creer_diaporama`).
+1. Dans Claude, lancer la consigne **`rediger_diaporama`** (cible `cours`, `module` ou `parcours`, identifiant). L'assistant suit une méthode en 5 temps : lire les sources et leur statut (`preparer_diaporama`), écrire l'idée et l'effet de chaque diapositive, proposer une scène seulement si elle aide (`lister_scenes`), en donner les paramètres ou garder une diapositive fixe, puis créer le brouillon (`creer_diaporama`), le contrôler et donner l'aperçu.
 2. Dans ChatGPT, lancer **`relire_diaporama`** (identifiant du diaporama). Le relecteur enregistre son avis avec `enregistrer_relecture_diaporama`.
 3. Revenir dans Claude : corriger si besoin (`modifier_diaporama`, qui efface la relecture), puis `publier_diaporama` après un avis favorable.
 
 | Outil | Rôle |
 | --- | --- |
-| `preparer_diaporama` | Texte du cours ou des cours du chapitre, public, nombre de diapositives attendu, modèles, captures disponibles, cours non publiés et diaporama existant |
-| `lister_diaporamas`, `voir_diaporama` | Diaporamas (`brouillon`, `a_corriger`, `publie`) ; leurs identifiants sont distincts de ceux des cours |
+| `lister_scenes` | Catalogue des scènes : usage, cas où elles induisent en erreur, champs, limites, étapes, rendu .pptx et PDF, exemple ; thèmes et modèles qui acceptent une scène |
+| `preparer_diaporama` | Texte du cours, des cours du chapitre ou des cours publiés du parcours ; public ; couverture et inventaire des cours ; nombre de diapositives attendu ; modèles, thèmes, scènes ; captures disponibles ; cours non publiés et diaporama existant |
+| `lister_diaporamas`, `voir_diaporama` | Diaporamas (`brouillon`, `a_corriger`, `publie`) ; leurs identifiants sont distincts de ceux des cours. `voir_diaporama` donne `apercuUrl` : l'aperçu mis en forme, réservé aux administrateurs |
 | `creer_diaporama`, `modifier_diaporama` | Écriture ; refusée, sans rien enregistrer, si un contrôle bloquant apparaît. Une cible n'a qu'un diaporama |
 | `verifier_diaporama` | Contrôles automatiques et état de la relecture : dit si le diaporama est publiable |
 | `enregistrer_relecture_diaporama` | Avis d'un autre connecteur ; avec des réserves ou un avis défavorable, le diaporama passe `a_corriger` |
@@ -185,7 +186,9 @@ Un diaporama est une synthèse d'un cours ou d'un chapitre (module), télécharg
 
 Ce que fait le site :
 
-- `/api/diaporamas` ne sert que les diaporamas publiés dont la cible est publiée et ouverte à la personne ; le diaporama d'un chapitre attend que tous ses cours soient publiés et ouverts à tous ;
+- `/api/diaporamas` ne sert que les diaporamas publiés dont la cible est publiée et ouverte à la personne ; le diaporama d'un chapitre attend que tous ses cours soient publiés et ouverts à tous ; celui d'un parcours demande un parcours accessible et au moins un cours publié ouvert à tous, et ne s'appuie que sur ces cours ;
+- une scène invalide (type ou champ inconnu, HTML, référence cassée, limite dépassée) ou placée sur un modèle sans place est refusée, sans rien enregistrer ;
+- l'aperçu `/spa/diaporamas/apercu/{id}` (brouillons compris) n'est ouvert qu'aux administrateurs ; il n'est jamais mis en cache hors ligne ;
 - un diaporama qui copie le cours (`DIAPO_COPIE`), contient une donnée personnelle (`DON-04`) ou n'a pas de notes de l'animateur n'est jamais enregistré ;
 - un diaporama publié reste modifiable par le connecteur : il reste en ligne et sa relecture est effacée ;
 - si le cours change après la rédaction, `DIAPO_SOURCE_PERIMEE` signale le diaporama à mettre à jour.
@@ -233,3 +236,7 @@ Un contenu personnalisé suit les mêmes règles que les autres : jamais de nom,
   ```
 
 - **Hébergement Apache (OVH) :** `public/.htaccess` transmet l'en-tête `Authorization` à PHP. Sans cette règle, tous les jetons seraient refusés.
+
+### Demande prête à copier pour ia2
+
+> Prépare le diaporama du parcours « Automatiser des tâches avec l'IA » avec la consigne `rediger_diaporama` (cible `parcours`, identifiant donné par `lister_catalogue`), thème `atelier_visuel`. Appuie-toi uniquement sur les cours publiés et annonce la couverture réelle. Propose une scène animée seulement là où elle aide à comprendre, avec une justification courte, et garde une diapositive fixe sinon. Crée le brouillon, lance `verifier_diaporama`, donne l'adresse de l'aperçu et le compte rendu (diapositives, scènes et justifications, couverture, avertissements). Ne publie pas : laisse le diaporama en brouillon et demande une relecture `relire_diaporama` à l'autre connecteur.

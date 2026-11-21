@@ -182,6 +182,120 @@ final class DiaporamaCheckerTest extends TestCase
         self::assertSame("Premier Un\n\nSecond Deux", (new DiaporamaSource())->texte((new Diaporama('a'))->setCible(null, $chapitre)));
     }
 
+    public function testThemeIsChosenByIdentifierOnly(): void
+    {
+        self::assertSame([], $this->codes($this->demo()->setTheme('atelier_visuel')));
+        self::assertSame(['DIAPO_THEME_INCONNU'], $this->codes($this->demo()->setTheme('#FF0000'), DraftChecker::BLOCKING));
+    }
+
+    public function testValidSceneOnANotionSlidePasses(): void
+    {
+        $diaporama = $this->demoWith(2, ['scene' => $this->exemple('chaine_traitement')]);
+
+        self::assertSame([], $this->codes($diaporama));
+    }
+
+    /**
+     * @return iterable<string, array{0: int, 1: array<string, mixed>, 2: list<string>}>
+     */
+    public static function invalidScenes(): iterable
+    {
+        $loupe = self::exempleStatique('loupe');
+        yield 'type inconnu' => [2, ['scene' => ['type' => 'carrousel'] + $loupe], ['DIAPO_SCENE_INCONNUE']];
+        yield 'champ inconnu' => [2, ['scene' => $loupe + ['couleur' => 'rouge']], ['DIAPO_SCENE_CHAMP']];
+        yield 'HTML' => [2, ['scene' => ['detail' => ['libelle' => '<b>8</b>', 'legende' => 'Nombre']] + $loupe], ['DIAPO_SCENE_CHAMP']];
+        yield 'référence cassée' => [2, ['scene' => ['zone' => 7] + $loupe], ['DIAPO_SCENE_REFERENCE']];
+        yield 'limite' => [2, ['scene' => ['support' => ['libelle' => str_repeat('a', 40), 'lignes' => ['un', 'deux']]] + $loupe], ['DIAPO_SCENE_LIMITE']];
+        yield 'sans description' => [2, ['scene' => array_diff_key($loupe, ['description' => true])], ['DIAPO_SCENE_DESCRIPTION']];
+        yield 'modèle sans place' => [8, ['scene' => $loupe], ['DIAPO_SCENE_MODELE']];
+        yield 'trop de points' => [3, ['scene' => $loupe], ['DIAPO_SCENE_MODELE']];
+    }
+
+    /**
+     * @param array<string, mixed> $changes
+     * @param list<string> $codes
+     * @dataProvider invalidScenes
+     */
+    public function testInvalidSceneIsBlocking(int $index, array $changes, array $codes): void
+    {
+        self::assertSame($codes, array_values(array_unique($this->codes($this->demoWith($index, $changes), DraftChecker::BLOCKING))));
+    }
+
+    public function testSceneWithoutJustificationAndTooManyScenesWarn(): void
+    {
+        $scene = array_diff_key($this->exemple('escalier'), ['justification' => true]);
+        $diaporama = $this->demoWith(2, ['scene' => $scene]);
+        self::assertSame(['DIAPO_SCENE_JUSTIFICATION'], $this->codes($diaporama, DraftChecker::WARNING));
+
+        $diaporama = $this->withSlide($this->withSlide($this->demo(), 2, ['scene' => $this->exemple('escalier')]), 6, ['scene' => $this->exemple('loupe')]);
+        $diaporama = $this->withSlide($diaporama, 3, ['points' => ['Un', 'Deux'], 'scene' => $this->exemple('entonnoir')]);
+        $diaporama = $this->withSlide($this->withSlide($diaporama, 2, ['points' => ['Un', 'Deux']]), 1, ['scene' => $this->exemple('loupe')]);
+        self::assertContains('DIAPO_SCENES_NOMBREUSES', $this->codes($diaporama, DraftChecker::WARNING));
+    }
+
+    public function testSceneLabelsCopiedFromTheCourseAreBlocking(): void
+    {
+        $scene = $this->exemple('aiguillage');
+        $scene['condition'] = 'répond toujours à la question exacte que la personne lui';
+
+        self::assertContains('DIAPO_COPIE', $this->codes($this->demoWith(2, ['scene' => $scene]), DraftChecker::BLOCKING));
+    }
+
+    public function testPathUsesOnlyPublishedCoursesAndStatesCoverage(): void
+    {
+        $parcours = (new Category())->setName('Automatiser')->setAudience(Category::AUDIENCE_APPRENDRE);
+        $brouillon = $this->cours()->setTitle('Pas encore rédigé')->setStatus(PageContent::STATUS_DRAFT)->setCode('<p>Texte secret du brouillon</p>');
+        $parcours->addPageContent($brouillon);
+        $diaporama = $this->demo()->setCible(null, null, $parcours);
+        $d = $diaporama->getDiapositives();
+        $diaporama->setDiapositives([...\array_slice($d, 0, -1), ...\array_slice($d, 1, 4), end($d)]);
+
+        self::assertSame(Diaporama::TARGET_PATH, $diaporama->getTypeCible());
+        self::assertSame(['DIAPO_PARCOURS_VIDE'], $this->codes($diaporama, DraftChecker::BLOCKING));
+
+        $parcours->addPageContent($this->cours());
+        $source = new DiaporamaSource();
+        self::assertSame(['DIAPO_COUVERTURE_PARTIELLE'], $this->codes($diaporama, DraftChecker::WARNING));
+        self::assertSame([], $this->codes($diaporama, DraftChecker::BLOCKING));
+        self::assertStringNotContainsString('secret', $source->texte($diaporama));
+        self::assertSame([false, true], array_column($source->inventaire($diaporama), 'exploite'));
+
+        $diaporama->setCoursSources($source->inventaire($diaporama));
+        self::assertSame(['exploites' => 1, 'total' => 2], $diaporama->getCouverture());
+        self::assertSame('apprendre', $diaporama->getAudience());
+    }
+
+    public function testPathHasTwelveToTwentySixSlides(): void
+    {
+        $parcours = (new Category())->setName('Automatiser')->setAudience(Category::AUDIENCE_APPRENDRE);
+        $parcours->addPageContent($this->cours());
+
+        self::assertSame(['DIAPO_NOMBRE'], $this->codes($this->demo()->setCible(null, null, $parcours), DraftChecker::BLOCKING));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function exemple(string $type): array
+    {
+        return self::exempleStatique($type);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function exempleStatique(string $type): array
+    {
+        $catalogue = json_decode((string) file_get_contents(__DIR__.'/../../regles/scenes/catalogue.json'), true, flags: \JSON_THROW_ON_ERROR);
+        foreach ($catalogue['scenes'] as $scene) {
+            if ($scene['id'] === $type) {
+                return $scene['exemple'];
+            }
+        }
+
+        throw new \LogicException($type);
+    }
+
     private function cours(): PageContent
     {
         return (new PageContent())

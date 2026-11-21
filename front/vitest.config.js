@@ -7,7 +7,9 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Référentiel partagé avec le serveur (catalogue des scènes des diaporamas)
+      '@regles': fileURLToPath(new URL('../regles', import.meta.url))
     }
   },
   test: {

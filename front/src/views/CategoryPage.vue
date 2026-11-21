@@ -38,6 +38,21 @@
         />
       </div>
 
+      <!-- Présentation du parcours entier (DIA-10) : distincte des diaporamas de chapitre ci-dessous,
+           elle ne s'appuie que sur les cours publiés et annonce sa couverture -->
+      <div
+        v-if="diaporamaParcours"
+        class="parcours-presentation"
+        data-testid="parcours-presentation"
+      >
+        <DiaporamaActions
+          :diaporama="diaporamaParcours"
+          :audience="audience?.key ?? 'apprendre'"
+          cible="parcours"
+          :charger-captures="chargerCaptures"
+        />
+      </div>
+
       <!-- Modules présentés comme des chapitres numérotés et dépliables, avec leurs cours -->
       <ol
         v-if="categoryMenus.length"
@@ -303,6 +318,15 @@ watch(
   { immediate: true },
 )
 
+// Diaporama publié du parcours entier (au plus un par parcours)
+const diaporamaParcours = ref(null)
+const idParcours = computed(() => cats.value?.find(
+  (cat) => cat.name?.toLowerCase() === categoryName.value?.toLowerCase(),
+)?.id ?? null)
+watch(idParcours, async (id) => {
+  diaporamaParcours.value = id ? (await chargerDiaporamas({ parcours: id }))[0] ?? null : null
+}, { immediate: true })
+
 // Couleurs pastel des chapitres
 const chapterVariants = ['blue', 'green', 'purple', 'amber']
 
@@ -317,6 +341,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.parcours-presentation {
+  margin: 0 0 1.5rem;
+}
+
 .chapters {
   display: flex;
   flex-direction: column;

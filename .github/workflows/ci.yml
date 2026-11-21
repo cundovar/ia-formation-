@@ -130,7 +130,8 @@ jobs:
 
   capture:
     name: Moteur de capture (Playwright)
-    runs-on: ubuntu-latest
+    # Playwright 1.57 ne prend pas en charge Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     # Le miroir apt d'Ubuntu est parfois très lent : échouer vite plutôt qu'attendre 6 h.
     timeout-minutes: 20
     steps:
@@ -150,7 +151,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+          key: playwright-${{ runner.os }}-ubuntu-24.04-${{ steps.playwright.outputs.version }}-chromium
       - name: Install Chromium for Playwright
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx --prefix capture playwright-core install chromium

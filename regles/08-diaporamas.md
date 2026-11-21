@@ -1,6 +1,6 @@
 # Diaporamas
 
-Un diaporama du site présente un cours ou un chapitre devant un groupe. Ce n'est pas le cours recopié : c'est une **synthèse pensée pour être projetée**. L'écran montre l'essentiel, en peu de mots ; le détail est dans les notes de la personne qui présente. Le diaporama est rédigé par l'assistant de rédaction, relu par un autre connecteur, puis mis en forme par le site avec un thème fixe (`docs/PLAN_DIAPORAMAS.md`).
+Un diaporama du site présente un cours, un chapitre ou un parcours entier devant un groupe. Ce n'est pas le cours recopié : c'est une **synthèse pensée pour être projetée**. L'écran montre l'essentiel, en peu de mots ; le détail est dans les notes de la personne qui présente. Le diaporama est rédigé par l'assistant de rédaction, relu par un autre connecteur, puis mis en forme par le site avec l'un de ses thèmes (`docs/PLAN_DIAPORAMAS.md`). Une diapositive peut porter une scène animée du catalogue `regles/scenes/catalogue.json` (`DIA-07` à `DIA-09`).
 
 ## DIA-01 — Une idée par diapositive
 
@@ -8,7 +8,7 @@ Un diaporama du site présente un cours ou un chapitre devant un groupe. Ce n'es
 
 **Dans un diaporama.**
 - Un groupe de mots suffit souvent : « Vérifier la source », plutôt qu'une phrase complète.
-- Un diaporama de cours compte de 6 à 12 diapositives ; un diaporama de chapitre, de 10 à 20.
+- Un diaporama de cours compte de 6 à 12 diapositives ; un diaporama de chapitre, de 10 à 20 ; un diaporama de parcours, de 12 à 26.
 - Le titre dit l'idée de la diapositive (« Une consigne en 4 temps »), pas seulement le thème (« Consigne »).
 
 **Source.** [PLAN] : diaporamas synthétiques, prêts à projeter ; `RED-01` : langage clair.
@@ -20,7 +20,8 @@ Un diaporama du site présente un cours ou un chapitre devant un groupe. Ce n'es
 **Dans un diaporama.**
 - Choisir ce qui compte pour un atelier : notions clés, étapes, erreurs fréquentes, une activité.
 - Un exemple du cours peut être repris, mais raccourci et reformulé.
-- Le diaporama d'un chapitre fait la synthèse de tout le chapitre (fil conducteur, progression) : ce n'est pas la suite des diaporamas de ses cours.
+- Le diaporama d'un chapitre fait la synthèse de tout le chapitre (fil conducteur, progression) : ce n'est pas la suite des diaporamas de ses cours. De même, le diaporama d'un parcours raconte le parcours entier ; il ne remplace pas les diaporamas de ses modules, que la page du parcours propose à part.
+- Les libellés d'une scène sont des textes projetés : ils suivent la même règle.
 
 **Source.** [PLAN] : synthèse pour présentation, pas de copier-coller.
 
@@ -51,7 +52,8 @@ Un diaporama du site présente un cours ou un chapitre devant un groupe. Ce n'es
 **Dans un diaporama.**
 - Les captures passent par le back-office (`CAP-02`), avec leur légende et leur texte alternatif (`ACC-01`).
 - L'information ne dépend jamais de la seule couleur.
-- Le thème du site fixe les tailles et les couleurs : l'agent ne choisit pas le design.
+- Le thème du site fixe les tailles, les couleurs, les polices et les positions. L'agent choisit seulement l'identifiant d'un thème du site (`standard` ou `atelier_visuel`) ; il ne fournit ni couleur, ni police, ni position, ni code.
+- Avec une scène, la diapositive garde 3 points au plus, de 44 caractères au plus, pour laisser la place au schéma.
 
 **Source.** [RGAA] : critères 1 (images), 3 (couleurs) et 9 (structure) ; `ACC`.
 
@@ -65,3 +67,47 @@ Un diaporama du site présente un cours ou un chapitre devant un groupe. Ce n'es
 - Mêmes interdits que dans un cours : ni numéro, ni adresse, ni clé d'API, même d'apparence réaliste (`DON-04`, `DON-05`).
 
 **Source.** [PLAN] : décision du 26 octobre 2026 sur la licence ; `DON` ; `CAP-04` : pages officielles.
+
+## DIA-07 — Une scène seulement si elle aide à comprendre
+
+**Règle.** Une scène animée est facultative. Elle sert une idée où l'ordre, le trajet, le tri ou la décision se comprend mieux en le voyant se dérouler. Le champ `justification` dit en une phrase pourquoi elle aide. Un diaporama garde au plus une scène pour trois diapositives. *Règle du projet.*
+
+**Dans un diaporama.**
+- Choisir la scène d'après ce qu'elle montre, pas d'après un mot du titre : un « niveau de stock » qui monte et descend ne justifie pas un escalier, car une marche ne se redescend pas.
+- Chaque scène du catalogue indique quand elle convient et quand elle peut induire en erreur (`peutInduireEnErreur`) : le relire avant de la proposer.
+- Sans scène adaptée, une diapositive fixe vaut mieux qu'une animation approximative.
+
+**Source.** [PLAN] : décision du 21 novembre 2026 (scènes animées) ; `POS` : expliquer sans impressionner.
+
+## DIA-08 — Une scène est une donnée du catalogue
+
+**Règle.** Une scène se décrit par un type du catalogue `regles/scenes/catalogue.json`, sa version et les seuls champs prévus, dans leurs limites. Elle se place sur une diapositive `notion`, `etapes` ou `exercice`. Ni HTML, ni script, ni lien `javascript:` ou `data:`, ni champ inconnu : le site refuse la scène. *Règle du projet.*
+
+**Dans un diaporama.**
+- Le site déduit seul les formes, les positions, les couleurs et le mouvement : mêmes données, mêmes étapes.
+- Les références internes doivent exister (la branche suivie d'un aiguillage, la ligne observée d'une loupe…).
+- Les exemples des scènes de démonstration sont des propositions : les adapter au cours, sans inventer de faits qu'il ne contient pas.
+
+**Source.** [PLAN] ; `AGENTS.md` : jamais d'`eval` ni de code fourni par l'agent.
+
+## DIA-09 — Un équivalent fixe et accessible
+
+**Règle.** Chaque scène a une `description` de 40 à 300 caractères qui dit ce qu'elle montre, du début à la fin, sans parler de mouvement ni de couleur. L'information ne repose jamais sur la seule couleur ni sur le seul mouvement. *Règle du projet.*
+
+**Dans un diaporama.**
+- Le site affiche une vue fixe légendée (étapes numérotées), respecte la réduction des animations demandée par le système et propose une lecture sans mouvement.
+- Le PDF montre la vue fixe avec ses légendes ; le .pptx montre la vue fixe, ou les étapes sur des diapositives successives quand le catalogue le prévoit.
+- Les états sont aussi signalés par un mot ou un symbole (✓, ✗, trait pointillé), pas seulement par une couleur.
+
+**Source.** [RGAA] : critères 3 (couleurs), 13.8 (contenus en mouvement) ; [WCAG] 2.3.3 (animations déclenchées par une interaction).
+
+## DIA-10 — Un parcours, avec ses seuls cours publiés
+
+**Règle.** Le diaporama d'un parcours s'appuie uniquement sur les cours publiés du parcours. Il annonce sa couverture (par exemple « 3 cours rédigés sur 18 ») et ne présente jamais un cours non rédigé comme acquis. Il faut au moins un cours publié. *Règle du projet.*
+
+**Dans un diaporama.**
+- `preparer_diaporama` avec `parcoursId` donne le texte des cours publiés et l'inventaire de tous les cours, avec leur statut.
+- Un module encore vide peut apparaître comme une étape à venir, clairement signalée.
+- Un parcours réservé reste réservé : son diaporama suit les mêmes règles d'accès, aperçu et exports compris.
+
+**Source.** [PLAN] : décision du 21 novembre 2026 ; `RED` : ne pas affirmer ce que le site ne contient pas.

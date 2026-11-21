@@ -81,6 +81,23 @@ final class DiaporamaBackOfficeTest extends WebTestCase
         self::assertSelectorTextContains('body', 'Détaillez chaque temps avec le même fil rouge');
         self::assertSelectorTextContains('body', 'Synthèse fidèle au cours.');
         self::assertSelectorTextContains('body', 'Retirer du site');
+        self::assertSelectorExists('a[href="/spa/diaporamas/apercu/'.$this->id.'"]');
+    }
+
+    public function testSceneIsShownAsItsFixedDescription(): void
+    {
+        $diaporama = $this->entityManager->find(Diaporama::class, $this->id);
+        self::assertNotNull($diaporama);
+        $diapositives = $diaporama->getDiapositives();
+        $diapositives[2]['scene'] = ['type' => 'loupe', 'version' => 1, 'description' => 'La sortie JSON ; la loupe isole la ligne places : 8, un nombre sans guillemets.', 'justification' => 'Un détail à vérifier.'];
+        $diaporama->setDiapositives($diapositives)->setTheme('atelier_visuel');
+        $this->entityManager->flush();
+
+        $this->client->request('GET', '/admin/diaporama/'.$this->id);
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('.scene', 'Scène « loupe » (vue fixe)');
+        self::assertSelectorTextContains('.scene', 'un nombre sans guillemets');
+        self::assertSelectorTextContains('body', 'thème atelier_visuel');
     }
 
     public function testCorrectionKeepsStatusReviewAndFollowUp(): void
@@ -137,13 +154,25 @@ final class DiaporamaBackOfficeTest extends WebTestCase
 
         $this->client->request('POST', '/admin/diaporama/'.$this->id.'/marquer-a-jour');
         self::assertResponseRedirects();
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('body', 'Action refusée');
+        self::assertSelectorTextContains('body', 'À mettre à jour');
+
+        $this->client->submitForm('Marquer comme à jour');
+        self::assertResponseRedirects();
         $this->client->request('GET', '/admin');
         self::assertSelectorTextContains('[data-testid="diaporamas-outdated"]', 'Aucun diaporama à mettre à jour.');
     }
 
     public function testUnpublishedDiaporamaLeavesThePublicApi(): void
     {
+        // Sans jeton, rien ne change
         $this->client->request('POST', '/admin/diaporama/'.$this->id.'/retirer');
+        self::assertResponseRedirects();
+        self::assertTrue($this->diaporama()->isPublished());
+
+        $this->client->request('GET', '/admin/diaporama/'.$this->id);
+        $this->client->submitForm('Retirer du site');
         self::assertResponseRedirects();
 
         $diaporama = $this->diaporama();

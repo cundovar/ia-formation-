@@ -36,9 +36,15 @@ Le site n'affiche aucune autre image que les captures gérées ici. Une image co
 
 ## Diaporamas
 
-Menu **Diaporamas**. Un diaporama est la synthèse d'un cours ou d'un chapitre, téléchargeable en PowerPoint et en PDF sur la page publique. L'assistant de rédaction le rédige et le publie après la relecture d'un autre connecteur (voir `docs/CONNECTEUR.md`) ; le back-office ne crée ni ne publie de diaporama.
+Menu **Diaporamas**. Un diaporama est la synthèse d'un cours, d'un chapitre ou d'un parcours, téléchargeable en PowerPoint et en PDF sur la page publique. L'assistant de rédaction le rédige et le publie après la relecture d'un autre connecteur (voir `docs/CONNECTEUR.md`) ; le back-office ne crée ni ne publie de diaporama.
 
 - **Relire** : la fiche montre l'aperçu de chaque diapositive avec ses notes de présentation, la relecture du connecteur et les contrôles de `regles/controles.md`.
 - **Corriger** : le titre, le sous-titre et les diapositives se modifient en texte (format YAML : chaque diapositive commence par `- modele:`, chaque point par un tiret ; garder les espaces en début de ligne). Une correction qui ajoute un contrôle bloquant n'est pas enregistrée. Le statut et la relecture ne changent pas : un diaporama publié reste en ligne.
 - **Retirer du site** : le diaporama repasse en brouillon et disparaît de la page. Pour le republier, l'assistant de rédaction doit obtenir une nouvelle relecture.
 - **À mettre à jour** : quand le texte du cours (ou d'un cours du chapitre) change après la synthèse, la colonne **Suivi du cours** l'indique et le tableau de bord le liste. Après avoir corrigé le diaporama, ou vérifié qu'il reste juste, cliquer sur **Marquer comme à jour**. L'assistant de rédaction peut aussi le réécrire avec `modifier_diaporama`.
+- **Aperçu mis en forme** : le lien en tête de l'aperçu ouvre `/spa/diaporamas/apercu/{id}` (compte administrateur), même pour un brouillon : projection avec les étapes des scènes, vue fixe légendée, lecture sans mouvement, statut, couverture et contrôles. Le bouton **Vérifier toutes les diapositives** signale un texte qui déborde, sort du cadre ou en chevauche un autre.
+- **Scènes animées** : dans l'aperçu du back-office, une scène apparaît sous sa forme fixe (sa description et sa justification). Elle se corrige dans le YAML, sous la clé `scene` de la diapositive ; une scène invalide n'est pas enregistrée.
+
+### Ouvrir le pilote et la galerie des scènes
+
+Avec un compte administrateur, ouvrir `/spa/diaporamas/demonstration` (lien non affiché dans la navigation, absent du plan du site). Deux onglets : **Pilote : 3 diapositives** (parcours « Automatiser des tâches avec l'IA », thème Atelier visuel) et **Les six scènes**. Ces exemples sont des propositions, gardées dans le code (`front/src/diaporamas/pilote/`) : ils ne sont ni en base ni publiés. On peut y projeter (flèches du clavier, `F` pour le plein écran, `N` pour les notes, `M` pour la lecture sans mouvement), simuler les deux branches d'un aiguillage ou le refus d'un sas, et télécharger le .pptx ou le PDF.

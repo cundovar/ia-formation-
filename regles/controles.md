@@ -47,17 +47,26 @@ La plausibilité des réponses fausses, la justesse de la bonne réponse et le t
 
 ## Contrôles d'un diaporama
 
-Le serveur les applique à un diaporama (`src/Service/Redaction/DiaporamaChecker.php`) ; le connecteur les utilisera à chaque création, modification, vérification et publication (étape D4 de `docs/PLAN_DIAPORAMAS.md`). Les champs de chaque modèle sont listés dans `DiaporamaChecker::MODELES`.
+Le serveur les applique à un diaporama (`src/Service/Redaction/DiaporamaChecker.php`) ; le connecteur les applique à chaque création, modification, vérification et publication. Les champs de chaque modèle sont listés dans `DiaporamaChecker::MODELES`.
 
 | Code | Règle | Niveau | Ce qui est vérifié |
 | --- | --- | --- | --- |
-| `DIAPO_CIBLE` | — | bloquant | Le diaporama vise un cours ou un chapitre, et un seul. |
+| `DIAPO_CIBLE` | — | bloquant | Le diaporama vise un cours, un chapitre ou un parcours, et un seul. |
+| `DIAPO_THEME_INCONNU` | `DIA-05` | bloquant | Le thème est un identifiant du site : `standard` ou `atelier_visuel`. |
+| `DIAPO_OBJECTIF_LONG` | `DIA-01` | bloquant | L'objectif fait 160 caractères au plus. |
+| `DIAPO_PARCOURS_VIDE` | `DIA-10` | bloquant | Un diaporama de parcours demande au moins un cours publié. |
+| `DIAPO_SCENE_INCONNUE` | `DIA-08` | bloquant | Le type et la version de la scène sont dans le catalogue `regles/scenes/catalogue.json`. |
+| `DIAPO_SCENE_CHAMP` | `DIA-08` | bloquant | La scène n'a que les champs prévus, du bon type, sans HTML ni lien `javascript:` ou `data:`. |
+| `DIAPO_SCENE_REFERENCE` | `DIA-08` | bloquant | Les références internes de la scène existent (branche suivie, ligne observée, bloc transformé, au moins un élément retenu et un écarté…). |
+| `DIAPO_SCENE_LIMITE` | `DIA-08` | bloquant | Longueurs et nombres d'éléments dans les limites du catalogue. |
+| `DIAPO_SCENE_DESCRIPTION` | `DIA-09` | bloquant | La scène a une description de 40 à 300 caractères (équivalent fixe). |
+| `DIAPO_SCENE_MODELE` | `DIA-08`, `DIA-05` | bloquant | Une scène se place sur une diapositive `notion`, `etapes` ou `exercice`, avec 3 points au plus de 44 caractères au plus. |
 | `DIAPO_MODELE_INCONNU` | — | bloquant | Chaque diapositive a un modèle connu. |
 | `DIAPO_CHAMP_MANQUANT` | — | bloquant | Les champs du modèle sont remplis : nombre minimal de points ou de réponses, consigne, question, deux colonnes avec un titre, identifiant de capture. |
-| `DIAPO_NOMBRE` | `DIA-01` | bloquant | De 6 à 12 diapositives pour un cours, de 10 à 20 pour un chapitre. |
+| `DIAPO_NOMBRE` | `DIA-01` | bloquant | De 6 à 12 diapositives pour un cours, de 10 à 20 pour un chapitre, de 12 à 26 pour un parcours. |
 | `DIAPO_TITRE_MANQUANT`, `DIAPO_TITRE_LONG` | `DIA-01`, `DIA-05` | bloquant | Chaque diapositive a un titre de 60 caractères au plus. |
 | `DIAPO_TROP_DE_POINTS` | `DIA-01` | bloquant | 5 points au plus par diapositive, et le maximum du modèle (4 pour une notion, 4 réponses…). |
-| `DIAPO_COPIE` | `DIA-02` | bloquant | Aucun passage de plus de 8 mots identiques au cours (ou aux cours du chapitre), sans tenir compte de la casse ni de la ponctuation. Les notes ne sont pas comparées. |
+| `DIAPO_COPIE` | `DIA-02` | bloquant | Aucun passage de plus de 8 mots identiques au cours (aux cours du chapitre, ou aux cours publiés du parcours), sans tenir compte de la casse ni de la ponctuation. Les libellés et la description d'une scène sont comparés ; les notes ne le sont pas. |
 | `CAPTURE_INCONNUE` | `CAP-02`, `DIA-05` | bloquant | Chaque capture citée existe dans le back-office et a un texte alternatif. |
 | `DIAPO_CHAPITRE_INCOMPLET` | — | bloquant | Tous les cours du chapitre sont publiés avant son diaporama. |
 | `NUMERO_SECURITE_SOCIALE`, `IBAN`, `TELEPHONE`, `CLE_API`, `COURRIEL_REEL` | `DON-04` | bloquant | Mêmes contrôles que pour un cours, sur les diapositives et les notes. |
@@ -67,5 +76,10 @@ Le serveur les applique à un diaporama (`src/Service/Redaction/DiaporamaChecker
 | `DIAPO_NOTES_LONGUEUR` | `DIA-03` | avertissement | Notes de 300 à 900 caractères. |
 | `DIAPO_SANS_PRATIQUE` | `DIA-04` | avertissement | Un diaporama de cours « apprendre » a une diapositive d'exercice ou de question. |
 | `DIAPO_SOURCE_PERIMEE` | — | avertissement | Le cours a changé depuis le diaporama (empreinte de la source différente). |
+| `DIAPO_COUVERTURE_PARTIELLE` | `DIA-10` | avertissement | Le parcours a des cours non publiés : le diaporama annonce sa couverture. |
+| `DIAPO_SCENE_JUSTIFICATION` | `DIA-07` | avertissement | La scène dit en une phrase pourquoi elle aide (`justification`). |
+| `DIAPO_SCENES_NOMBREUSES` | `DIA-07` | avertissement | Une scène pour trois diapositives au plus. |
 
-La qualité de la synthèse, le choix des idées et la clarté des notes ne se vérifient pas automatiquement : ils relèvent de la relecture.
+La qualité de la synthèse, le choix des idées et la clarté des notes ne se vérifient pas automatiquement : ils relèvent de la relecture. La pertinence d'une scène (`DIA-07`) aussi : le relecteur vérifie qu'elle n'induit pas en erreur.
+
+Ces contrôles tournent à l'enregistrement, sans navigateur. Les scènes sont validées par la même logique côté serveur (`SceneValidator.php`) et côté site (`front/src/diaporamas/scenes/valider.js`), sur le jeu d'exemples `regles/scenes/exemples/`. Le rendu réel (débordement, chevauchement, sortie du cadre) se vérifie dans le navigateur : le bouton « Vérifier toutes les diapositives » de l'aperçu administrateur parcourt chaque étape de chaque scène. Les limites du catalogue sont choisies pour tenir dans le thème ; les tests du site les éprouvent aux longueurs maximales, en 16:9 et en lecture mobile, et vérifient les contrastes du thème (4,5:1 pour le texte, 3:1 pour les traits).

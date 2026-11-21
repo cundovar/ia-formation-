@@ -43,25 +43,27 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { ESPACE_PARAGRAPHE } from '@/diaporamas/theme'
-import { taillePolice, zone } from './geometrie'
+import { computed, inject, unref } from 'vue'
+import { ESPACE_PARAGRAPHE, FORMAT } from '@/diaporamas/theme'
+import { CLE_FORMAT, taillePolice, zone } from './geometrie'
 
 const props = defineProps({
   element: { type: Object, required: true },
 })
 
+const format = inject(CLE_FORMAT, FORMAT)
+
 const alignement = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }
 
 const style = computed(() => ({
-  ...zone(props.element),
-  '--taille': taillePolice(props.element.taille),
+  ...zone(props.element, unref(format)),
+  '--taille': taillePolice(props.element.taille, unref(format)),
   color: `#${props.element.couleur}`,
   textAlign: props.element.align,
   justifyContent: alignement[props.element.valign] ?? 'flex-start',
 }))
 
-const espace = { marginBottom: taillePolice(ESPACE_PARAGRAPHE) }
+const espace = computed(() => ({ marginBottom: taillePolice(ESPACE_PARAGRAPHE, unref(format)) }))
 </script>
 
 <style scoped>
@@ -71,6 +73,8 @@ const espace = { marginBottom: taillePolice(ESPACE_PARAGRAPHE) }
   display: flex;
   flex-direction: column;
   line-height: 1.2;
+  /* Un identifiant long (places_restantes) se coupe plutôt que de sortir de son bloc, comme dans PowerPoint */
+  overflow-wrap: anywhere;
 }
 
 .diapositive-texte--gras {

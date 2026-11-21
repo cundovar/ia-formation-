@@ -1,0 +1,350 @@
+{
+  "description": "Scènes refusées, avec le code attendu. Testées par PHPUnit (SceneValidatorTest) et Vitest (scenes.spec.js).",
+  "cas": [
+    {
+      "cas": "type inconnu",
+      "attendu": "SCENE_INCONNUE",
+      "scene": {
+        "type": "carrousel",
+        "version": 1,
+        "support": {
+          "libelle": "Sortie OUTPUT (JSON)",
+          "lignes": [
+            "\"atelier\": \"Découverte\",",
+            "\"places\": 8,"
+          ]
+        },
+        "zone": 1,
+        "detail": {
+          "libelle": "8 sans guillemets",
+          "legende": "Le nombre 8 n'est pas du texte : le champ places est de type Number."
+        },
+        "description": "La loupe isole la ligne places : 8 ; sans guillemets, 8 est un nombre et non du texte.",
+        "justification": "Le cours demande de vérifier le type des valeurs."
+      }
+    },
+    {
+      "cas": "version inconnue",
+      "attendu": "SCENE_INCONNUE",
+      "scene": {
+        "type": "loupe",
+        "version": 2,
+        "support": {
+          "libelle": "Sortie OUTPUT (JSON)",
+          "lignes": [
+            "\"atelier\": \"Découverte\",",
+            "\"places\": 8,"
+          ]
+        },
+        "zone": 1,
+        "detail": {
+          "libelle": "8 sans guillemets",
+          "legende": "Le nombre 8 n'est pas du texte : le champ places est de type Number."
+        },
+        "description": "La loupe isole la ligne places : 8 ; sans guillemets, 8 est un nombre et non du texte.",
+        "justification": "Le cours demande de vérifier le type des valeurs."
+      }
+    },
+    {
+      "cas": "champ inconnu (couleur imposée)",
+      "attendu": "SCENE_CHAMP_INCONNU",
+      "scene": {
+        "type": "loupe",
+        "version": 1,
+        "support": {
+          "libelle": "Sortie OUTPUT (JSON)",
+          "lignes": [
+            "\"atelier\": \"Découverte\",",
+            "\"places\": 8,"
+          ]
+        },
+        "zone": 1,
+        "detail": {
+          "libelle": "8 sans guillemets",
+          "legende": "Le nombre 8 n'est pas du texte : le champ places est de type Number."
+        },
+        "description": "La loupe isole la ligne places : 8 ; sans guillemets, 8 est un nombre et non du texte.",
+        "justification": "Le cours demande de vérifier le type des valeurs.",
+        "couleur": "rouge"
+      }
+    },
+    {
+      "cas": "champ inconnu (script)",
+      "attendu": "SCENE_CHAMP_INCONNU",
+      "scene": {
+        "type": "escalier",
+        "version": 1,
+        "marches": [
+          {
+            "libelle": "Comprendre"
+          },
+          {
+            "libelle": "Construire"
+          },
+          {
+            "libelle": "Fiabiliser"
+          }
+        ],
+        "repere": 1,
+        "description": "Trois marches de plus en plus hautes : comprendre, construire, fiabiliser. Le repère s'arrête sur la marche 2, construire.",
+        "justification": "Les trois modules forment une progression réelle.",
+        "script": "alert(1)"
+      }
+    },
+    {
+      "cas": "champ manquant",
+      "attendu": "SCENE_CHAMP_MANQUANT",
+      "scene": {
+        "type": "aiguillage",
+        "version": 1,
+        "branches": [
+          {
+            "id": "disponible",
+            "libelle": "Proposer l'inscription"
+          },
+          {
+            "id": "complet",
+            "libelle": "Liste d'attente"
+          }
+        ],
+        "brancheSuivie": "complet",
+        "description": "L'atelier est complet. La demande suit la branche liste d'attente.",
+        "justification": "Montrer qu'une condition fixe choisit le chemin."
+      }
+    },
+    {
+      "cas": "balise HTML",
+      "attendu": "SCENE_HTML",
+      "scene": {
+        "type": "aiguillage",
+        "version": 1,
+        "condition": "<script>alert(1)</script>",
+        "branches": [
+          {
+            "id": "disponible",
+            "libelle": "Proposer l'inscription"
+          },
+          {
+            "id": "complet",
+            "libelle": "Liste d'attente"
+          }
+        ],
+        "brancheSuivie": "complet",
+        "description": "L'atelier est complet. La demande suit la branche liste d'attente.",
+        "justification": "Montrer qu'une condition fixe choisit le chemin."
+      }
+    },
+    {
+      "cas": "lien javascript:",
+      "attendu": "SCENE_HTML",
+      "scene": {
+        "type": "sas_validation",
+        "version": 1,
+        "fiche": "Message",
+        "action": "javascript:alert(1)",
+        "question": "Le texte est-il exact et utile ?",
+        "decision": "refus",
+        "suiteAccord": "Envoi simulé, aucun message réel",
+        "suiteRefus": "Le message n'est pas envoyé",
+        "description": "Un message arrive au sas et s'arrête. Le refus laisse l'action bloquée : le message n'est pas envoyé.",
+        "justification": "Montrer que le refus bloque réellement l'action."
+      }
+    },
+    {
+      "cas": "texte trop long",
+      "attendu": "SCENE_LIMITE",
+      "scene": {
+        "type": "aiguillage",
+        "version": 1,
+        "condition": "vérifier données vérifier données vérifier donnée",
+        "branches": [
+          {
+            "id": "disponible",
+            "libelle": "Proposer l'inscription"
+          },
+          {
+            "id": "complet",
+            "libelle": "Liste d'attente"
+          }
+        ],
+        "brancheSuivie": "complet",
+        "description": "L'atelier est complet. La demande suit la branche liste d'attente.",
+        "justification": "Montrer qu'une condition fixe choisit le chemin."
+      }
+    },
+    {
+      "cas": "trop d’éléments",
+      "attendu": "SCENE_LIMITE",
+      "scene": {
+        "type": "escalier",
+        "version": 1,
+        "marches": [
+          {
+            "libelle": "Étape"
+          },
+          {
+            "libelle": "Étape"
+          },
+          {
+            "libelle": "Étape"
+          },
+          {
+            "libelle": "Étape"
+          },
+          {
+            "libelle": "Étape"
+          },
+          {
+            "libelle": "Étape"
+          }
+        ],
+        "repere": 1,
+        "description": "Trois marches de plus en plus hautes : comprendre, construire, fiabiliser. Le repère s'arrête sur la marche 2, construire.",
+        "justification": "Les trois modules forment une progression réelle."
+      }
+    },
+    {
+      "cas": "branche suivie inconnue",
+      "attendu": "SCENE_REFERENCE",
+      "scene": {
+        "type": "aiguillage",
+        "version": 1,
+        "condition": "Reste-t-il une place ?",
+        "branches": [
+          {
+            "id": "disponible",
+            "libelle": "Proposer l'inscription"
+          },
+          {
+            "id": "complet",
+            "libelle": "Liste d'attente"
+          }
+        ],
+        "brancheSuivie": "ailleurs",
+        "description": "L'atelier est complet. La demande suit la branche liste d'attente.",
+        "justification": "Montrer qu'une condition fixe choisit le chemin."
+      }
+    },
+    {
+      "cas": "bloc de transformation absent",
+      "attendu": "SCENE_REFERENCE",
+      "scene": {
+        "type": "chaine_traitement",
+        "version": 1,
+        "fiche": {
+          "libelle": "Fiche d'atelier",
+          "valeur": "places 8 · inscrits 3"
+        },
+        "blocs": [
+          {
+            "libelle": "Préparer la fiche"
+          },
+          {
+            "libelle": "Expression"
+          },
+          {
+            "libelle": "Préparer le résumé"
+          }
+        ],
+        "transformation": {
+          "bloc": 3,
+          "valeur": "5"
+        },
+        "description": "Une fiche d'atelier passe par trois nœuds. Au nœud Expression, 8 places et 3 inscrits deviennent 5 places restantes.",
+        "justification": "Le cours montre le trajet réel des données et le calcul."
+      }
+    },
+    {
+      "cas": "ligne observée absente",
+      "attendu": "SCENE_REFERENCE",
+      "scene": {
+        "type": "loupe",
+        "version": 1,
+        "support": {
+          "libelle": "Sortie OUTPUT (JSON)",
+          "lignes": [
+            "\"atelier\": \"Découverte\",",
+            "\"places\": 8,"
+          ]
+        },
+        "zone": 9,
+        "detail": {
+          "libelle": "8 sans guillemets",
+          "legende": "Le nombre 8 n'est pas du texte : le champ places est de type Number."
+        },
+        "description": "La loupe isole la ligne places : 8 ; sans guillemets, 8 est un nombre et non du texte.",
+        "justification": "Le cours demande de vérifier le type des valeurs."
+      }
+    },
+    {
+      "cas": "entonnoir sans élément écarté",
+      "attendu": "SCENE_REFERENCE",
+      "scene": {
+        "type": "entonnoir",
+        "version": 1,
+        "critere": "Utile au besoin du workflow",
+        "elements": [
+          {
+            "libelle": "full_name",
+            "retenu": true
+          },
+          {
+            "libelle": "html_url",
+            "retenu": true
+          },
+          {
+            "libelle": "forks_count",
+            "retenu": true
+          }
+        ],
+        "description": "Trois champs entrent. Le critère retient full_name et html_url, et écarte forks_count.",
+        "justification": "Le cours demande de ne garder que les champs utiles."
+      }
+    },
+    {
+      "cas": "décision inconnue",
+      "attendu": "SCENE_TYPE",
+      "scene": {
+        "type": "sas_validation",
+        "version": 1,
+        "fiche": "Message",
+        "action": "Envoyer le message",
+        "question": "Le texte est-il exact et utile ?",
+        "decision": "peut-être",
+        "suiteAccord": "Envoi simulé, aucun message réel",
+        "suiteRefus": "Le message n'est pas envoyé",
+        "description": "Un message arrive au sas et s'arrête. Le refus laisse l'action bloquée : le message n'est pas envoyé.",
+        "justification": "Montrer que le refus bloque réellement l'action."
+      }
+    },
+    {
+      "cas": "description trop courte",
+      "attendu": "SCENE_LIMITE",
+      "scene": {
+        "type": "loupe",
+        "version": 1,
+        "support": {
+          "libelle": "Sortie OUTPUT (JSON)",
+          "lignes": [
+            "\"atelier\": \"Découverte\",",
+            "\"places\": 8,"
+          ]
+        },
+        "zone": 1,
+        "detail": {
+          "libelle": "8 sans guillemets",
+          "legende": "Le nombre 8 n'est pas du texte : le champ places est de type Number."
+        },
+        "description": "Une loupe.",
+        "justification": "Le cours demande de vérifier le type des valeurs."
+      }
+    },
+    {
+      "cas": "scène qui n’est pas un objet",
+      "attendu": "SCENE_TYPE",
+      "scene": [
+        "escalier"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "proposition": "Démonstration du thème Atelier visuel. Proposition non publiée, à relire : seule la diapositive 2 synthétise un cours publié (cours 2).",
+  "titre": "Automatiser des tâches avec l’IA",
+  "sousTitre": "Parcours en 5 modules",
+  "objectif": "Construire un processus simple, contrôlé et utile.",
+  "audience": "apprendre",
+  "theme": "atelier_visuel",
+  "cible": { "type": "parcours", "id": 1 },
+  "coursSources": [
+    { "id": 1, "titre": "Découvrir les nœuds, les déclencheurs et les données", "statut": "publie", "exploite": true },
+    { "id": 2, "titre": "Relier des étapes et transformer des données", "statut": "publie", "exploite": true },
+    { "id": 3, "titre": "Connecter un service et protéger ses identifiants", "statut": "publie", "exploite": true }
+  ],
+  "couverture": { "exploites": 3, "total": 18 },
+  "diapositives": [
+    {
+      "modele": "titre",
+      "partie": "Automatiser des tâches avec l’IA",
+      "titre": "Construire un processus utile et contrôlé",
+      "sousTitre": "Parcours en 5 modules",
+      "duree": "Atelier de 2 heures",
+      "notes": "Cette présentation s’appuie sur les cours publiés du parcours : 3 cours rédigés sur 18 intitulés, tous dans le module 2. Les autres fiches sont encore vides ; tout ce qui les concerne est une proposition pédagogique à relire, pas une restitution de cours existants. Présenter la progression : comprendre, construire, intégrer une étape IA, fiabiliser, puis réaliser un projet. Demander au groupe une tâche répétitive et un résultat observable. Les animations sont locales, sans appel à n8n ni à un modèle d’IA."
+    },
+    {
+      "modele": "notion",
+      "partie": "Module 2 · Construire un premier workflow dans n8n",
+      "titre": "Relier et transformer les données",
+      "points": [
+        "Lire les données reçues dans INPUT",
+        "Calculer avec une expression",
+        "Relancer pour vérifier un changement"
+      ],
+      "scene": {
+        "type": "chaine_traitement",
+        "version": 1,
+        "fiche": { "libelle": "Fiche d’atelier", "valeur": "places 8 · inscrits 3" },
+        "blocs": [
+          { "libelle": "Préparer la fiche" },
+          { "libelle": "Expression" },
+          { "libelle": "Préparer le résumé" }
+        ],
+        "transformation": { "bloc": 1, "valeur": "places_restantes : 5" },
+        "description": "Une fiche d’atelier (8 places, 3 inscrits) passe par Préparer la fiche, puis par une expression qui calcule 8 − 3. Le résumé reçoit 5 places restantes.",
+        "justification": "Le cours 2 montre le trajet réel des données entre trois nœuds et le calcul fait par l’expression."
+      },
+      "notes": "Synthèse du cours publié 2. Une valeur fixe est saisie ; une expression utilise les données reçues. $json désigne les données de l’item en entrée. Reprendre un champ ne modifie pas sa source. Pour construire le message, refaire le calcul à partir de l’entrée : le champ places_restantes créé dans ce même nœud n’est pas encore un champ de $json. Toujours relancer la chaîne complète pour vérifier les modifications. Exemple à proposer : atelier Dessin, 12 places et 4 inscrits ; résultat attendu, 8 places et un message cohérent."
+    },
+    {
+      "modele": "exercice",
+      "partie": "Module 2 · Construire un premier workflow dans n8n",
+      "titre": "Atelier : expliquer son workflow",
+      "consigne": "Présentez votre workflow en deux minutes, puis expliquez comment protéger un identifiant.",
+      "duree": 15,
+      "points": [
+        "Montrer le déclencheur et les liaisons",
+        "Comparer INPUT et OUTPUT",
+        "Distinguer donnée publique et secret"
+      ],
+      "notes": "Cette activité reprend les vérifications des cours publiés du module 2. Une coche d’exécution ne suffit pas : il faut contrôler les valeurs de sortie et leur type. Demander une explication orale du trajet des données. En cas de résultat inchangé, vérifier l’exécution complète et l’absence de données épinglées. Terminer par la question des identifiants : un secret se range dans un credential dédié, jamais dans un champ, une note ou une URL."
+    }
+  ]
+}

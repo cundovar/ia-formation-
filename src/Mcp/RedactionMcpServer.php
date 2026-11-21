@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Mcp;
 
 use App\Entity\Category;
+use App\Entity\Diaporama;
 use App\Service\OAuth\PublicUrl;
 use App\Service\Redaction\AccesPersonnaliseService;
 use App\Service\Redaction\DiaporamaChecker;
 use App\Service\Redaction\DiaporamaService;
+use App\Service\Redaction\SceneCatalogue;
 use App\Service\Redaction\QcmDraftChecker;
 use App\Service\Redaction\QcmDraftService;
 use App\Service\Redaction\RedactionError;
@@ -36,7 +38,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 final class RedactionMcpServer
 {
     public const NAME = 'formation-ia-redaction';
-    public const VERSION = '0.10.0';
+    public const VERSION = '0.11.0';
 
     public const INSTRUCTIONS = <<<'TXT'
         Assistant de rédaction du site de formation à l'intelligence artificielle.
@@ -52,10 +54,14 @@ final class RedactionMcpServer
         puis publier_qcm. Si le catalogue n'a pas de thème ou de niveau adapté, créez-le avec creer_theme_qcm
         ou creer_niveau_qcm (après accord de la personne), puis relisez le catalogue avant de créer le QCM.
         Un QCM publié rejoint la série publique de son thème et de son niveau.
-        Pour un diaporama de cours ou de chapitre (module) : consigne « rediger_diaporama », preparer_diaporama pour
-        lire la source, puis creer_diaporama. C'est une synthèse pour projeter, jamais une copie du cours (DIA-02) ;
-        le site applique son thème, l'agent ne choisit pas le design. Relecture par l'autre connecteur avec
-        « relire_diaporama », puis publier_diaporama. Un chapitre attend que tous ses cours soient publiés.
+        Pour un diaporama de cours, de chapitre (module) ou de parcours entier : consigne « rediger_diaporama »,
+        preparer_diaporama pour lire la source, puis creer_diaporama. C'est une synthèse pour projeter, jamais une
+        copie du cours (DIA-02). Le site applique son thème : l'agent choisit seulement son identifiant
+        (standard ou atelier_visuel), jamais une couleur, une police ou une position. Une diapositive peut porter
+        une scène animée du catalogue (lister_scenes), seulement si elle aide à comprendre (DIA-07 à DIA-09).
+        Relecture par l'autre connecteur avec « relire_diaporama », puis publier_diaporama. Un chapitre attend
+        que tous ses cours soient publiés ; un parcours s'appuie sur ses seuls cours publiés et annonce sa
+        couverture (DIA-10).
         Cours et QCM personnalisés : un cours, un parcours ou un QCM peut être réservé à certains apprenants
         (comptes du site, lister_apprenants). Passez apprenantIds à creer_brouillon ou à publier_qcm, ou utilisez
         attribuer_acces ; le contenu n'est alors visible que par eux, et les règles et la relecture restent les mêmes.
@@ -71,6 +77,7 @@ final class RedactionMcpServer
         private RedactionService $redaction,
         private QcmDraftService $qcmDrafts,
         private DiaporamaService $diaporamas,
+        private SceneCatalogue $scenes,
         private AccesPersonnaliseService $acces,
         private Regles $regles,
         private LoggerInterface $logger,
@@ -120,17 +127,22 @@ final class RedactionMcpServer
         );
 
         $builder->add(
-            new Prompt('rediger_diaporama', 'Rédiger un diaporama', 'Démarche pour synthétiser un cours ou un chapitre en diaporama prêt à projeter, puis le faire relire avant publication.', [
-                new PromptArgument('cible', 'cours (un cours) ou module (un chapitre)', true),
-                new PromptArgument('id', 'Identifiant du cours ou du module (lister_cours_publies, lister_catalogue)', true),
+            new Prompt('rediger_diaporama', 'Rédiger un diaporama', 'Démarche en 5 temps pour synthétiser un cours, un chapitre ou un parcours en diaporama prêt à projeter, avec des scènes animées seulement si elles aident, puis le faire relire avant publication.', [
+                new PromptArgument('cible', 'cours (un cours), module (un chapitre) ou parcours (un parcours entier)', true),
+                new PromptArgument('id', 'Identifiant du cours, du module ou du parcours (lister_cours_publies, lister_catalogue)', true),
             ]),
-            new CallbackPrompt(fn (array $args) => ['user' => self::diaporamaWritingPrompt(($args['cible'] ?? '') === 'module' ? 'module' : 'cours', (int) ($args['id'] ?? 0))]),
+            new CallbackPrompt(fn (array $args) => ['user' => self::diaporamaWritingPrompt(\in_array($args['cible'] ?? '', ['module', 'parcours'], true) ? $args['cible'] : 'cours', (int) ($args['id'] ?? 0))]),
         );
         $builder->add(
             new Prompt('relire_diaporama', 'Relire un diaporama', "Consigne de l'agent relecteur d'un diaporama : fidélité au cours, synthèse, notes et règles DIA, sans modifier le diaporama.", [
                 new PromptArgument('id', 'Identifiant du diaporama', true),
             ]),
             new CallbackPrompt(fn (array $args) => ['user' => self::diaporamaReviewPrompt((int) ($args['id'] ?? 0))]),
+        );
+
+        $builder->add(
+            new ResourceDefinition('scenes:///catalogue.json', 'scenes-catalogue', 'Catalogue des scènes animées', 'Scènes des diaporamas : usages, cas trompeurs, champs, limites et exemples (regles/scenes/catalogue.json)', 'application/json'),
+            new CallbackResource(fn () => json_encode($this->scenes->tout(), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR)),
         );
 
         foreach ($this->regles->files() as $file => $text) {
@@ -492,33 +504,55 @@ final class RedactionMcpServer
                 'url' => ['type' => 'string', 'format' => 'uri'],
             ], ['libelle'])],
             'date' => $court + ['description' => 'Modèle fin : date du diaporama, par exemple « 26 octobre 2026 »'],
+            'partie' => ['type' => 'string', 'maxLength' => DiaporamaChecker::MAX_PARTIE_LENGTH, 'description' => 'Facultatif : repère de partie affiché au-dessus du titre (thème atelier_visuel), par exemple « Module 2 · Construire »'],
+            'objectif' => $court + ['description' => 'Modèle titre : ce que la séance permet de faire (sinon, l\'objectif du diaporama)'],
+            'scene' => [
+                'type' => 'object',
+                'description' => sprintf('Facultatif, modèles %s : scène animée du catalogue (lister_scenes), seulement si elle aide à comprendre (DIA-07). Donnez type, version, description (équivalent fixe, DIA-09), justification et les seuls champs prévus pour ce type ; avec une scène, %d points au plus de %d caractères au plus. Le site vérifie la scène et refuse tout champ inconnu, HTML ou script.', implode(', ', $this->scenes->modelesAutorises()), $this->scenes->limitesDiapositive()['pointsMax'], $this->scenes->limitesDiapositive()['longueurPointMax']),
+                'properties' => [
+                    'type' => ['type' => 'string', 'enum' => $this->scenes->types()],
+                    'version' => ['type' => 'integer', 'enum' => [$this->scenes->version()]],
+                    'description' => ['type' => 'string', 'minLength' => 40, 'maxLength' => 300, 'description' => 'Ce que montre la scène, du début à la fin, sans parler de mouvement ni de couleur'],
+                    'justification' => ['type' => 'string', 'maxLength' => 200, 'description' => 'Pourquoi cette scène aide à comprendre cette idée (non projetée)'],
+                ],
+                'required' => ['type', 'version', 'description'],
+                // Champs propres à chaque type : vérifiés par le serveur d'après le catalogue
+                'additionalProperties' => true,
+            ],
             'notes' => ['type' => 'string', 'maxLength' => 2000, 'description' => sprintf('Notes de présentation, de %d à %d caractères : ce que la personne qui présente dit (DIA-03). Facultatives sur la première et la dernière diapositive', ...DiaporamaChecker::NOTES_LENGTH)],
         ], ['modele']);
         $champs = [
             'titre' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255],
             'sousTitre' => ['type' => 'string', 'maxLength' => 255],
-            'diapositives' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 20, 'items' => $diapositive, 'description' => 'De 6 à 12 diapositives pour un cours, de 10 à 20 pour un chapitre ; la première est le modèle titre, la dernière le modèle fin'],
+            'diapositives' => ['type' => 'array', 'minItems' => 1, 'maxItems' => DiaporamaChecker::NOMBRE[Diaporama::TARGET_PATH][1], 'items' => $diapositive, 'description' => 'De 6 à 12 diapositives pour un cours, de 10 à 20 pour un chapitre, de 12 à 26 pour un parcours ; la première est le modèle titre, la dernière le modèle fin'],
+            'theme' => ['type' => 'string', 'enum' => Diaporama::THEMES, 'description' => 'Identifiant d\'un thème du site (DIA-05). standard par défaut ; atelier_visuel : fond crème, schéma au centre, encadrés en bas'],
+            'objectif' => ['type' => 'string', 'maxLength' => DiaporamaChecker::MAX_OBJECTIF_LENGTH, 'description' => 'Ce que la présentation doit permettre, en une phrase (affiché sur l\'ouverture et dans l\'aperçu)'],
         ];
         $cible = [
             'coursId' => self::ID + ['description' => "Diaporama d'un cours"],
             'moduleId' => self::ID + ['description' => "Ou diaporama d'un chapitre (module de lister_catalogue)"],
+            'parcoursId' => self::ID + ['description' => "Ou diaporama d'un parcours entier (lister_catalogue) : seuls ses cours publiés sont exploités (DIA-10)"],
         ];
 
         return [
             [
-                new Tool('preparer_diaporama', 'Préparer un diaporama', self::schema($cible), "À lire avant d'écrire : texte du cours (ou de tous les cours du chapitre), public, modèles de diapositive et leurs champs, nombre de diapositives attendu, captures déjà utilisées, cours du chapitre pas encore publiés et diaporama existant. Ne modifie rien.", $readOnly),
-                fn (array $args) => $this->diaporamas->source(isset($args['coursId']) ? (int) $args['coursId'] : null, isset($args['moduleId']) ? (int) $args['moduleId'] : null),
+                new Tool('lister_scenes', 'Lister les scènes animées', self::schema([]), 'Catalogue versionné des scènes animées (escalier, chaîne de traitement, aiguillage, entonnoir, loupe, sas de validation) : à quoi sert chacune, quand elle peut induire en erreur, ses champs et limites, ses étapes, son rendu en .pptx et PDF et un exemple. Aussi : thèmes du site et modèles de diapositive qui acceptent une scène. Ne modifie rien.', $readOnly),
+                fn () => $this->diaporamas->scenes(),
+            ],
+            [
+                new Tool('preparer_diaporama', 'Préparer un diaporama', self::schema($cible), "À lire avant d'écrire : texte du cours (de tous les cours du chapitre, ou des cours publiés du parcours), public, couverture et inventaire des cours avec leur statut, modèles de diapositive et leurs champs, thèmes, scènes possibles, nombre de diapositives attendu, captures déjà utilisées, cours du chapitre pas encore publiés et diaporama existant. Ne modifie rien.", $readOnly),
+                fn (array $args) => $this->diaporamas->source(...array_map(static fn (string $cle) => isset($args[$cle]) ? (int) $args[$cle] : null, ['coursId', 'moduleId', 'parcoursId'])),
             ],
             [
                 new Tool('lister_diaporamas', 'Lister les diaporamas', self::schema([]), 'Diaporamas (brouillon, a_corriger, publie), avec leur cible, leur auteur et leur nombre de diapositives.', $readOnly),
                 fn () => $this->diaporamas->list(),
             ],
             [
-                new Tool('voir_diaporama', 'Voir un diaporama', self::schema(['id' => self::ID], ['id']), 'Titre, diapositives, notes et relecture éventuelle d\'un diaporama.', $readOnly),
+                new Tool('voir_diaporama', 'Voir un diaporama', self::schema(['id' => self::ID], ['id']), 'Titre, thème, objectif, couverture, diapositives, scènes, notes et relecture éventuelle d\'un diaporama, avec apercuUrl : adresse (relative au site) de l\'aperçu réservé aux administrateurs, avec la projection, la vue fixe et la vérification du rendu.', $readOnly),
                 fn (array $args) => $this->diaporamas->show((int) $args['id']),
             ],
             [
-                new Tool('creer_diaporama', 'Créer un diaporama', self::schema($cible + $champs, ['titre', 'diapositives']), "Crée le diaporama d'un cours (coursId) ou d'un chapitre (moduleId), en brouillon, invisible sur le site. Une cible n'a qu'un diaporama. Refusé, sans rien enregistrer, s'il déclenche un contrôle bloquant : copie du cours, trop de points, notes manquantes, données réelles… Renvoie les avertissements restants.", $write),
+                new Tool('creer_diaporama', 'Créer un diaporama', self::schema($cible + $champs, ['titre', 'diapositives']), "Crée le diaporama d'un cours (coursId), d'un chapitre (moduleId) ou d'un parcours (parcoursId), en brouillon, invisible sur le site. Une cible n'a qu'un diaporama. Refusé, sans rien enregistrer, s'il déclenche un contrôle bloquant : copie du cours, trop de points, notes manquantes, données réelles, thème ou scène invalide… Renvoie les avertissements restants et apercuUrl.", $write),
                 fn (array $args) => $this->diaporamas->create($args, $agent),
             ],
             [
@@ -732,27 +766,30 @@ final class RedactionMcpServer
 
     public static function diaporamaWritingPrompt(string $cible, int $id): string
     {
-        $argument = $cible === 'module' ? "moduleId {$id}" : "coursId {$id}";
-        $nombre = $cible === 'module' ? '10 à 20' : '6 à 12';
+        $argument = match ($cible) {
+            'module' => "moduleId {$id}",
+            'parcours' => "parcoursId {$id}",
+            default => "coursId {$id}",
+        };
+        $nombre = match ($cible) {
+            'module' => '10 à 20',
+            'parcours' => '12 à 26',
+            default => '6 à 12',
+        };
 
         return <<<TXT
             Prépare le diaporama du {$cible} {$id} ({$argument}).
 
-            Démarche :
-            1. lire_regles avec les identifiants DIA-01 à DIA-06, RED-01, DON-04 et POS-06, et lis-les en entier.
-            2. preparer_diaporama avec {$argument} : lis tout le texte source, le public, les modèles et leurs champs. Pour un chapitre, si des cours ne sont pas publiés, arrête-toi et dis lesquels.
-            3. Choisis ce qui compte pour un atelier : objectifs, notions clés, étapes, erreurs fréquentes, une activité. {$nombre} diapositives : la première au modèle titre, la dernière au modèle fin (lien vers le cours complet, sources, date).
-            4. Une idée par diapositive (DIA-01) : un titre qui dit l'idée, 5 points au plus, 12 mots au plus par point. Des groupes de mots suffisent.
-            5. Synthétise, ne copie pas (DIA-02) : aucun passage de plus de 8 mots repris du cours sur une diapositive. Pour un chapitre, fais une vraie synthèse (fil conducteur, progression), pas la suite des cours.
-            6. Le détail va dans les notes de présentation (DIA-03), de 300 à 900 caractères, en langage clair : ce que dit la personne qui présente, une question à poser au groupe. Pour une question, la bonne réponse et son explication sont dans les notes.
-            7. Faire pratiquer (DIA-04) : au moins une diapositive exercice ou question pour un cours « apprendre », avec des données fictives (DON-04).
-            8. Captures (DIA-05) : seulement celles du cours ou de lister_captures, par leur identifiant. N'invente jamais de capture.
-            9. N'écris aucun style, couleur ni police : le site applique son thème.
-            10. creer_diaporama, puis verifier_diaporama. Un contrôle bloquant refuse l'enregistrement : corrige et recommence. Traite les avertissements.
-            11. Termine par un compte rendu : identifiant du diaporama, nombre de diapositives, avertissements restants. Demande ensuite une relecture avec l'AUTRE connecteur (par exemple ChatGPT si tu es Claude) et la consigne « relire_diaporama ».
-            12. Après un avis favorable : publier_diaporama et donne l'adresse publique. Avec des réserves : modifier_diaporama, puis redemande une relecture.
+            Avant d'écrire : lire_regles avec les identifiants DIA-01 à DIA-10, RED-01, DON-04 et POS-06, et lis-les en entier ; lister_scenes pour connaître les scènes, leurs usages et les cas où elles induisent en erreur.
 
-            Ne publie jamais sans relecture favorable d'un autre connecteur.
+            Méthode en 5 temps :
+            1. Lire les sources et leur statut. preparer_diaporama avec {$argument} : lis tout le texte source, le public, la couverture et l'inventaire des cours. Pour un chapitre, si des cours ne sont pas publiés, arrête-toi et dis lesquels. Pour un parcours, n'utilise que les cours publiés (DIA-10) : annonce la couverture réelle (par exemple « 3 cours rédigés sur 18 ») sur l'ouverture ou la fin, et présente un module encore vide comme une étape à venir, jamais comme acquis.
+            2. Pour chaque diapositive, écrire l'idée et l'effet attendu sur le groupe (comprendre un trajet, comparer, décider, pratiquer). Une idée par diapositive (DIA-01) : un titre qui dit l'idée, 5 points au plus, 12 mots au plus par point. {$nombre} diapositives : la première au modèle titre, la dernière au modèle fin (lien vers le cours complet, sources, date). Synthétise, ne copie pas (DIA-02). Faire pratiquer (DIA-04) : une activité avec des données fictives (DON-04).
+            3. Proposer une scène seulement si elle aide (DIA-07), avec une justification courte : le mouvement doit montrer un ordre, un trajet, un tri ou une décision qui existe dans le cours. Relis « peutInduireEnErreur » : un niveau de stock qui monte et descend ne justifie pas un escalier. Une scène pour trois diapositives au plus ; sans scène adaptée, garde une diapositive fixe.
+            4. Donner les paramètres de la scène (type, version, champs prévus seulement, dans les limites du catalogue, description de l'équivalent fixe : DIA-08 et DIA-09), sur une diapositive notion, etapes ou exercice avec 3 points au plus de 44 caractères au plus. Sinon, une diapositive fixe. Choisis seulement l'identifiant du thème (standard ou atelier_visuel) : aucune couleur, police, position ni code. Le détail va dans les notes (DIA-03), de 300 à 900 caractères. Captures : seulement celles du cours ou de lister_captures (DIA-05).
+            5. Créer le brouillon, contrôler, faire relire. creer_diaporama, puis verifier_diaporama : un contrôle bloquant refuse l'enregistrement, corrige et recommence ; traite les avertissements. Donne l'aperçu (apercuUrl, réservé aux administrateurs) pour vérifier le rendu. Termine par un compte rendu : identifiant, nombre de diapositives, scènes proposées et leur justification, couverture, avertissements restants. Demande ensuite une relecture avec l'AUTRE connecteur (par exemple ChatGPT si tu es Claude) et la consigne « relire_diaporama ». Après un avis favorable : publier_diaporama et donne l'adresse publique. Avec des réserves : modifier_diaporama, puis redemande une relecture.
+
+            Ne publie jamais sans relecture favorable d'un autre connecteur. Si la personne te demande de garder le diaporama en brouillon, ne le publie pas.
             TXT;
     }
 
@@ -762,17 +799,20 @@ final class RedactionMcpServer
             Tu es l'agent relecteur. Relis le diaporama {$id} sans le modifier.
 
             1. voir_diaporama {$id}, puis verifier_diaporama {$id} pour les contrôles automatiques.
-            2. preparer_diaporama avec la cible du diaporama (coursId ou moduleId) pour lire le texte source.
-            3. lire_regles avec les identifiants DIA-01 à DIA-06, RED-01, DON-04 et POS-06.
+            2. preparer_diaporama avec la cible du diaporama (coursId, moduleId ou parcoursId) pour lire le texte source et la couverture.
+            3. lire_regles avec les identifiants DIA-01 à DIA-10, RED-01, DON-04 et POS-06 ; lister_scenes si le diaporama a des scènes.
             4. Grille de relecture (cite l'identifiant de règle pour chaque constat) :
                - fidélité : rien de faux ni d'ajouté par rapport au cours ; les limites de l'IA dites dans le cours restent présentes ;
                - DIA-01 et DIA-02 : une idée par diapositive, des titres qui disent l'idée, une vraie synthèse et pas une copie ;
                - DIA-03 : des notes utiles, assez précises pour présenter sans avoir rédigé le diaporama ; la réponse d'une question est dans les notes ;
                - DIA-04 et POS-06 : une activité réaliste, avec des données fictives ;
-               - DIA-05 et DIA-06 : captures pertinentes, dernière diapositive avec le lien du cours, les sources et la date, aucune marque d'éditeur d'IA ni donnée personnelle.
+               - DIA-05 et DIA-06 : captures pertinentes, dernière diapositive avec le lien du cours, les sources et la date, aucune marque d'éditeur d'IA ni donnée personnelle ;
+               - DIA-07 : chaque scène aide vraiment à comprendre ; elle ne suggère pas un ordre, un trajet ou une décision qui n'existe pas dans le cours (relis « peutInduireEnErreur ») ;
+               - DIA-08 et DIA-09 : les libellés de la scène sont justes et lisibles ; la description raconte la scène sans parler de mouvement ni de couleur ;
+               - DIA-10 (parcours) : seuls les cours publiés sont exploités, la couverture est annoncée, aucun module vide n'est présenté comme acquis.
             5. Avis :
-               - « defavorable » si une information est fausse ou si une donnée n'est pas fictive ;
-               - « reserves » s'il reste des corrections de synthèse, de notes ou de rédaction ;
+               - « defavorable » si une information est fausse, si une donnée n'est pas fictive ou si une scène induit en erreur ;
+               - « reserves » s'il reste des corrections de synthèse, de notes, de scène ou de rédaction ;
                - « favorable » sinon.
             6. enregistrer_relecture_diaporama avec l'avis, un résumé et un constat par problème (règle, constat, suggestion).
 

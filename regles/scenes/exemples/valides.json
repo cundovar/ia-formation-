@@ -1,0 +1,61 @@
+{
+  "description": "Scènes acceptées en plus des exemples du catalogue. Testées par PHPUnit et Vitest.",
+  "cas": [
+    {
+      "cas": "aiguillage, autre branche",
+      "scene": {
+        "type": "aiguillage",
+        "version": 1,
+        "condition": "Reste-t-il une place ?",
+        "branches": [
+          {
+            "id": "disponible",
+            "libelle": "Proposer l'inscription"
+          },
+          {
+            "id": "complet",
+            "libelle": "Liste d'attente"
+          }
+        ],
+        "brancheSuivie": "disponible",
+        "description": "L'atelier est complet. La demande suit la branche liste d'attente.",
+        "justification": "Montrer qu'une condition fixe choisit le chemin."
+      }
+    },
+    {
+      "cas": "sas, autre décision",
+      "scene": {
+        "type": "sas_validation",
+        "version": 1,
+        "fiche": "Message",
+        "action": "Envoyer le message",
+        "question": "Le texte est-il exact et utile ?",
+        "decision": "accord",
+        "suiteAccord": "Envoi simulé, aucun message réel",
+        "suiteRefus": "Le message n'est pas envoyé",
+        "description": "Un message arrive au sas et s'arrête. Le refus laisse l'action bloquée : le message n'est pas envoyé.",
+        "justification": "Montrer que le refus bloque réellement l'action."
+      }
+    },
+    {
+      "cas": "escalier sans repère",
+      "scene": {
+        "type": "escalier",
+        "version": 1,
+        "marches": [
+          {
+            "libelle": "Comprendre"
+          },
+          {
+            "libelle": "Construire"
+          },
+          {
+            "libelle": "Fiabiliser"
+          }
+        ],
+        "description": "Trois marches de plus en plus hautes : comprendre, construire, fiabiliser. Le repère s'arrête sur la marche 2, construire.",
+        "justification": "Les trois modules forment une progression réelle."
+      }
+    }
+  ]
+}

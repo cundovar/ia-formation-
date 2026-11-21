@@ -8,14 +8,35 @@
       :id="idTitre"
       class="diaporama-actions__titre"
     >
-      {{ cible === 'chapitre' ? 'Diaporama du chapitre' : 'Diaporama du cours' }}
+      {{ TITRES[cible] ?? TITRES.cours }}
     </h2>
     <p class="diaporama-actions__texte">
       Une synthèse prête à projeter, avec des notes pour la personne qui présente.
       Vous pouvez la modifier et la réutiliser (licence CC BY-SA 4.0).
     </p>
 
+    <p
+      v-if="couverture"
+      class="diaporama-actions__couverture"
+      data-testid="diaporama-couverture"
+    >
+      Cette présentation s'appuie sur {{ couverture.exploites }} cours publiés sur {{ couverture.total }}.
+      Les autres cours du parcours ne sont pas encore rédigés.
+    </p>
+
     <div class="diaporama-actions__boutons">
+      <RouterLink
+        v-if="diaporama.id"
+        class="diaporama-actions__projeter"
+        :to="{ name: 'diaporama-projection', params: { id: diaporama.id } }"
+        data-testid="diaporama-projeter"
+      >
+        <i
+          class="pi pi-desktop"
+          aria-hidden="true"
+        />
+        Projeter
+      </RouterLink>
       <AppButton
         icon="pi pi-download"
         variant="outline"
@@ -79,6 +100,7 @@
           :diapositive="diapositive"
           :maitre="decors[diapositive.maitre]"
           :numero="index + 1"
+          :format="plan.format"
           niveau-titre="h3"
         />
       </li>
@@ -107,12 +129,14 @@ const props = defineProps({
   diaporama: { type: Object, required: true },
   // Public du parcours (apprendre ou former) : couleur du thème si le diaporama ne la donne pas
   audience: { type: String, default: 'apprendre' },
-  cible: { type: String, default: 'cours', validator: (valeur) => ['cours', 'chapitre'].includes(valeur) },
+  cible: { type: String, default: 'cours', validator: (valeur) => ['cours', 'chapitre', 'parcours'].includes(valeur) },
   // Charge les captures demandées, comme pour le cours (API /captures)
   chargerCaptures: { type: Function, required: true },
 })
 
 const { siteName } = useCustomization()
+
+const TITRES = { cours: 'Diaporama du cours', chapitre: 'Diaporama du chapitre', parcours: 'Présentation du parcours' }
 
 const idTitre = useId()
 const idApercu = useId()
@@ -123,6 +147,11 @@ const apercuOuvert = ref(false)
 const avecNotes = ref(false)
 const impression = ref(false)
 
+// Diaporama de parcours : part des cours publiés réellement exploités (DIA-10)
+const couverture = computed(() => {
+  const c = props.diaporama.couverture
+  return props.cible === 'parcours' && c?.total > 0 && c.exploites < c.total ? c : null
+})
 const contenu = computed(() => ({ ...props.diaporama, audience: props.diaporama.audience ?? props.audience }))
 const plan = computed(() => planDiaporama(contenu.value, { images: images.value ?? {} }))
 const decors = computed(() => maitres(plan.value, siteName.value))
@@ -215,6 +244,36 @@ onBeforeUnmount(nettoyerImpression)
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.diaporama-actions__couverture {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background: #fef9e7;
+  color: #374151;
+}
+
+.diaporama-actions__projeter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border: 2px solid #1e3a8a;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #1e3a8a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.diaporama-actions__projeter:hover {
+  background: #dbeafe;
+}
+
+.diaporama-actions__projeter:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
 }
 
 .diaporama-actions__notes {

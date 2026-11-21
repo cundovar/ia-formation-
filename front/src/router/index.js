@@ -14,6 +14,8 @@ const MonEspacePage = () => import('../views/MonEspacePage.vue')
 const RubriquePage = () => import('../views/RubriquePage.vue')
 const LaboratoiresPage = () => import('../views/LaboratoiresPage.vue')
 const LaboratoirePage = () => import('../views/LaboratoirePage.vue')
+const DiaporamasDemonstration = () => import('../views/DiaporamasDemonstration.vue')
+const DiaporamaProjectionPage = () => import('../views/DiaporamaProjectionPage.vue')
 
 const routes = [
   // Route accueil
@@ -56,6 +58,26 @@ const routes = [
     name: 'laboratoire',
     component: LaboratoirePage,
     props: true
+  },
+
+  // Diaporamas : démonstration du thème Atelier visuel et des scènes (administrateurs), aperçu d'un brouillon
+  // (administrateurs, API /api/admin), projection d'un diaporama publié (API publique filtrée)
+  {
+    path: '/diaporamas/demonstration',
+    name: 'diaporamas-demonstration',
+    component: DiaporamasDemonstration
+  },
+  {
+    path: '/diaporamas/apercu/:id(\\d+)',
+    name: 'diaporama-apercu',
+    component: DiaporamaProjectionPage,
+    props: (route) => ({ id: Number(route.params.id), apercu: true })
+  },
+  {
+    path: '/diaporamas/:id(\\d+)/projection',
+    name: 'diaporama-projection',
+    component: DiaporamaProjectionPage,
+    props: (route) => ({ id: Number(route.params.id), apercu: false })
   },
 
   // Espace de l'apprenant connecté : cours, parcours et QCM personnalisés, compte

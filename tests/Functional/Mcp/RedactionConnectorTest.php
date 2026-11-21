@@ -33,7 +33,7 @@ final class RedactionConnectorTest extends McpTestCase
         self::assertSame([
             'attribuer_acces', 'capturer_page', 'classer_cours', 'classer_parcours', 'creer_brouillon', 'creer_brouillon_qcm', 'creer_diaporama', 'creer_module', 'creer_niveau', 'creer_niveau_qcm', 'creer_parcours', 'creer_rubrique', 'creer_theme_qcm', 'definir_illustration_parcours', 'enregistrer_relecture',
             'enregistrer_relecture_diaporama', 'enregistrer_relecture_qcm', 'lire_regles', 'lister_acces', 'lister_apprenants', 'lister_brouillons', 'lister_brouillons_qcm', 'lister_captures', 'lister_catalogue', 'lister_catalogue_qcm',
-            'lister_cours_publies', 'lister_diaporamas', 'mettre_en_brouillon', 'modifier_brouillon', 'modifier_brouillon_qcm', 'modifier_diaporama', 'obtenir_modele', 'ordonner_parcours', 'ordonner_rubriques', 'ouvrir_a_tous', 'preparer_depot_image', 'preparer_diaporama', 'publier_cours', 'publier_diaporama', 'publier_qcm', 'remplacer_capture',
+            'lister_cours_publies', 'lister_diaporamas', 'lister_scenes', 'mettre_en_brouillon', 'modifier_brouillon', 'modifier_brouillon_qcm', 'modifier_diaporama', 'obtenir_modele', 'ordonner_parcours', 'ordonner_rubriques', 'ouvrir_a_tous', 'preparer_depot_image', 'preparer_diaporama', 'publier_cours', 'publier_diaporama', 'publier_qcm', 'remplacer_capture',
             'retirer_acces', 'soumettre_en_revue', 'verifier_brouillon', 'verifier_brouillon_qcm', 'verifier_diaporama', 'voir_brouillon', 'voir_brouillon_qcm', 'voir_diaporama',
         ], $tools);
 

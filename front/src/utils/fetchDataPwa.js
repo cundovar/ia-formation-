@@ -23,6 +23,11 @@ const clearUser = async () => {
 
 window.addEventListener('auth:logout', () => {
   clearUser().catch((error) => console.error('Impossible de supprimer l’utilisateur mis en cache.', error))
+  // Réponses de l'API gardées par le service worker : elles peuvent contenir des contenus réservés
+  // (cours, diaporamas) à la personne qui se déconnecte
+  if (typeof caches !== 'undefined') {
+    caches.delete('api-public').catch((error) => console.error('Impossible de vider le cache de l’API.', error))
+  }
 })
 
 // Filtre de visibilité

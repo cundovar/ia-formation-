@@ -39,6 +39,9 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class DiaporamaCrudController extends AbstractCrudController
 {
+    // Formulaire POST avec un jeton CSRF : EasyAdmin n'en ajoute pas aux actions personnalisées
+    private const POST_ACTION_TEMPLATE = 'admin/diaporama/action_post.html.twig';
+
     public function __construct(
         private DiaporamaService $diaporamas,
         private DiaporamaChecker $checker,
@@ -70,11 +73,11 @@ final class DiaporamaCrudController extends AbstractCrudController
         $corriger = Action::new('corriger', 'Corriger', 'fa fa-pen')->linkToCrudAction('corriger');
         $retirer = Action::new('retirer', 'Retirer du site', 'fa fa-eye-slash')
             ->linkToCrudAction('retirer')
-            ->renderAsForm()
+            ->setTemplatePath(self::POST_ACTION_TEMPLATE)
             ->displayIf(static fn (Diaporama $diaporama) => $diaporama->isPublished());
         $aJour = Action::new('marquerAJour', 'Marquer comme à jour', 'fa fa-check')
             ->linkToCrudAction('marquerAJour')
-            ->renderAsForm()
+            ->setTemplatePath(self::POST_ACTION_TEMPLATE)
             ->displayIf(fn (Diaporama $diaporama) => $this->source->estPerime($diaporama));
 
         return $actions
@@ -165,9 +168,12 @@ final class DiaporamaCrudController extends AbstractCrudController
     }
 
     #[AdminAction(routePath: '/{entityId}/retirer', routeName: 'retirer', methods: ['POST'])]
-    public function retirer(AdminContext $context): RedirectResponse
+    public function retirer(AdminContext $context, Request $request): RedirectResponse
     {
         $diaporama = $this->instance($context);
+        if (!$this->validToken($request, 'retirer', $diaporama)) {
+            return $this->redirectToDetail($diaporama);
+        }
         $this->diaporamas->unpublish($diaporama);
         $this->addFlash('success', 'Diaporama retiré du site. Pour le republier, l\'assistant de rédaction devra obtenir une nouvelle relecture.');
 
@@ -175,9 +181,12 @@ final class DiaporamaCrudController extends AbstractCrudController
     }
 
     #[AdminAction(routePath: '/{entityId}/marquer-a-jour', routeName: 'marquer_a_jour', methods: ['POST'])]
-    public function marquerAJour(AdminContext $context): RedirectResponse
+    public function marquerAJour(AdminContext $context, Request $request): RedirectResponse
     {
         $diaporama = $this->instance($context);
+        if (!$this->validToken($request, 'marquerAJour', $diaporama)) {
+            return $this->redirectToDetail($diaporama);
+        }
         $this->diaporamas->markUpToDate($diaporama);
         $this->addFlash('success', 'Diaporama marqué comme à jour.');
 
@@ -192,6 +201,16 @@ final class DiaporamaCrudController extends AbstractCrudController
         }
 
         return $diaporama;
+    }
+
+    private function validToken(Request $request, string $action, Diaporama $diaporama): bool
+    {
+        if ($this->isCsrfTokenValid(sprintf('diaporama-%s-%d', $action, $diaporama->getId()), (string) $request->request->get('_token'))) {
+            return true;
+        }
+        $this->addFlash('danger', 'Action refusée : la page a expiré. Rechargez-la puis recommencez.');
+
+        return false;
     }
 
     private function detailUrl(Diaporama $diaporama): string

@@ -56,7 +56,9 @@ export default defineConfig(() => {
     // Configuration des alias de chemins
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        // Référentiel partagé avec le serveur (catalogue des scènes des diaporamas)
+        '@regles': fileURLToPath(new URL('../regles', import.meta.url))
       }
     },
     // Liste des plugins utilisés par Vite
@@ -162,7 +164,7 @@ export default defineConfig(() => {
             // Lecture de l'API publique (cours, menus, QCM) ; jamais les données personnelles
             urlPattern: ({ request, url }) => request.method === 'GET'
               && url.pathname.startsWith('/api/')
-              && !/^\/api\/(admin|notes|me-favorites|page-visits|customization|proposition-ia|users)/.test(url.pathname),
+              && !/^\/api\/(admin|apercu-diaporamas|notes|me-favorites|page-visits|customization|proposition-ia|users)/.test(url.pathname),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-public',

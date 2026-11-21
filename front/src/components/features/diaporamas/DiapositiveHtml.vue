@@ -3,14 +3,14 @@
 <template>
   <section
     class="diapositive"
-    :style="{ background: `#${maitre.fond}` }"
+    :style="{ background: `#${maitre.fond}`, aspectRatio: `${format.largeur} / ${format.hauteur}` }"
     :aria-label="`Diapositive ${numero} : ${diapositive.titre}`"
   >
     <div
       v-for="(element, index) in formesDuMaitre"
       :key="`maitre-${index}`"
       class="diapositive__forme"
-      :style="styleForme(element)"
+      :style="styleForme(element, format)"
       aria-hidden="true"
     />
     <component
@@ -27,7 +27,7 @@
       <div
         v-if="element.type === 'forme'"
         class="diapositive__forme"
-        :style="styleForme(element)"
+        :style="styleForme(element, format)"
         aria-hidden="true"
       />
       <img
@@ -35,13 +35,20 @@
         class="diapositive__image"
         :src="element.data"
         :alt="element.alt"
-        :style="zone(element)"
+        :style="zone(element, format)"
       >
       <DiapositiveTexte
         v-else
         :element="element"
       />
     </template>
+    <SceneCalque
+      v-if="diapositive.scene"
+      :scene="diapositive.scene"
+      :etape="etape"
+      :mouvement="mouvement"
+      :couleur-texte="maitre.titre.couleur"
+    />
     <DiapositiveTexte
       v-for="(element, index) in textesDuMaitre"
       :key="`repere-${index}`"
@@ -58,9 +65,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, provide } from 'vue'
 import DiapositiveTexte from './DiapositiveTexte.vue'
-import { taillePolice, zone } from './geometrie'
+import SceneCalque from './SceneCalque.vue'
+import { CLE_FORMAT, styleForme, taillePolice, zone } from './geometrie'
+import { FORMAT } from '@/diaporamas/theme'
 
 const props = defineProps({
   diapositive: { type: Object, required: true },
@@ -68,7 +77,15 @@ const props = defineProps({
   numero: { type: Number, required: true },
   // Niveau du titre dans la page qui affiche la diapositive
   niveauTitre: { type: String, default: 'h3' },
+  // Format du plan (planDiaporama) : 16:9, ou lecture étroite du thème Atelier visuel
+  format: { type: Object, default: () => FORMAT },
+  // Étape de la scène ; -1 : équivalent fixe (vignettes, impression)
+  etape: { type: Number, default: -1 },
+  mouvement: { type: Boolean, default: true },
 })
+
+// Format transmis aux textes et aux scènes (réactif : la projection passe du 16:9 à la lecture étroite)
+provide(CLE_FORMAT, computed(() => props.format))
 
 const formesDuMaitre = computed(() => props.maitre.elements.filter((element) => element.type === 'forme'))
 const textesDuMaitre = computed(() => props.maitre.elements.filter((element) => element.type === 'texte'))
@@ -76,35 +93,32 @@ const textesDuMaitre = computed(() => props.maitre.elements.filter((element) => 
 const alignement = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }
 
 const styleTitre = computed(() => ({
-  ...zone(props.maitre.titre),
-  '--taille': taillePolice(props.maitre.titre.taille),
+  ...zone(props.maitre.titre, props.format),
+  '--taille': taillePolice(props.maitre.titre.taille, props.format),
   color: `#${props.maitre.titre.couleur}`,
   justifyContent: alignement[props.maitre.titre.valign] ?? 'flex-start',
 }))
 
 const styleNumero = computed(() => ({
-  ...zone(props.maitre.numero),
-  '--taille': taillePolice(props.maitre.numero.taille),
+  ...zone(props.maitre.numero, props.format),
+  '--taille': taillePolice(props.maitre.numero.taille, props.format),
   color: `#${props.maitre.numero.couleur}`,
 }))
 
-const styleForme = (element) => ({
-  ...zone(element),
-  background: `#${element.fond}`,
-  border: element.bordure ? `1px solid #${element.bordure}` : 'none',
-  borderRadius: element.forme === 'ellipse' ? '50%' : (element.forme === 'roundRect' ? '999px' : '0'),
-})
 </script>
 
 <style scoped>
 .diapositive {
   position: relative;
   width: 100%;
-  aspect-ratio: 13.333 / 7.5;
   overflow: hidden;
   container-type: inline-size;
   font-family: Arial, 'Liberation Sans', Arimo, sans-serif;
   color: #1f2937;
+}
+
+.diapositive__forme {
+  box-sizing: border-box;
 }
 
 .diapositive__forme,

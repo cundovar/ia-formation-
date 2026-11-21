@@ -1,0 +1,162 @@
+{
+  "proposition": "Galerie des six scènes, avec des exemples tirés du parcours pilote. Propositions non publiées ; la source de chaque exemple est indiquée dans les notes.",
+  "titre": "Six scènes pour expliquer",
+  "audience": "apprendre",
+  "theme": "atelier_visuel",
+  "diapositives": [
+    {
+      "modele": "etapes",
+      "partie": "Escalier · catalogue du parcours",
+      "titre": "Une progression en cinq modules",
+      "points": ["Chaque module prépare le suivant", "Le module 2 est rédigé"],
+      "scene": {
+        "type": "escalier",
+        "version": 1,
+        "marches": [
+          { "libelle": "Comprendre" },
+          { "libelle": "Construire" },
+          { "libelle": "Intégrer l’IA" },
+          { "libelle": "Fiabiliser" },
+          { "libelle": "Réaliser un projet" }
+        ],
+        "repere": 1,
+        "description": "Cinq marches de plus en plus hautes : comprendre, construire, intégrer une étape IA, fiabiliser, réaliser un projet. Le repère s’arrête sur la marche 2, le seul module rédigé.",
+        "justification": "Les cinq modules du parcours forment une vraie progression : chacun s’appuie sur le précédent."
+      },
+      "notes": "Source : catalogue du parcours (5 modules, ordre réel). Proposition de démonstration. L’escalier convient à une progression où chaque étape prépare la suivante. Il serait trompeur pour une simple liste d’éléments, ou pour un niveau qui monte et descend (un stock, par exemple) : une marche ne se redescend pas. Ici, le repère indique le module déjà rédigé ; les autres modules sont des fiches encore vides."
+    },
+    {
+      "modele": "notion",
+      "partie": "Chaîne de traitement · cours 2 publié",
+      "titre": "Une fiche traverse trois nœuds",
+      "points": ["L’expression calcule 8 − 3", "Le résumé reçoit 5"],
+      "scene": {
+        "type": "chaine_traitement",
+        "version": 1,
+        "fiche": { "libelle": "Fiche d’atelier", "valeur": "places 8 · inscrits 3" },
+        "blocs": [{ "libelle": "Préparer la fiche" }, { "libelle": "Expression" }, { "libelle": "Préparer le résumé" }],
+        "transformation": { "bloc": 1, "valeur": "places_restantes : 5" },
+        "description": "La fiche passe par trois nœuds. Au nœud Expression, les valeurs 8 places et 3 inscrits deviennent 5 places restantes.",
+        "justification": "Le cours 2 décrit ce trajet et ce calcul."
+      },
+      "notes": "Source : cours publié 2, « Relier des étapes et transformer des données ». La chaîne convient quand une même donnée traverse des opérations successives. Elle peut induire en erreur si les étapes ne s’enchaînent pas réellement, ou si plusieurs données circulent en parallèle : dans ce cas, préférer une diapositive fixe."
+    },
+    {
+      "modele": "notion",
+      "partie": "Aiguillage · proposition",
+      "titre": "Une règle décide du chemin",
+      "points": ["8 places, 3 inscrits : il reste 5 places", "Aucune IA ne fait ce calcul"],
+      "scene": {
+        "type": "aiguillage",
+        "version": 1,
+        "condition": "Reste-t-il une place ?",
+        "fiche": "Inscription",
+        "branches": [
+          { "id": "disponible", "libelle": "Proposer l’inscription" },
+          { "id": "complet", "libelle": "Liste d’attente" }
+        ],
+        "brancheSuivie": "disponible",
+        "description": "Une demande d’inscription arrive. La condition « Reste-t-il une place ? » est vraie : la demande suit la branche « Proposer l’inscription ».",
+        "justification": "Montrer qu’une condition fixe, et non l’IA, choisit le chemin."
+      },
+      "notes": "Proposition : le cours 2 annonce ce contrôle de capacité pour un prochain exercice, sans le détailler. L’aiguillage convient à une décision par une condition claire, avec deux issues. Il serait trompeur pour une décision prise par une IA (elle n’est pas déterministe) ou pour plus de deux issues. Pendant la projection, le bouton « Autre branche » montre le cas complet."
+    },
+    {
+      "modele": "notion",
+      "partie": "Aiguillage · proposition",
+      "titre": "Atelier complet : l’autre branche",
+      "points": ["8 places, 8 inscrits : plus de place", "Proposer la liste d’attente"],
+      "scene": {
+        "type": "aiguillage",
+        "version": 1,
+        "condition": "Reste-t-il une place ?",
+        "fiche": "Inscription",
+        "branches": [
+          { "id": "disponible", "libelle": "Proposer l’inscription" },
+          { "id": "complet", "libelle": "Liste d’attente" }
+        ],
+        "brancheSuivie": "complet",
+        "description": "L’atelier est complet. La demande suit la branche « Liste d’attente ».",
+        "justification": "Le même schéma, avec l’autre résultat de la condition."
+      },
+      "notes": "Même proposition que la diapositive précédente, avec 8 inscrits pour 8 places. Comparer les deux résultats avec le groupe : la condition est la même, les données changent le chemin suivi."
+    },
+    {
+      "modele": "notion",
+      "partie": "Entonnoir · cours 3 publié",
+      "titre": "Ne garder que les champs utiles",
+      "points": ["La réponse de l’API a beaucoup de champs", "Trois suffisent au besoin"],
+      "scene": {
+        "type": "entonnoir",
+        "version": 1,
+        "critere": "Utile au besoin du workflow",
+        "elements": [
+          { "libelle": "full_name", "retenu": true },
+          { "libelle": "private", "retenu": true },
+          { "libelle": "html_url", "retenu": true },
+          { "libelle": "forks_count", "retenu": false }
+        ],
+        "description": "Quatre champs de la réponse entrent. Le critère « utile au besoin » retient full_name, private et html_url, et écarte forks_count.",
+        "justification": "Le cours 3 demande de ne garder que trois champs de la réponse."
+      },
+      "notes": "Source : cours publié 3, « Connecter un service et protéger ses identifiants » (étape 4). L’entonnoir convient à un filtrage d’un ensemble selon un critère. Il peut induire en erreur si les éléments écartés sont en fait transformés ou conservés ailleurs : préciser alors ce qu’ils deviennent."
+    },
+    {
+      "modele": "notion",
+      "partie": "Loupe · cours 1 publié",
+      "titre": "Vérifier le type d’une valeur",
+      "points": ["Lire la sortie, pas seulement la coche", "Un nombre n’a pas de guillemets"],
+      "scene": {
+        "type": "loupe",
+        "version": 1,
+        "support": {
+          "libelle": "Sortie OUTPUT (JSON)",
+          "lignes": ["\"atelier\": \"Découverte\",", "\"places\": 8,", "\"confirme\": true"]
+        },
+        "zone": 1,
+        "detail": { "libelle": "8 sans guillemets", "legende": "Le nombre 8 n’est pas du texte : le champ places est de type Number." },
+        "description": "La sortie JSON d’une fiche d’atelier. La loupe isole la ligne places : 8 ; sans guillemets, 8 est un nombre et non du texte.",
+        "justification": "Le cours 1 demande de vérifier le type des valeurs de sortie."
+      },
+      "notes": "Source : cours publié 1, « Découvrir les nœuds, les déclencheurs et les données » (étape 4). La loupe convient à un détail à vérifier dans un ensemble lisible. Elle peut induire en erreur si le détail isolé fait oublier le reste : rappeler qu’il faut aussi contrôler les autres champs."
+    },
+    {
+      "modele": "notion",
+      "partie": "Sas de validation · proposition",
+      "titre": "Vous gardez la décision",
+      "points": ["Le circuit attend votre accord", "Accord : l’envoi est simulé"],
+      "scene": {
+        "type": "sas_validation",
+        "version": 1,
+        "fiche": "Message",
+        "action": "Envoyer le message",
+        "question": "Le texte est-il exact et utile ?",
+        "decision": "accord",
+        "suiteAccord": "Envoi simulé, aucun message réel",
+        "suiteRefus": "Le message n’est pas envoyé",
+        "description": "Un message préparé arrive au sas et s’arrête. Après l’accord simulé, l’action « Envoyer le message » se fait : envoi simulé, aucun message réel.",
+        "justification": "Montrer qu’une action importante attend un accord humain."
+      },
+      "notes": "Proposition : la fiche « Ajouter une validation humaine » (module 4) est encore vide. Le sas convient à une action qui attend un accord humain explicite. Il serait trompeur si l’accord n’arrêtait rien en réalité (validation après coup) : le sas doit vraiment bloquer l’action. Pendant la projection, « Simuler le refus » montre l’autre cas."
+    },
+    {
+      "modele": "notion",
+      "partie": "Sas de validation · proposition",
+      "titre": "Refus : l’action reste bloquée",
+      "points": ["Le refus n’envoie rien", "Corriger, puis redemander l’accord"],
+      "scene": {
+        "type": "sas_validation",
+        "version": 1,
+        "fiche": "Message",
+        "action": "Envoyer le message",
+        "question": "Le texte est-il exact et utile ?",
+        "decision": "refus",
+        "suiteAccord": "Envoi simulé, aucun message réel",
+        "suiteRefus": "Le message n’est pas envoyé",
+        "description": "Un message préparé arrive au sas et s’arrête. Le refus laisse l’action « Envoyer le message » bloquée : le message n’est pas envoyé.",
+        "justification": "Montrer que le refus bloque réellement l’action."
+      },
+      "notes": "Même proposition que la diapositive précédente, avec un refus. Insister : la fiche reste au sas, l’action est barrée, rien ne part. C’est ce cas qui prouve que la validation humaine protège."
+    }
+  ]
+}
