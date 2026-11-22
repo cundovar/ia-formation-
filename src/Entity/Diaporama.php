@@ -53,7 +53,8 @@ class Diaporama
 
     // Thèmes du site (front/src/diaporamas/themes) : l'agent choisit seulement l'identifiant (DIA-05)
     public const THEME_STANDARD = 'standard';
-    public const THEMES = [self::THEME_STANDARD, 'atelier_visuel'];
+    public const THEME_ATELIER_VISUEL_V3 = 'atelier_visuel_v3';
+    public const THEMES = [self::THEME_STANDARD, 'atelier_visuel', self::THEME_ATELIER_VISUEL_V3];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -361,12 +362,17 @@ class Diaporama
     }
 
     /**
-     * Empreinte de ce que le rendu dépend : diapositives, titre, sous-titre et thème. Un rapport de rendu
+     * Empreinte de ce que le rendu dépend : diapositives, titre, sous-titre, thème et parties du scénario en v3. Un rapport de rendu
      * mesuré sur une autre empreinte est périmé.
      */
     public function getEmpreinteRendu(): string
     {
-        return hash('sha256', json_encode([$this->titre, $this->sousTitre, $this->theme, $this->objectif, $this->diapositives], \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR));
+        $contenu = [$this->titre, $this->sousTitre, $this->theme, $this->objectif, $this->diapositives];
+        if ($this->theme === self::THEME_ATELIER_VISUEL_V3) {
+            $contenu[] = ['separateurs' => 1, 'parties' => $this->scenario['parties'] ?? []];
+        }
+
+        return hash('sha256', json_encode($contenu, \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR));
     }
 
     public function getTitre(): string

@@ -95,10 +95,40 @@ final class DiaporamaChecker
             $issues[] = $this->issue('DIAPO_CHAPITRE_INCOMPLET', null, DraftChecker::BLOCKING, sprintf('Le diaporama d\'un chapitre attend que tous ses cours soient publiés. Pas encore publiés : %s.', implode(', ', $nonPublies)));
         }
 
+        $v3 = $diaporama->getTheme() === Diaporama::THEME_ATELIER_VISUEL_V3;
+        $parties = $v3 ? DiaporamaScenario::idsParties($diaporama->getScenario()) : [];
+        if (\count($parties) > DiaporamaV3::MAX_PARTIES) {
+            $issues[] = $this->issue('DIAPO_V3_PARTIES', 'DIA-15', DraftChecker::BLOCKING, sprintf('Atelier visuel v3 accepte %d parties au plus.', DiaporamaV3::MAX_PARTIES));
+        }
+        $coursV3 = [];
+        if ($v3) {
+            foreach ($this->source->coursExploites($diaporama) as $cours) {
+                if ($cours->getId() !== null) {
+                    $coursV3[$cours->getId()] = DiaporamaSource::texteDuCours($cours);
+                }
+            }
+        }
+
         $sourceShingles = $this->shingles($this->source->texte($diaporama));
         $last = \count($diapositives) - 1;
+        $dernierePartie = -1;
         foreach ($diapositives as $index => $diapo) {
-            array_push($issues, ...$this->checkSlide($diapo, $index + 1, $index === 0 || $index === $last, $sourceShingles));
+            $numero = $index + 1;
+            array_push($issues, ...$this->checkSlide($diapo, $numero, $index === 0 || $index === $last, $sourceShingles, $v3));
+            if ($v3 && \is_array($diapo)) {
+                $partie = array_search($diapo['scenarioPartie'] ?? null, $parties, true);
+                if ($partie === false) {
+                    $issues[] = $this->issue('DIAPO_V3_PARTIE', 'DIA-15', DraftChecker::BLOCKING, sprintf('Diapositive %d : scenarioPartie doit désigner une partie du scénario.', $numero));
+                } elseif ($partie < $dernierePartie) {
+                    $issues[] = $this->issue('DIAPO_V3_ORDRE_PARTIES', 'DIA-15', DraftChecker::BLOCKING, sprintf('Diapositive %d : respectez l’ordre des parties du scénario.', $numero));
+                } else {
+                    $dernierePartie = $partie;
+                }
+                foreach (DiaporamaV3::verifier($diapo, $coursV3) as $champ => $message) {
+                    $issues[] = $this->issue('DIAPO_V3_CHAMP', 'DIA-15', DraftChecker::BLOCKING, sprintf('Diapositive %d : %s — %s', $numero, $champ, $message));
+                }
+                array_push($issues, ...$this->checkPersonalData($diapo, sprintf('Diapositive %d : ', $numero)));
+            }
         }
         $avecScene = \count(array_filter($diapositives, static fn ($d) => \is_array($d) && isset($d['scene'])));
         if ($avecScene > max(1, intdiv(\count($diapositives), self::DIAPOSITIVES_PAR_SCENE))) {
@@ -115,16 +145,27 @@ final class DiaporamaChecker
         }
 
         $textes = [$diaporama->getTitre(), $diaporama->getSousTitre()];
-        array_walk_recursive($diapositives, static function ($valeur) use (&$textes) {
+        array_push($issues, ...$this->checkPersonalData($v3 ? $textes : [...$textes, ...$diapositives]));
+
+        return $issues;
+    }
+
+    /**
+     * @return list<array{code: string, regle: ?string, niveau: string, message: string}>
+     */
+    private function checkPersonalData(array $contenu, string $prefixe = ''): array
+    {
+        $textes = [];
+        array_walk_recursive($contenu, static function ($valeur) use (&$textes) {
             if (\is_string($valeur)) {
                 $textes[] = $valeur;
             }
         });
-        foreach ($this->personalData->find(implode("\n", $textes)) as [$code, $message]) {
-            $issues[] = $this->issue($code, 'DON-04', DraftChecker::BLOCKING, $message);
-        }
 
-        return $issues;
+        return array_map(
+            fn (array $constat) => $this->issue($constat[0], 'DON-04', DraftChecker::BLOCKING, $prefixe.$constat[1]),
+            $this->personalData->find(implode("\n", $textes)),
+        );
     }
 
     /**
@@ -154,10 +195,12 @@ final class DiaporamaChecker
             $utilises = [];
             foreach ($diapositives as $i => $diapo) {
                 $partie = $diapo['scenarioPartie'] ?? null;
-                if (\is_string($partie) && !\in_array($partie, $ids, true)) {
+                if ($diaporama->getTheme() !== Diaporama::THEME_ATELIER_VISUEL_V3 && \is_string($partie) && !\in_array($partie, $ids, true)) {
                     $issues[] = $this->issue('DIAPO_SCENARIO_PARTIE_INCONNUE', 'DIA-11', DraftChecker::BLOCKING, sprintf('Diapositive %d : la partie « %s » n\'existe pas dans le scénario (%s).', $i + 1, $partie, implode(', ', $ids)));
                 }
-                $utilises[(string) $partie] = true;
+                if (\is_string($partie)) {
+                    $utilises[$partie] = true;
+                }
             }
             foreach ($scenario['parties'] as $partie) {
                 if (!isset($utilises[$partie['id']])) {
@@ -253,10 +296,13 @@ final class DiaporamaChecker
      * @param array<string, true> $sourceShingles
      * @return list<array{code: string, regle: ?string, niveau: string, message: string}>
      */
-    private function checkSlide(mixed $diapo, int $numero, bool $extremite, array $sourceShingles): array
+    private function checkSlide(mixed $diapo, int $numero, bool $extremite, array $sourceShingles, bool $v3): array
     {
         $modele = \is_array($diapo) ? ($diapo['modele'] ?? null) : null;
         $spec = $this->modeles()->modele($modele);
+        if (!$v3 && $modele === DiaporamaV3::MODELE_CHIFFRES) {
+            return [$this->issue('DIAPO_MODELE_INCONNU', 'DIA-15', DraftChecker::BLOCKING, sprintf('Diapositive %d : chiffres_cles est réservé au thème Atelier visuel v3.', $numero))];
+        }
         if (!\is_string($modele) || $spec === null) {
             return [$this->issue('DIAPO_MODELE_INCONNU', null, DraftChecker::BLOCKING, sprintf('Diapositive %d : modèle inconnu. Modèles possibles : %s.', $numero, implode(', ', $this->modeles()->ids())))];
         }
@@ -272,7 +318,7 @@ final class DiaporamaChecker
 
         $listes = [];
         if (isset($spec['points'])) {
-            $listes['points'] = [self::liste($diapo['points'] ?? null), $spec['points']];
+            $listes['points'] = [self::listePoints($diapo['points'] ?? null, $v3), $spec['points']];
         }
         if (isset($spec['reponses'])) {
             $listes['réponses'] = [self::liste($diapo['reponses'] ?? null), $spec['reponses']];
@@ -311,7 +357,7 @@ final class DiaporamaChecker
             array_push($issues, ...$this->checkCapture($diapo['capture'] ?? null, $prefixe));
         }
         array_push($issues, ...$this->checkComposition($diapo, $spec, $prefixe));
-        if (\array_key_exists('scenarioPartie', $diapo) && (!\is_string($diapo['scenarioPartie']) || preg_match('/^[a-z0-9_-]{1,30}$/', $diapo['scenarioPartie']) !== 1)) {
+        if (!$v3 && \array_key_exists('scenarioPartie', $diapo) && (!\is_string($diapo['scenarioPartie']) || preg_match('/^[a-z0-9_-]{1,30}$/', $diapo['scenarioPartie']) !== 1)) {
             $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', 'DIA-11', DraftChecker::BLOCKING, $prefixe.'scenarioPartie est l\'identifiant d\'une partie du scénario.');
         }
         $partie = $diapo['partie'] ?? null;
@@ -319,7 +365,7 @@ final class DiaporamaChecker
             $issues[] = $this->issue('DIAPO_CHAMP_MANQUANT', null, DraftChecker::BLOCKING, $prefixe.sprintf('le repère de partie est un texte simple de %d caractères au plus.', self::MAX_PARTIE_LENGTH));
         }
         if (\array_key_exists('scene', $diapo)) {
-            array_push($issues, ...$this->checkScene($diapo, $modele, $prefixe));
+            array_push($issues, ...$this->checkScene($diapo, $modele, $prefixe, $v3));
         }
 
         $notes = self::texte($diapo['notes'] ?? null);
@@ -329,7 +375,7 @@ final class DiaporamaChecker
             $issues[] = $this->issue('DIAPO_NOTES_LONGUEUR', 'DIA-03', DraftChecker::WARNING, $prefixe.sprintf('les notes font %d caractères ; visez de %d à %d.', mb_strlen($notes), ...self::NOTES_LENGTH));
         }
 
-        $copie = $this->passageCopie(self::texteVisible($diapo), $sourceShingles);
+        $copie = $this->passageCopie(self::texteVisible($diapo, $v3), $sourceShingles);
         if ($copie !== null) {
             $issues[] = $this->issue('DIAPO_COPIE', 'DIA-02', DraftChecker::BLOCKING, $prefixe.sprintf('« %s… » reprend le cours mot pour mot : reformulez.', $copie));
         }
@@ -425,7 +471,7 @@ final class DiaporamaChecker
      * @param array<string, mixed> $diapo
      * @return list<array{code: string, regle: ?string, niveau: string, message: string}>
      */
-    private function checkScene(array $diapo, string $modele, string $prefixe): array
+    private function checkScene(array $diapo, string $modele, string $prefixe, bool $v3): array
     {
         \assert($this->scenes !== null);
         $issues = [];
@@ -447,7 +493,7 @@ final class DiaporamaChecker
             $issues[] = $this->issue('DIAPO_SCENE_MODELE', 'DIA-08', DraftChecker::BLOCKING, $prefixe.sprintf('une scène se place sur une diapositive %s, pas sur « %s ».', implode(', ', $catalogue->modelesAutorises()), $modele));
         } else {
             ['pointsMax' => $pointsMax, 'longueurPointMax' => $longueurMax] = $catalogue->limitesDiapositive();
-            $points = self::liste($diapo['points'] ?? null);
+            $points = self::listePoints($diapo['points'] ?? null, $v3);
             if (\count($points) > $pointsMax) {
                 $issues[] = $this->issue('DIAPO_SCENE_MODELE', 'DIA-08', DraftChecker::BLOCKING, $prefixe.sprintf('avec une scène, %d points au plus sous le schéma (%d actuellement).', $pointsMax, \count($points)));
             }
@@ -488,10 +534,20 @@ final class DiaporamaChecker
      *
      * @param array<string, mixed> $diapo
      */
-    private static function texteVisible(array $diapo): string
+    private static function texteVisible(array $diapo, bool $v3): string
     {
         $textes = [self::texte($diapo['titre'] ?? null), self::texte($diapo['consigne'] ?? null), self::texte($diapo['question'] ?? null)];
-        array_push($textes, ...self::liste($diapo['points'] ?? null), ...self::liste($diapo['reponses'] ?? null));
+        array_push($textes, ...self::listePoints($diapo['points'] ?? null, $v3), ...self::liste($diapo['reponses'] ?? null));
+        if ($v3) {
+            foreach (['centre', 'conclusion', 'libelle', 'texte'] as $champ) {
+                $textes[] = self::texte($diapo[$champ] ?? null);
+            }
+            foreach (\is_array($diapo['points'] ?? null) ? $diapo['points'] : [] as $point) {
+                if (\is_array($point)) {
+                    array_push($textes, self::texte($point['titre'] ?? null), self::texte($point['aVerifier'] ?? null), self::texte($point['action'] ?? null), ...self::liste($point['liste'] ?? null));
+                }
+            }
+        }
         foreach (\is_array($diapo['colonnes'] ?? null) ? $diapo['colonnes'] : [] as $colonne) {
             if (\is_array($colonne)) {
                 array_push($textes, self::texte($colonne['titre'] ?? null), ...self::liste($colonne['points'] ?? null));
@@ -577,6 +633,16 @@ final class DiaporamaChecker
     private static function liste(mixed $valeur): array
     {
         return \is_array($valeur) ? array_values(array_filter(array_map(self::texte(...), $valeur), static fn (string $t) => $t !== '')) : [];
+    }
+
+    /** @return list<string> */
+    private static function listePoints(mixed $valeur, bool $v3): array
+    {
+        if (!$v3 || !\is_array($valeur)) {
+            return self::liste($valeur);
+        }
+
+        return array_values(array_map(static fn ($point) => self::texte(\is_array($point) ? ($point['texte'] ?? null) : $point), $valeur));
     }
 
     /**

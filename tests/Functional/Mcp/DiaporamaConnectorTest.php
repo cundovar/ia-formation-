@@ -140,7 +140,7 @@ final class DiaporamaConnectorTest extends McpTestCase
     {
         $tools = array_column($this->rpc(self::CLAUDE, 'tools/list')['result']['tools'], null, 'name');
         $schema = $tools['creer_diaporama']['inputSchema'];
-        self::assertSame(['standard', 'atelier_visuel'], $schema['properties']['theme']['enum']);
+        self::assertSame(Diaporama::THEMES, $schema['properties']['theme']['enum']);
         self::assertArrayHasKey('parcoursId', $schema['properties']);
         self::assertArrayHasKey('parcoursId', $tools['preparer_diaporama']['inputSchema']['properties']);
         self::assertSame(26, $schema['properties']['diapositives']['maxItems']);
@@ -164,6 +164,142 @@ final class DiaporamaConnectorTest extends McpTestCase
         self::assertStringContainsString('12 à 26 diapositives', $text);
         self::assertStringContainsString('niveau de stock', $text);
         self::assertStringContainsString('DIA-07', $this->rpc(self::CHATGPT, 'prompts/get', ['name' => 'relire_diaporama', 'arguments' => ['id' => '7']])['result']['messages'][0]['content']['text']);
+    }
+
+    public function testAtelierVisuelV3PilotThroughBothConnectors(): void
+    {
+        $tools = array_column($this->rpc(self::CLAUDE, 'tools/list')['result']['tools'], null, 'name');
+        self::assertTrue($tools['lister_icones']['annotations']['readOnlyHint']);
+        foreach (['creer_diaporama', 'modifier_diaporama'] as $nom) {
+            $schema = $tools[$nom]['inputSchema']['properties'];
+            self::assertContains('atelier_visuel_v3', $schema['theme']['enum']);
+            $diapo = $schema['diapositives']['items']['properties'];
+            self::assertContains('chiffres_cles', $diapo['modele']['enum']);
+            self::assertArrayHasKey('motCle', $diapo);
+            self::assertContains('oeil', $diapo['points']['items']['oneOf'][1]['properties']['icone']['enum']);
+        }
+        $icones = $this->tool(self::CHATGPT, 'lister_icones', []);
+        self::assertFalse($icones['error'], $icones['text']);
+        self::assertSame('Contrôler, vérifier, relire', $icones['data']['icones']['oeil']['sens']);
+
+        $coursId = $this->cours->getId();
+        $cours = $this->entityManager->find(PageContent::class, $coursId);
+        $chapitre = (new Menus())->setLabel('1. Formuler sa demande')->setCategory($cours->getCategory());
+        $chapitre->addPageContent($cours);
+        $this->entityManager->persist($chapitre);
+        $passage = 'Le jeu de données fictif contient 20 % de réponses incomplètes.';
+        $cours->setCode(self::COURS.' <p>'.$passage.'</p>');
+        $this->entityManager->flush();
+        $cible = ['moduleId' => $chapitre->getId()];
+
+        $preparation = $this->tool(self::CLAUDE, 'preparer_diaporama', $cible);
+        self::assertFalse($preparation['error'], $preparation['text']);
+        self::assertArrayHasKey('visuels', $preparation['data']);
+        $contrat = $preparation['data']['atelierVisuelV3'];
+        self::assertSame(4, $contrat['partiesMax']);
+        self::assertSame(4, $contrat['compositions']['convergence']['pointsStructures']);
+        self::assertSame(3, $contrat['compositions']['circuit']['pointsStructures']);
+        self::assertSame($icones['data']['icones'], $contrat['icones']);
+        self::assertStringContainsString('DIA-15', $this->tool(self::CLAUDE, 'lire_regles', ['identifiants' => ['DIA-15']])['text']);
+
+        $pilote = json_decode((string) file_get_contents(__DIR__.'/../../../front/src/diaporamas/pilote/devis-tpe-v3.json'), true, flags: \JSON_THROW_ON_ERROR);
+        $demo = $this->demo()['diapositives'];
+        $diapos = [$demo[0], $pilote['diapositives'][0], ...\array_slice($demo, 1, 4), $pilote['diapositives'][1], ...\array_slice($demo, -3)];
+        $diapos[1]['motCle'] = 'demande à l’IA';
+        foreach ($diapos as $i => &$diapo) {
+            $diapo['scenarioPartie'] = $i < 6 ? 'formuler' : 'verifier';
+        }
+        unset($diapo);
+        $scenario = $this->scenario([$coursId]);
+        $scenario['parties'][0]['id'] = 'formuler';
+        $scenario['parties'][1]['id'] = 'verifier';
+
+        $brouillon = $cible + [
+            'titre' => $pilote['titre'],
+            'theme' => 'atelier_visuel_v3',
+            'brief' => ['theme' => 'atelier_visuel_v3'] + $this->brief(),
+            'scenario' => $scenario,
+            'diapositives' => $diapos,
+        ];
+        $scenarioLong = $scenario;
+        foreach (['suite-1', 'suite-2', 'suite-3'] as $partie) {
+            $scenarioLong['parties'][] = ['id' => $partie] + $scenario['parties'][1];
+        }
+        $controleScenario = $this->tool(self::CLAUDE, 'verifier_scenario_diaporama', $cible + ['brief' => $brouillon['brief'], 'scenario' => $scenarioLong]);
+        self::assertFalse($controleScenario['data']['valide']);
+        self::assertContains('DIAPO_V3_PARTIES', array_column($controleScenario['data']['controles'], 'code'));
+
+        $cree = $this->tool(self::CLAUDE, 'creer_diaporama', $brouillon);
+        self::assertFalse($cree['error'], $cree['text']);
+        $id = $cree['data']['id'];
+        $controle = $this->tool(self::CHATGPT, 'verifier_diaporama', ['id' => $id]);
+        self::assertTrue($controle['data']['sansControleBloquant']);
+        self::assertFalse($controle['data']['publiable']);
+
+        $invalides = $diapos;
+        unset($invalides[0]['scenarioPartie']);
+        $invalides[1]['scenarioPartie'] = 'inconnue';
+        $invalides[1]['motCle'] = 'un mot absent';
+        $invalides[1]['miseEnAvant'] = 4;
+        $invalides[1]['points'][0]['titre'] = 'Un titre vraiment beaucoup trop long';
+        $invalides[1]['points'][1]['texte'] = 'répond toujours à la question exacte que la personne lui a posée';
+        $invalides[1]['points'][2]['texte'] = 'Appelez le 06 12 34 56 78';
+        $invalides[2]['scenarioPartie'] = 'verifier';
+        $refus = $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'diapositives' => $invalides]);
+        self::assertTrue($refus['error']);
+        foreach (['Diapositive 1 : scenarioPartie', 'Diapositive 2 : scenarioPartie', 'Diapositive 2 : motCle', 'Diapositive 2 : miseEnAvant', 'points[0].titre', 'Diapositive 4 : respectez'] as $diagnostic) {
+            self::assertStringContainsString($diagnostic, $refus['text']);
+        }
+
+        self::assertStringContainsString('DIAPO_COPIE', $refus['text']);
+        self::assertStringContainsString('DON-04', $refus['text']);
+
+        // Simule un brouillon déjà enregistré, pour éprouver aussi le vérificateur sans le schéma d'entrée du SDK.
+        $stocke = $this->entityManager->find(Diaporama::class, $id);
+        $invalides = $diapos;
+        $invalides[1]['points'][0]['icone'] = 'inconnue';
+        $invalides[1]['points'][0]['texte'] = str_repeat('a', 91);
+        $invalides[6]['points'][2]['liste'][] = 'Contrôle supplémentaire';
+        $invalides[6]['points'][1]['aVerifier'] = str_repeat('a', 61);
+        $invalides[6]['points'][2]['action'] = str_repeat('a', 41);
+        $stocke->setDiapositives($invalides);
+        $this->entityManager->flush();
+        $reverification = $this->tool(self::CHATGPT, 'verifier_diaporama', ['id' => $id]);
+        self::assertFalse($reverification['data']['sansControleBloquant']);
+        foreach (['points[0].icone', 'points[0].texte', 'points[1].aVerifier', 'points[2].liste', 'points[2].action'] as $champ) {
+            self::assertStringContainsString($champ, $reverification['text']);
+        }
+
+        $diapos[2] = [
+            'modele' => 'chiffres_cles', 'titre' => 'Résultat du test fictif', 'libelle' => 'Réponses à reprendre',
+            'nature' => 'statistique', 'valeur' => '20', 'unite' => '%', 'proportion' => 0.2,
+            'scenarioPartie' => 'formuler', 'notes' => $diapos[2]['notes'],
+        ];
+        $sansSource = $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'diapositives' => $diapos]);
+        self::assertTrue($sansSource['error']);
+        self::assertStringContainsString('Diapositive 3 : source', $sansSource['text']);
+        $diapos[2]['source'] = ['coursId' => $coursId, 'passage' => $passage];
+        $maj = $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'diapositives' => $diapos]);
+        self::assertFalse($maj['error'], $maj['text']);
+        self::assertSame(Diaporama::STATUS_DRAFT, $maj['data']['statut']);
+
+        foreach ([
+            ['valeur' => '0'],
+            ['unite' => 'euros'],
+            ['source' => ['coursId' => $coursId + 1, 'passage' => $passage]],
+            ['source' => ['coursId' => $coursId, 'passage' => '20 % de réponses excellentes']],
+        ] as $changement) {
+            $inexactes = $diapos;
+            $inexactes[2] = $changement + $diapos[2];
+            $refus = $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'diapositives' => $inexactes]);
+            self::assertTrue($refus['error']);
+            self::assertStringContainsString('Diapositive 3 : source', $refus['text']);
+        }
+
+        $diapos[2]['nature'] = 'repere';
+        unset($diapos[2]['source']);
+        $repere = $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'diapositives' => $diapos]);
+        self::assertFalse($repere['error'], $repere['text']);
     }
 
     public function testDiaporamaWithASceneIsSavedAndAnInvalidSceneIsRefused(): void
@@ -404,9 +540,20 @@ final class DiaporamaConnectorTest extends McpTestCase
 
     public function testRenderReportFromThePreviewReachesTheConnector(): void
     {
-        $id = $this->tool(self::CLAUDE, 'creer_diaporama', ['coursId' => $this->cours->getId(), 'theme' => 'atelier_visuel'] + $this->demo())['data']['id'];
+        $demo = $this->demo();
+        $scenario = $this->scenario([$this->cours->getId()]);
+        foreach ($demo['diapositives'] as $index => &$diapo) {
+            $diapo['scenarioPartie'] = $index < 3 ? 'comprendre' : 'pratiquer';
+        }
+        unset($diapo);
+        $cree = $this->tool(self::CLAUDE, 'creer_diaporama', [
+            'coursId' => $this->cours->getId(), 'theme' => Diaporama::THEME_ATELIER_VISUEL_V3, 'scenario' => $scenario,
+        ] + $demo);
+        self::assertFalse($cree['error'], $cree['text']);
+        $id = $cree['data']['id'];
         $rapport = ['formats' => ['large', 'etroit'], 'navigateur' => 'Chrome/140', 'problemes' => [
             ['diapositive' => 3, 'etape' => 1, 'format' => 'etroit', 'element' => ['role' => 'corps', 'extrait' => '<b>Point</b> long'], 'probleme' => 'debordement', 'mesure' => ['depassementPx' => 12.34, 'zone' => ['x' => 5, 'y' => 40, 'w' => 90, 'h' => 12]]],
+            ['diapositive' => 4, 'separateur' => true, 'format' => 'large', 'element' => ['role' => 'titre', 'extrait' => 'Pratiquer'], 'probleme' => 'debordement'],
             ['probleme' => 'inconnu'],
         ]];
 
@@ -430,14 +577,19 @@ final class DiaporamaConnectorTest extends McpTestCase
         $verif = $this->tool(self::CLAUDE, 'verifier_diaporama', ['id' => $id]);
         $rendu = $verif['data']['controlesNavigateur'];
         self::assertSame('a_jour', $rendu['etat']);
-        self::assertCount(1, $rendu['problemes'], 'Un problème inconnu est écarté');
+        self::assertCount(2, $rendu['problemes'], 'Un problème inconnu est écarté');
+        self::assertTrue($rendu['problemes'][1]['separateur']);
+        $separateur = $this->tool(self::CLAUDE, 'voir_diaporama', ['id' => $id, 'diapositive' => 4]);
+        self::assertTrue($separateur['data']['controleRendu']['problemes'][0]['separateur']);
         self::assertSame(['role' => 'corps', 'extrait' => 'Point long'], $rendu['problemes'][0]['element']);
         self::assertSame(12.3, $rendu['problemes'][0]['mesure']['depassementPx']);
         self::assertContains('DIAPO_RENDU_PROBLEME', array_column($verif['data']['controles'], 'code'));
         self::assertCount(1, $this->tool(self::CLAUDE, 'voir_diaporama', ['id' => $id, 'diapositive' => 3])['data']['controleRendu']['problemes']);
 
-        // Après correction, le rapport est périmé jusqu'à une nouvelle mesure ; la relecture n'est pas en cause
-        $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'titre' => 'Version corrigée']);
+        // Un changement de nom de partie change le rendu du séparateur autant que celui d'un titre de diapositive.
+        $scenario['parties'][1]['titre'] = 'S’exercer';
+        $maj = $this->tool(self::CLAUDE, 'modifier_diaporama', ['id' => $id, 'scenario' => $scenario]);
+        self::assertFalse($maj['error'], $maj['text']);
         self::assertSame('perime', $this->tool(self::CLAUDE, 'verifier_diaporama', ['id' => $id])['data']['controlesNavigateur']['etat']);
 
         // Le brouillon, son brief et son rapport restent hors de l'API publique

@@ -288,19 +288,25 @@ le web montre un bloc ou une étape par appui (clavier ou clic, sans mouvement s
 la préférence le demande) ; le PDF imprime la vue fixe suivie des étapes
 légendées ; le PPTX garde une diapositive fixe aux formes et textes modifiables,
 étapes dans les notes. Les autres modèles et la lecture étroite suivent encore
-Atelier visuel ; le contrat MCP (étape 2 et suivantes) reste à brancher. Référence
-graphique : [maquette Penpot locale](http://localhost:9001/#/workspace?team-id=9b657248-8f9f-81e1-8008-c91089ea6788&file-id=4911bca2-c422-8010-8008-fb5075a6a325&page-id=b08f8722-b968-8006-8008-fb543d43a4bf).
+Atelier visuel. Le serveur et le MCP acceptent le thème v3, contrôlent le
+scénario et les champs DIA-15 et exposent le contrat et les icônes. Le site
+surligne `motCle` dans le titre (fond pêche, texte vert, y compris en lecture
+étroite et dans le PPTX). `chiffres_cles` a une diapositive fixe : carte avec la
+nature, la valeur et son unité, le libellé et une jauge si `proportion` est
+donnée ; à droite, le texte et le passage source. En lecture étroite, ou si la
+valeur ou le libellé manque, la diapositive devient une notion en phrases sans
+perdre le chiffre ni sa source. Référence graphique : [maquette Penpot locale](http://localhost:9001/#/workspace?team-id=9b657248-8f9f-81e1-8008-c91089ea6788&file-id=4911bca2-c422-8010-8008-fb5075a6a325&page-id=b08f8722-b968-8006-8008-fb543d43a4bf).
 
-L’agent fournit le contenu et sa structure. Le site choisit les compositions,
-alterne les dispositions compatibles, calcule la numérotation et applique
+L’agent fournit le contenu et sa structure. Le site choisit les compositions
+selon le modèle et le nombre de points, calcule la numérotation et applique
 les couleurs, rayons, ombres et motifs du thème. Il mesure le texte pour
 ajuster le surlignage et les cartes. Une fois la maquette validée, ses jetons
 seront reportés dans le thème versionné. Penpot sert de référence de conception.
 
 | Donnée proposée | Contrôle du MCP et comportement du site |
 |---|---|
-| Parties ordonnées | Réutiliser `scenario.parties` et les identifiants `scenarioPartie` déjà présents. Pour la v3, quatre parties au plus. Chaque diapositive référence une partie connue et suit l’ordre déclaré. Le site insère les séparateurs et affiche la progression. |
-| `motCle` | Un passage de trois mots au plus, présent tel quel dans le titre. Surlignage mesuré par le site, avec mise en couleur du texte si la mesure échoue. |
+| Parties ordonnées | Réutiliser `scenario.parties` et les identifiants `scenarioPartie` déjà présents. Pour la v3, quatre parties au plus. Chaque diapositive référence une partie connue et suit l’ordre déclaré. Le site insère un séparateur à la première diapositive de contenu d’une partie utilisée. Il conserve les séparateurs déjà rédigés à leur emplacement et ne génère pas de doublon. Le numéro affiché suit la projection. Les liens et diagnostics utilisent le numéro source, avec une indication pour les séparateurs automatiques. |
+| `motCle` | Un passage de trois mots au plus, présent tel quel dans le titre. Le site le surligne (même recherche que le serveur) ; s’il ne le trouve pas, le titre reste sans surlignage. |
 | `points` structurés | Accepter les phrases existantes et les objets `{titre, texte, icone}`. Titre de quatre mots au plus et texte d’environ 90 caractères, sous réserve des limites du modèle. |
 | Catalogue d’icônes | Ajouter `regles/diaporamas/icones.json` et `lister_icones`. Les identifiants décrivent un sens. Valider leur appartenance au catalogue côté serveur et côté rendu. Les dessins proviennent du site. |
 | `miseEnAvant` | Index valide d’un point essentiel. Le site souligne une seule carte, la première par défaut. |

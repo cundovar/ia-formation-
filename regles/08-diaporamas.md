@@ -166,21 +166,16 @@ Examiner le rendu web et les rendus fixes. Les étapes successives du PPTX
 conservent les formes et les textes éditables. Dans le PDF, présenter le
 schéma fixe et les légendes nécessaires à la compréhension.
 
-## Proposition DIA-15 — Structurer le contenu pour Atelier visuel v3
+## DIA-15 — Structurer le contenu pour Atelier visuel v3
 
-*Proposition du 22 novembre 2026, à valider avant application.* L’agent
-organise les idées et propose le point principal. Le site choisit leur
-présentation, les séparateurs, la progression, les couleurs et les motifs.
+**Règle.** Pour le thème `atelier_visuel_v3`, l’agent organise les idées et peut désigner le point prioritaire. Le site choisit la composition et détermine la présentation graphique.
 
-- Rattacher chaque diapositive à une partie du scénario et respecter l’ordre
-  déclaré. Le thème v3 prévoit quatre parties au plus.
-- Choisir au plus un passage du titre à souligner, de trois mots au plus.
-  Le reproduire tel qu’il apparaît dans le titre.
-- Pour une carte structurée, employer un titre de quatre mots au plus, un
-  texte d’environ 90 caractères et, si elle a un rôle, une icône du catalogue.
-  Identifier le point prioritaire selon son importance pédagogique.
-- Distinguer une consigne chiffrée d’un résultat mesuré. Une statistique
-  doit renvoyer à un cours source qui étaye la valeur et son contexte.
-- Choisir un visuel d’étape qui aide à comprendre l’action, avec une
-  justification conforme à DIA-12. Le site peut utiliser l’icône prévue
-  lorsque l’étape n’a pas de visuel.
+- Rattacher chaque diapositive à une partie du scénario avec `scenarioPartie` et respecter l’ordre déclaré. Le scénario comporte quatre parties au plus. Le site insère les séparateurs à l’ouverture des parties utilisées et conserve ceux qui ont déjà été rédigés.
+- Pour `motCle`, choisir un seul passage de trois mots au plus et le reproduire tel qu’il apparaît dans le titre.
+- Conserver les listes de phrases ou fournir des points structurés. Chaque point structuré a un `titre` de quatre mots au plus et un `texte` de 90 caractères au plus ou une `liste` de contrôles. Cette liste contient de un à trois textes de 40 caractères au plus. `aVerifier` tient en 60 caractères, `action` en 40. Ces textes suivent DIA-01, DIA-02 et DON-04.
+- Choisir une `icone` facultative dans `diaporamas/icones.json` avec `lister_icones`. `miseEnAvant` désigne un seul point par son index, à partir de zéro. Dans les compositions v3, le site met en avant le premier point par défaut.
+- Quatre points structurés sur `notion` ou `objectifs` peuvent converger vers une idée centrale. Trois points structurés sur `etapes` ou `notion` peuvent former un circuit. Vérifier la lisibilité et la relation entre les points. Pour les étapes de démonstration illustrées, utiliser les visuels du back-office et justifier leur choix selon DIA-12.
+- Pour `chiffres_cles`, indiquer `valeur` (nombre en texte), `unite` si nécessaire, `libelle`, `texte` explicatif si utile et `nature`. Une `proportion` facultative est comprise entre 0 et 1. `repere` désigne une consigne pédagogique. `statistique` exige une `source` composée du `coursId` d’un cours exploité et d’un `passage` exact (300 caractères au plus) contenant la valeur et son unité. Le serveur compare le passage au texte du cours. Le relecteur vérifie le contexte du chiffre et l’usage du repère. Le site affiche la nature (« Repère pédagogique » ou « Statistique sourcée ») et cite le passage source sous le chiffre.
+- Dans le scénario fictif de réponse à une demande de devis, conserver les mentions à confirmer. Le relecteur vérifie qu’aucun prix ni délai n’a été inventé.
+
+**Source.** [PLAN] : section « Atelier visuel v3 » et pilote « Répondre à une demande de devis » (`front/src/diaporamas/pilote/devis-tpe-v3.json`) ; catalogue `diaporamas/icones.json` ; DIA-02, DIA-04, DIA-05, DIA-11, DIA-12 et DIA-14.
