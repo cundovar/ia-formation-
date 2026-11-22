@@ -7,6 +7,8 @@ import { DISPOSITIONS_ATELIER, MODELES_AVEC_SCENE, contexteAtelier, maitresAteli
 import { planifierScene } from './scenes'
 import { composer, estComposition } from './compositions'
 import { couleursScene, idTheme } from './themes'
+import { ID as ID_V3 } from './themes/atelierVisuelV3'
+import { disposerV3, maitresV3, partiesDuScenario, pointsEnPhrases, reperesV3 } from './miseEnPageV3'
 
 const texte = (valeur) => (typeof valeur === 'string' ? valeur.trim() : '')
 const liste = (valeur) => (Array.isArray(valeur) ? valeur.map(texte).filter(Boolean) : [])
@@ -303,6 +305,7 @@ const avecSceneStandard = (diapo, ctx) => {
 // Décor commun des deux masques : la couverture et les diapositives de contenu.
 // `titre` est l'emplacement du titre (lu par les lecteurs d'écran dans PowerPoint).
 export const maitres = (plan, site) => {
+  if (plan.theme === ID_V3) return maitresV3(plan, site)
   if (plan.theme === 'atelier_visuel') return maitresAtelier(plan, site)
   const couleurs = couleursPublic(plan.audience)
   const repere = { taille: TAILLES.repere, couleur: COULEURS.texteDoux, role: 'repere', valign: 'middle' }
@@ -358,23 +361,36 @@ const TITRES_PAR_DEFAUT = { fin: 'Pour aller plus loin', a_retenir: 'À retenir'
  */
 export const planDiaporama = (diaporama, { images = {}, format = 'large', variantes = {} } = {}) => {
   const audience = diaporama?.audience === 'former' ? 'former' : 'apprendre'
-  const theme = idTheme(diaporama?.theme)
-  const atelier = theme === 'atelier_visuel'
+  const themeDemande = idTheme(diaporama?.theme)
+  // Atelier visuel v3 n'a qu'un format 16:9 pour l'instant : la lecture étroite (mobile) suit Atelier visuel
+  const v3 = themeDemande === ID_V3 && format !== 'etroit'
+  const theme = themeDemande === ID_V3 && !v3 ? 'atelier_visuel' : themeDemande
+  const atelier = theme === 'atelier_visuel' || v3
   const contexteFormat = atelier ? contexteAtelier(format) : { format: 'large', dims: FORMAT }
   const titreDiaporama = texte(diaporama?.titre) || 'Diaporama'
+  const sources = (Array.isArray(diaporama?.diapositives) ? diaporama.diapositives : [])
+    .filter((diapo) => diapo && typeof diapo === 'object')
   const ctx = {
     diaporama: diaporama ?? {}, audience, couleurs: couleursPublic(audience), images, variantes, titreDiaporama, ...contexteFormat,
+    parties: partiesDuScenario(diaporama), total: sources.length,
   }
-  const diapositives = (Array.isArray(diaporama?.diapositives) ? diaporama.diapositives : [])
-    .filter((diapo) => diapo && typeof diapo === 'object')
+  const diapositives = sources
     .map((diapo, index) => {
       // Un modèle inconnu (contenu plus récent que le site, par exemple) s'affiche comme une notion
       const modele = estModeleConnu(diapo.modele) ? diapo.modele : 'notion'
       // Une scène n'est dessinée que sur les modèles qui l'acceptent (catalogue : modelesAutorises)
-      const source = diapo.scene && !MODELES_AVEC_SCENE.includes(modele) ? { ...diapo, scene: null } : diapo
+      const brute = diapo.scene && !MODELES_AVEC_SCENE.includes(modele) ? { ...diapo, scene: null } : diapo
+      // Points structurés de la v3 : en phrases quand la diapositive n'est pas composée en v3
+      const source = themeDemande === ID_V3 ? pointsEnPhrases(brute) : brute
       const contexte = { ...ctx, index }
       let resultat
-      if (atelier) resultat = DISPOSITIONS_ATELIER[modele](source, contexte)
+      const resultatV3 = v3 ? disposerV3({ ...diapo, modele }, contexte) : null
+      if (resultatV3) resultat = resultatV3
+      else if (v3) {
+        // Modèle pas encore composé en v3 : dessin Atelier visuel, avec le fil de progression v3
+        const base = DISPOSITIONS_ATELIER[modele](source, contexte)
+        resultat = { ...base, elements: [...reperesV3(diapo, contexte), ...base.elements.filter((e) => e.role !== 'repere' || e.y > 1)] }
+      } else if (atelier) resultat = DISPOSITIONS_ATELIER[modele](source, contexte)
       else if (estComposition(modele)) resultat = composer(modele, source, contexte, jetonsStandard(contexte))
       else if (source.scene) resultat = avecSceneStandard(source, contexte)
       else resultat = { elements: DISPOSITIONS[modele](source, contexte) }

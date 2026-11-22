@@ -37,8 +37,12 @@
         :alt="element.alt"
         :style="zone(element, format)"
       >
+      <DiapositiveIcone
+        v-else-if="element.type === 'icone'"
+        :element="element"
+      />
       <DiapositiveTexte
-        v-else
+        v-else-if="element.type === 'texte'"
         :element="element"
       />
     </template>
@@ -66,6 +70,7 @@
 
 <script setup>
 import { computed, provide } from 'vue'
+import DiapositiveIcone from './DiapositiveIcone.vue'
 import DiapositiveTexte from './DiapositiveTexte.vue'
 import SceneCalque from './SceneCalque.vue'
 import { CLE_FORMAT, styleForme, taillePolice, zone } from './geometrie'

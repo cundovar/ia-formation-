@@ -277,7 +277,18 @@ qualifier séparément.
 
 ## Atelier visuel v3 — proposition du 22 novembre 2026
 
-**Statut : proposition à valider sur deux diapositives test.** Référence
+**Statut : direction visuelle validée le 22 novembre 2026** sur les deux
+diapositives test (maquettes Penpot, page « Atelier visuel v3 »). Première
+implémentation dans le moteur : thème versionné `atelier_visuel_v3`
+(`front/src/diaporamas/themes/atelierVisuelV3.js`, jetons recopiés de Penpot),
+compositions « convergence » (quatre blocs reliés à la bulle) et « circuit »
+(trois étapes, contrôle humain) dans `miseEnPageV3.js`, catalogue d’icônes
+`regles/diaporamas/icones.json`, pilote `pilote/devis-tpe-v3.json`. Révélation :
+le web montre un bloc ou une étape par appui (clavier ou clic, sans mouvement si
+la préférence le demande) ; le PDF imprime la vue fixe suivie des étapes
+légendées ; le PPTX garde une diapositive fixe aux formes et textes modifiables,
+étapes dans les notes. Les autres modèles et la lecture étroite suivent encore
+Atelier visuel ; le contrat MCP (étape 2 et suivantes) reste à brancher. Référence
 graphique : [maquette Penpot locale](http://localhost:9001/#/workspace?team-id=9b657248-8f9f-81e1-8008-c91089ea6788&file-id=4911bca2-c422-8010-8008-fb5075a6a325&page-id=b08f8722-b968-8006-8008-fb543d43a4bf).
 
 L’agent fournit le contenu et sa structure. Le site choisit les compositions,

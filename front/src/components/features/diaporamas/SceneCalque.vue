@@ -34,6 +34,11 @@
           :style="zone(element, format)"
           :data-id="element.id"
         >
+        <DiapositiveIcone
+          v-else-if="element.type === 'icone'"
+          :element="element"
+          :data-id="element.id"
+        />
         <DiapositiveTexte
           v-else-if="element.type === 'texte'"
           :element="element.attenue ? { ...element, couleur: couleurAttenuee } : element"
@@ -93,6 +98,7 @@
 
 <script setup>
 import { computed, inject, unref, useId } from 'vue'
+import DiapositiveIcone from './DiapositiveIcone.vue'
 import DiapositiveTexte from './DiapositiveTexte.vue'
 import { CLE_FORMAT, styleForme, zone } from './geometrie'
 import { FORMAT } from '@/diaporamas/theme'
