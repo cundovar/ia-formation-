@@ -6,6 +6,8 @@ import { maitres, nomFichier, planDiaporama } from './miseEnPage'
 import { ESPACE_PARAGRAPHE, LICENCE, POLICE } from './theme'
 import { elementsEtape, legendeCourte } from './scenes'
 import { sceneDuCatalogue } from './scenes/valider'
+import { donneesIcone } from './icones'
+import { ICONES_PNG } from './iconesPng'
 
 const PUCES = {
   point: { indent: 24 },
@@ -26,10 +28,20 @@ const rayonPptx = (element) => {
   return element.rayon > 0 ? element.rayon : Math.min(element.w, element.h) / 2
 }
 
-const NOMS_FORMES = { trapeze: 'trapezoid' }
+const NOMS_FORMES = { trapeze: 'trapezoid', bulle: 'wedgeRoundRectCallout' }
+
+// Corps de la bulle : la pointe de la forme PowerPoint déborde sous le rectangle (comme la bulle du site)
+const PART_CORPS_BULLE = 140 / 170
+
+// Ombre portée (thème v3) : décalage et flou en pouces, convertis en points
+const ombrePptx = (o) => ({
+  type: 'outer', angle: 90, offset: Math.round(o.decalage * 72), blur: Math.round(o.flou * 72), color: o.couleur, opacity: o.opacite,
+})
 
 const optionsForme = (element) => ({
   ...position(element),
+  ...(element.forme === 'bulle' ? { h: element.h * PART_CORPS_BULLE } : {}),
+  ...(element.ombre ? { shadow: ombrePptx(element.ombre) } : {}),
   fill: { color: element.fond, ...(element.attenue ? { transparency: ATTENUATION } : {}) },
   line: element.bordure
     ? {
@@ -114,6 +126,11 @@ const ajouterElement = (slide, element) => {
   if (element.type === 'forme') slide.addShape(NOMS_FORMES[element.forme] ?? element.forme, optionsForme(element))
   else if (element.type === 'ligne') slide.addShape('line', optionsLigne(element))
   else if (element.type === 'image') slide.addImage({ ...position(element), data: element.data, altText: element.alt })
+  else if (element.type === 'icone') {
+    // Version PNG (lue par tous les lecteurs) ; SVG en dernier recours pour une couleur non prévue
+    const data = (element.couleur === '2F6B4F' && ICONES_PNG[element.nom]) || donneesIcone(element.nom, element.couleur, element.epaisseur)
+    if (data) slide.addImage({ ...position(element), data, altText: '' })
+  }
   else if (element.type === 'texte') slide.addText(paragraphes(element), optionsTexte(element))
 }
 
@@ -174,7 +191,7 @@ export const construirePptx = async (diaporama, { images = {}, site = 'Formation
   for (const diapositive of plan.diapositives) {
     for (const vue of vuesDiapositive(diapositive)) {
       const slide = pptx.addSlide({ masterName: diapositive.maitre })
-      slide.addText(diapositive.titre, { placeholder: 'titre' })
+      slide.addText(titrePptx(diapositive), { placeholder: 'titre' })
       diapositive.elements.forEach((element) => ajouterElement(slide, element))
       vue.elements.forEach((element) => ajouterElement(slide, element))
       if (vue.notes) slide.addNotes(vue.notes)
@@ -182,6 +199,14 @@ export const construirePptx = async (diaporama, { images = {}, site = 'Formation
   }
   return pptx
 }
+
+// Titre avec son mot-clé surligné (DIA-15), en morceaux de texte modifiables
+const titrePptx = (diapositive) => (diapositive.titreSegments
+  ? diapositive.titreSegments.map((segment) => ({
+      text: segment.texte,
+      options: segment.motCle ? { highlight: 'F6D9C4', color: '2F6B4F' } : {},
+    }))
+  : diapositive.titre)
 
 export const telechargerPptx = async (diaporama, options = {}) => {
   const pptx = await construirePptx(diaporama, options)

@@ -99,6 +99,19 @@ final class DiaporamaBrief
         if (!\in_array($statut, self::STATUTS, true)) {
             $erreurs[] = ['champ' => 'brief.statut', 'message' => 'propose (valeurs déduites, pas encore confirmées par la personne) ou confirme.'];
         }
+        $visuel = null;
+        if (array_key_exists('visuel', $brut) && $brut['visuel'] !== null) {
+            $champs = ['palette', 'typographie', 'references', 'styleSchemas', 'illustrations'];
+            $saisie = $brut['visuel'];
+            if (!\is_array($saisie) || array_is_list($saisie) || array_diff(array_keys($saisie), $champs) !== []) {
+                $erreurs[] = ['champ' => 'brief.visuel', 'message' => 'Objet attendu avec palette, typographie, references, styleSchemas et illustrations.'];
+            } else {
+                $visuel = [];
+                foreach ($champs as $champ) {
+                    $visuel[$champ] = self::texte($saisie[$champ] ?? null, 'brief.visuel.'.$champ, 200, false, $erreurs);
+                }
+            }
+        }
         $deductions = [];
         foreach (\is_array($brut['deductions'] ?? null) ? \array_slice(array_values($brut['deductions']), 0, self::MAX_DEDUCTIONS) : [] as $i => $d) {
             $champ = \is_array($d) ? self::texte($d['champ'] ?? null, "brief.deductions[$i].champ", 30, true, $erreurs) : null;
@@ -107,7 +120,7 @@ final class DiaporamaBrief
                 $deductions[] = ['champ' => $champ, 'origine' => $origine];
             }
         }
-        $inconnus = array_diff(array_keys($brut), ['public', 'dureeMinutes', 'objectif', 'contexte', 'theme', 'intention', 'statut', 'deductions', 'intentionsPossibles', 'themesPossibles']);
+        $inconnus = array_diff(array_keys($brut), ['public', 'dureeMinutes', 'objectif', 'contexte', 'theme', 'intention', 'statut', 'deductions', 'intentionsPossibles', 'themesPossibles', 'visuel']);
         if ($inconnus !== []) {
             $erreurs[] = ['champ' => 'brief', 'message' => 'Champs inconnus : '.implode(', ', $inconnus).'.'];
         }
@@ -124,7 +137,7 @@ final class DiaporamaBrief
             'intention' => $intention,
             'statut' => $statut,
             'deductions' => $deductions,
-        ], []];
+        ] + ($visuel === null ? [] : ['visuel' => $visuel]), []];
     }
 
     /**

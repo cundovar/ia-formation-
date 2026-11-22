@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "description": "Catalogue fermé des icônes des diaporamas Atelier visuel v3 (docs/PLAN_DIAPORAMAS.md). L'agent choisit un identifiant selon son sens ; le dessin est fourni par le site (front/src/diaporamas/icones.js). Un identifiant absent du catalogue est refusé.",
+  "icones": {
+    "cible": { "sens": "Objectif, résultat attendu" },
+    "document": { "sens": "Contexte, document, format de la réponse" },
+    "personnes": { "sens": "Public, destinataires, ton" },
+    "bouclier": { "sens": "Limites, données protégées, sécurité" },
+    "crayon": { "sens": "Rédiger, formuler une demande" },
+    "etincelle": { "sens": "Production de l'IA, réponse générée" },
+    "oeil": { "sens": "Contrôler, vérifier, relire" },
+    "alerte": { "sens": "Point à vérifier, risque" },
+    "check": { "sens": "Validé, conforme" },
+    "envoi": { "sens": "Envoyer, transmettre" },
+    "bulle": { "sens": "Message, conversation" },
+    "cadenas": { "sens": "Confidentiel, accès restreint" },
+    "horloge": { "sens": "Durée, délai" },
+    "liste": { "sens": "Étapes, liste de points" }
+  }
+}

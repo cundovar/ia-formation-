@@ -7,6 +7,8 @@ import { DISPOSITIONS_ATELIER, MODELES_AVEC_SCENE, contexteAtelier, maitresAteli
 import { planifierScene } from './scenes'
 import { composer, estComposition } from './compositions'
 import { couleursScene, idTheme } from './themes'
+import { ID as ID_V3 } from './themes/atelierVisuelV3'
+import { disposerV3, maitresV3, partiesDuScenario, pointsEnPhrases, reperesV3, MODELE_CHIFFRES, chiffresEnNotion, segmentsTitre } from './miseEnPageV3'
 
 const texte = (valeur) => (typeof valeur === 'string' ? valeur.trim() : '')
 const liste = (valeur) => (Array.isArray(valeur) ? valeur.map(texte).filter(Boolean) : [])
@@ -290,7 +292,7 @@ const avecSceneStandard = (diapo, ctx) => {
   const zone = { x: C.x, y: C.y, w: C.w, h: hScene }
   const dessin = { x: C.x + 0.25, y: C.y + 0.15, w: C.w - 0.5, h: hScene - 0.3 - LEGENDE_STANDARD }
   const legende = { x: C.x + 0.25, y: C.y + hScene - LEGENDE_STANDARD - 0.08, w: C.w - 0.5, h: LEGENDE_STANDARD }
-  const scene = planifierScene(diapo.scene, { zone: dessin, couleurs: couleursScene('standard', ctx.audience), variante: ctx.variantes?.[ctx.index] })
+  const scene = planifierScene(diapo.scene, { zone: dessin, couleurs: couleursScene('standard', ctx.audience), variante: ctx.variante })
   const elements = [forme('rect', zone, COULEURS.carte, COULEURS.bordure)]
   if (points.length > 0) {
     elements.push(bloc({ x: C.x, y: C.y + hScene + 0.15, w: C.w, h: C.h - hScene - 0.15 }, puces(points, 'point'), {
@@ -303,6 +305,7 @@ const avecSceneStandard = (diapo, ctx) => {
 // Décor commun des deux masques : la couverture et les diapositives de contenu.
 // `titre` est l'emplacement du titre (lu par les lecteurs d'écran dans PowerPoint).
 export const maitres = (plan, site) => {
+  if (plan.theme === ID_V3) return maitresV3(plan, site)
   if (plan.theme === 'atelier_visuel') return maitresAtelier(plan, site)
   const couleurs = couleursPublic(plan.audience)
   const repere = { taille: TAILLES.repere, couleur: COULEURS.texteDoux, role: 'repere', valign: 'middle' }
@@ -350,39 +353,91 @@ const jetonsStandard = (ctx) => ({
 
 const TITRES_PAR_DEFAUT = { fin: 'Pour aller plus loin', a_retenir: 'À retenir', objectifs: 'Ce que vous saurez faire' }
 
+// Les séparateurs sont des pages de projection. Leur numéro source reste celui de l'ouverture de partie.
+const pagesV3 = (sources, parties) => {
+  const numeros = new Map(parties.map((partie, index) => [partie.id, index + 1]))
+  const partieDuSeparateur = ({ diapo }, index) => (
+    numeros.has(diapo.scenarioPartie) ? diapo.scenarioPartie : sources[index + 1]?.diapo.scenarioPartie
+  )
+  const partiesIntroduites = new Set(sources.flatMap((source, index) => (
+    source.diapo.modele === 'separateur' ? [partieDuSeparateur(source, index)] : []
+  )))
+
+  return sources.flatMap((source, index) => {
+    const { diapo, numeroSource } = source
+    if (diapo.modele === 'separateur') {
+      const partie = partieDuSeparateur(source, index)
+      const numero = numeros.get(partie)
+      return [numero ? { ...source, diapo: { ...diapo, scenarioPartie: partie, numero } } : source]
+    }
+    const partie = diapo.scenarioPartie
+    const numero = numeros.get(partie)
+    if (!numero || partiesIntroduites.has(partie) || ['titre', 'fin'].includes(diapo.modele)) return [source]
+
+    partiesIntroduites.add(partie)
+    return [
+      { diapo: { modele: 'separateur', titre: parties[numero - 1].titre, scenarioPartie: partie, numero }, numeroSource, separateur: true },
+      source,
+    ]
+  })
+}
+
 /**
  * @param {object} diaporama contenu structuré : { titre, sousTitre, audience, theme, objectif, diapositives: [...] }
  * @param {{ images?: object, format?: 'large'|'etroit', variantes?: Record<number, object> }} options
  *   `format` : `etroit` empile les éléments pour la lecture sur mobile (thème Atelier visuel) ;
- *   `variantes` : branche ou décision simulée pendant la projection, par numéro de diapositive.
+ *   `variantes` : branche ou décision simulée pendant la projection, par index de diapositive source (à partir de zéro).
  */
 export const planDiaporama = (diaporama, { images = {}, format = 'large', variantes = {} } = {}) => {
   const audience = diaporama?.audience === 'former' ? 'former' : 'apprendre'
-  const theme = idTheme(diaporama?.theme)
-  const atelier = theme === 'atelier_visuel'
+  const themeDemande = idTheme(diaporama?.theme)
+  // Atelier visuel v3 n'a qu'un format 16:9 pour l'instant : la lecture étroite (mobile) suit Atelier visuel
+  const v3 = themeDemande === ID_V3 && format !== 'etroit'
+  const theme = themeDemande === ID_V3 && !v3 ? 'atelier_visuel' : themeDemande
+  const atelier = theme === 'atelier_visuel' || v3
   const contexteFormat = atelier ? contexteAtelier(format) : { format: 'large', dims: FORMAT }
   const titreDiaporama = texte(diaporama?.titre) || 'Diaporama'
+  const sources = (Array.isArray(diaporama?.diapositives) ? diaporama.diapositives : [])
+    .map((diapo, index) => ({ diapo, numeroSource: index + 1 }))
+    .filter(({ diapo }) => diapo && typeof diapo === 'object')
+  const parties = partiesDuScenario(diaporama)
+  const pages = themeDemande === ID_V3 ? pagesV3(sources, parties.slice(0, 4)) : sources
   const ctx = {
-    diaporama: diaporama ?? {}, audience, couleurs: couleursPublic(audience), images, variantes, titreDiaporama, ...contexteFormat,
+    diaporama: diaporama ?? {}, audience, couleurs: couleursPublic(audience), images, titreDiaporama, ...contexteFormat,
+    parties, total: pages.length,
   }
-  const diapositives = (Array.isArray(diaporama?.diapositives) ? diaporama.diapositives : [])
-    .filter((diapo) => diapo && typeof diapo === 'object')
-    .map((diapo, index) => {
+  const diapositives = pages
+    .map(({ diapo, numeroSource, separateur = false }, index) => {
       // Un modèle inconnu (contenu plus récent que le site, par exemple) s'affiche comme une notion
+      // Chiffres clés : modèle propre à la v3 ; ailleurs (lecture étroite, contenu incomplet), une notion en phrases
+      const chiffres = themeDemande === ID_V3 && diapo.modele === MODELE_CHIFFRES
       const modele = estModeleConnu(diapo.modele) ? diapo.modele : 'notion'
       // Une scène n'est dessinée que sur les modèles qui l'acceptent (catalogue : modelesAutorises)
-      const source = diapo.scene && !MODELES_AVEC_SCENE.includes(modele) ? { ...diapo, scene: null } : diapo
-      const contexte = { ...ctx, index }
+      const brute = diapo.scene && !MODELES_AVEC_SCENE.includes(modele) ? { ...diapo, scene: null } : diapo
+      // Points structurés de la v3 : en phrases quand la diapositive n'est pas composée en v3
+      const source = themeDemande === ID_V3 ? pointsEnPhrases(chiffres ? chiffresEnNotion(brute) : brute) : brute
+      const contexte = { ...ctx, index, variante: separateur ? undefined : variantes[numeroSource - 1] }
       let resultat
-      if (atelier) resultat = DISPOSITIONS_ATELIER[modele](source, contexte)
+      const resultatV3 = v3 ? disposerV3({ ...diapo, modele: chiffres ? MODELE_CHIFFRES : modele }, contexte) : null
+      if (resultatV3) resultat = resultatV3
+      else if (v3) {
+        // Modèle pas encore composé en v3 : dessin Atelier visuel, avec le fil de progression v3
+        const base = DISPOSITIONS_ATELIER[modele](source, contexte)
+        resultat = { ...base, elements: [...reperesV3(diapo, contexte), ...base.elements.filter((e) => e.role !== 'repere' || e.y > 1)] }
+      } else if (atelier) resultat = DISPOSITIONS_ATELIER[modele](source, contexte)
       else if (estComposition(modele)) resultat = composer(modele, source, contexte, jetonsStandard(contexte))
       else if (source.scene) resultat = avecSceneStandard(source, contexte)
       else resultat = { elements: DISPOSITIONS[modele](source, contexte) }
+      const titre = texte(diapo.titre) || TITRES_PAR_DEFAUT[modele] || titreDiaporama
       return {
-        modele,
+        numeroSource,
+        separateur,
+        modele: chiffres && resultatV3 ? MODELE_CHIFFRES : modele,
         maitre: modele === 'titre' || modele === 'separateur' ? 'COUVERTURE' : 'CONTENU',
         // DIA-05 : chaque diapositive a un titre
-        titre: texte(diapo.titre) || TITRES_PAR_DEFAUT[modele] || titreDiaporama,
+        titre,
+        // DIA-15 : mot-clé surligné dans le titre (thème v3, y compris en lecture étroite) ; null sinon
+        titreSegments: themeDemande === ID_V3 ? segmentsTitre(titre, diapo.motCle) : null,
         notes: texte(diapo.notes),
         elements: resultat.elements,
         scene: resultat.scene ?? null,

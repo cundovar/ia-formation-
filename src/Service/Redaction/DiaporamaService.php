@@ -109,6 +109,7 @@ final class DiaporamaService
             }, array_values(array_unique(array_map('intval', $markers[1])))))),
             // DIA-12 : fiche complète de chaque visuel des cours exploités ; aucun visuel n'est inventé
             'visuels' => $this->visuels()->inventaire($cours),
+            'atelierVisuelV3' => DiaporamaV3::contrat(),
             'consigneVisuels' => 'Proposez les visuels qui servent une partie du scénario et dites en une phrase pourquoi (voir_visuel pour les examiner). Signalez une interface simulée. Si aucun ne convient, dites-le : n\'inventez ni capture ni métadonnée.',
             'coursNonPublies' => $this->source->coursNonPublies($diaporama),
             'diaporamaExistant' => $existant === null ? null : $this->summary($existant),
@@ -196,6 +197,15 @@ final class DiaporamaService
             throw RedactionError::invalid([...$erreursBrief, ...$erreursScenario]);
         }
         $analyse = DiaporamaScenario::analyser($scenario, $this->source->inventaire($diaporama), fn (int $id) => $this->captures->findById($id) !== null, $brief);
+        if (($brief['theme'] ?? null) === Diaporama::THEME_ATELIER_VISUEL_V3 && \count($scenario['parties']) > DiaporamaV3::MAX_PARTIES) {
+            $analyse['controles'][] = [
+                'code' => 'DIAPO_V3_PARTIES',
+                'regle' => 'DIA-15',
+                'niveau' => DraftChecker::BLOCKING,
+                'message' => sprintf('Atelier visuel v3 accepte %d parties au plus.', DiaporamaV3::MAX_PARTIES),
+            ];
+        }
+
 
         return [
             'cible' => $this->targetSummary($diaporama),
@@ -230,12 +240,13 @@ final class DiaporamaService
         $diaporama = $this->diaporama($id);
         $problemes = [];
         foreach (\array_slice(\is_array($rapport['problemes'] ?? null) ? array_values($rapport['problemes']) : [], 0, 200) as $p) {
-            if (!\is_array($p) || !\in_array($p['probleme'] ?? null, ['debordement', 'sortie', 'recouvrement'], true)) {
+            if (!\is_array($p) || !\in_array($p['probleme'] ?? null, ['debordement', 'sortie', 'recouvrement', 'texte_petit'], true)) {
                 continue;
             }
             $zone = \is_array($p['mesure']['zone'] ?? null) ? $p['mesure']['zone'] : [];
             $problemes[] = [
                 'diapositive' => max(1, (int) ($p['diapositive'] ?? 1)),
+                ...(($p['separateur'] ?? false) === true ? ['separateur' => true] : []),
                 'etape' => max(1, (int) ($p['etape'] ?? 1)),
                 'format' => ($p['format'] ?? null) === 'etroit' ? 'etroit' : 'large',
                 'element' => [
@@ -380,6 +391,10 @@ final class DiaporamaService
         $diaporama = $this->diaporama($id);
         $issues = $this->checker->check($diaporama);
         $all = [...$issues, ...$this->reviewIssues($diaporama)];
+        $aRelire = self::A_RELIRE;
+        if ($diaporama->getTheme() === Diaporama::THEME_ATELIER_VISUEL_V3) {
+            $aRelire[] = 'Atelier visuel v3 : une seule carte mise en avant dans les schémas, consignes chiffrées distinctes des statistiques, contexte et unité conformes à la source. Pour le devis fictif, vérifiez l’absence de prix ou de délai inventés.';
+        }
 
         return [
             'sansControleBloquant' => !DraftChecker::hasBlockingIssue($issues),
@@ -388,7 +403,7 @@ final class DiaporamaService
             // Contrôles mesurés dans un navigateur (aperçu) : dépendent des polices et du rendu
             'controlesNavigateur' => DiaporamaChecker::etatRendu($diaporama),
             // Ce qu'aucun contrôle automatique ne juge : à vérifier par le relecteur (autre connecteur)
-            'aRelire' => self::A_RELIRE,
+            'aRelire' => $aRelire,
             'apercuUrl' => $diaporama->getId() === null ? null : '/spa/diaporamas/apercu/'.$diaporama->getId(),
         ];
     }

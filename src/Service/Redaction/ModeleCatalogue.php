@@ -45,7 +45,7 @@ final class ModeleCatalogue
      */
     public function modeles(): array
     {
-        return $this->tout()['modeles'];
+        return $this->tout()['modeles'] + [DiaporamaV3::MODELE_CHIFFRES => DiaporamaV3::modeleChiffres()];
     }
 
     /**

@@ -1,0 +1,81 @@
+{
+  "titre": "Deux diapositives test · Demande de devis",
+  "theme": "atelier_visuel",
+  "audience": "apprendre",
+  "proposition": "Module 9, parcours 3. Deux diapositives test pour des professionnels de TPE, avec des données fictives.",
+  "diapositives": [
+    {
+      "modele": "notion",
+      "titre": "Construire une demande à l’IA",
+      "points": [
+        "Accuser réception de la demande",
+        "Répondre au prospect avec clarté",
+        "Ne promettre ni tarif ni délai"
+      ],
+      "notes": "Utilisez une demande de devis entièrement fictive. Commencez par préciser le résultat attendu : un message qui accuse réception et qui demande les informations utiles. Ajoutez le contexte de la TPE, le destinataire et un ton professionnel. Terminez en demandant à l’IA de laisser le prix et le délai à confirmer par une personne.",
+      "scene": {
+        "type": "chaine_traitement",
+        "version": 1,
+        "fiche": {
+          "libelle": "Devis fictif",
+          "valeur": "Préparer une réponse"
+        },
+        "blocs": [
+          {
+            "libelle": "Objectif"
+          },
+          {
+            "libelle": "Contexte"
+          },
+          {
+            "libelle": "Public et ton"
+          },
+          {
+            "libelle": "Limites"
+          }
+        ],
+        "transformation": {
+          "bloc": 3,
+          "valeur": "Demande cadrée"
+        },
+        "description": "On prépare la demande en précisant l’objectif, le contexte du devis, le ton adapté au prospect et les limites à respecter.",
+        "justification": "Les quatre blocs montrent comment la demande se précise avant de la soumettre."
+      }
+    },
+    {
+      "modele": "notion",
+      "titre": "Vérifier la réponse avant de l’envoyer",
+      "points": [
+        "Comparer avec la demande initiale",
+        "Supprimer tout engagement inventé",
+        "Faire valider avant tout envoi"
+      ],
+      "notes": "Relisez le brouillon avec la demande fictive sous les yeux. Vérifiez que le message répond au bon besoin et ne transforme aucune estimation en engagement. Si un tarif ou un délai apparaît sans source, supprimez-le et demandez les informations manquantes. La validation appartient à une personne de la TPE et aucun message n’est envoyé dans l’exercice.",
+      "scene": {
+        "type": "chaine_traitement",
+        "version": 1,
+        "fiche": {
+          "libelle": "Devis fictif",
+          "valeur": "Brouillon à examiner"
+        },
+        "blocs": [
+          {
+            "libelle": "Demande"
+          },
+          {
+            "libelle": "Réponse de l’IA"
+          },
+          {
+            "libelle": "Contrôle humain"
+          }
+        ],
+        "transformation": {
+          "bloc": 2,
+          "valeur": "Prêt pour validation"
+        },
+        "description": "La demande produit un brouillon. Une personne revient à la demande, contrôle le brouillon puis choisit de le corriger ou de le valider.",
+        "justification": "Le circuit distingue la rédaction par l’IA et la décision humaine avant tout envoi."
+      }
+    }
+  ]
+}

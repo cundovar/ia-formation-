@@ -1,0 +1,82 @@
+{
+  "titre": "Deux diapositives test · Demande de devis (v3)",
+  "theme": "atelier_visuel_v3",
+  "audience": "apprendre",
+  "proposition": "Module 9, parcours 3, chapitre « 1. Formuler sa demande ». Deux diapositives test Atelier visuel v3 pour des professionnels de TPE, validées sur maquette Penpot le 22 novembre 2026. Données entièrement fictives : aucun prix ni délai. Pilote en brouillon.",
+  "scenario": {
+    "parties": [
+      {
+        "id": "formuler",
+        "titre": "Formuler"
+      },
+      {
+        "id": "verifier",
+        "titre": "Vérifier"
+      }
+    ]
+  },
+  "diapositives": [
+    {
+      "modele": "notion",
+      "titre": "Construire une demande à l’IA",
+      "scenarioPartie": "formuler",
+      "centre": "Votre demande",
+      "miseEnAvant": 3,
+      "points": [
+        {
+          "titre": "Objectif",
+          "texte": "« Réponds à une demande de devis. »",
+          "icone": "cible"
+        },
+        {
+          "titre": "Contexte",
+          "texte": "« Peintre, demande reçue par courriel. »",
+          "icone": "document"
+        },
+        {
+          "titre": "Public et ton",
+          "texte": "« Client particulier, ton cordial. »",
+          "icone": "personnes"
+        },
+        {
+          "titre": "Limites",
+          "texte": "« N’indique ni prix ni délai. »",
+          "icone": "bouclier"
+        }
+      ],
+      "conclusion": "Quatre éléments précis : une réponse utile, que vous complétez.",
+      "notes": "Utilisez une demande de devis entièrement fictive. Commencez par préciser le résultat attendu : un message qui accuse réception et qui demande les informations utiles. Ajoutez le contexte de la TPE, le destinataire et un ton professionnel. Terminez en demandant à l’IA de laisser le prix et le délai à confirmer par une personne."
+    },
+    {
+      "modele": "etapes",
+      "titre": "Vérifier la réponse avant de l’envoyer",
+      "scenarioPartie": "verifier",
+      "miseEnAvant": 2,
+      "points": [
+        {
+          "titre": "Demande",
+          "texte": "« Réponds à la demande de devis, sans prix ni délai. »",
+          "icone": "crayon"
+        },
+        {
+          "titre": "Réponse de l’IA",
+          "texte": "Bonjour M. Exemple, voici notre proposition :",
+          "aVerifier": "Tarif et délai à confirmer",
+          "icone": "etincelle"
+        },
+        {
+          "titre": "Contrôle humain",
+          "liste": [
+            "Tarif confirmé",
+            "Délai validé",
+            "Nom et adresse"
+          ],
+          "action": "Puis envoyer",
+          "icone": "oeil"
+        }
+      ],
+      "conclusion": "L’IA propose, vous vérifiez les engagements avant l’envoi.",
+      "notes": "Relisez le brouillon avec la demande fictive sous les yeux. Vérifiez que le message répond au bon besoin et ne transforme aucune estimation en engagement. Si un tarif ou un délai apparaît sans source, supprimez-le et demandez les informations manquantes. La validation appartient à une personne de la TPE et aucun message n’est envoyé dans l’exercice."
+    }
+  ]
+}

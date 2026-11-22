@@ -147,3 +147,35 @@ Un diaporama du site présente un cours, un chapitre ou un parcours entier devan
 - Une scène animée indique sa `notion` (l'idée qu'elle illustre) : elle n'est jamais choisie d'après un mot-clé.
 
 **Source.** [PLAN] : décision du 21 novembre 2026 ; [RGAA] critères 3 (couleurs) et 10 (présentation de l'information).
+
+## DIA-14 — Valider la direction visuelle sur deux diapositives
+
+Conserver la palette, la typographie, les références, le style des schémas
+et la préférence d’illustration dans le brief. Le thème du site applique
+les choix graphiques. Présenter deux diapositives représentatives et faire
+valider leur rendu avant de rédiger la série.
+
+Un schéma représente une relation utile au cours. Utiliser une chaîne pour
+un processus, une comparaison pour des différences explicites, un
+aiguillage pour une condition et une loupe ou un sas pour une vérification.
+Employer un dessin sans texte lorsqu’il apporte une explication complémentaire.
+Déposer le fichier avec sa légende et son alternative textuelle via le
+circuit des illustrations. Utiliser des exemples fictifs.
+
+Examiner le rendu web et les rendus fixes. Les étapes successives du PPTX
+conservent les formes et les textes éditables. Dans le PDF, présenter le
+schéma fixe et les légendes nécessaires à la compréhension.
+
+## DIA-15 — Structurer le contenu pour Atelier visuel v3
+
+**Règle.** Pour le thème `atelier_visuel_v3`, l’agent organise les idées et peut désigner le point prioritaire. Le site choisit la composition et détermine la présentation graphique.
+
+- Rattacher chaque diapositive à une partie du scénario avec `scenarioPartie` et respecter l’ordre déclaré. Le scénario comporte quatre parties au plus. Le site insère les séparateurs à l’ouverture des parties utilisées et conserve ceux qui ont déjà été rédigés.
+- Pour `motCle`, choisir un seul passage de trois mots au plus et le reproduire tel qu’il apparaît dans le titre.
+- Conserver les listes de phrases ou fournir des points structurés. Chaque point structuré a un `titre` de quatre mots au plus et un `texte` de 90 caractères au plus ou une `liste` de contrôles. Cette liste contient de un à trois textes de 40 caractères au plus. `aVerifier` tient en 60 caractères, `action` en 40. Ces textes suivent DIA-01, DIA-02 et DON-04.
+- Choisir une `icone` facultative dans `diaporamas/icones.json` avec `lister_icones`. `miseEnAvant` désigne un seul point par son index, à partir de zéro. Dans les compositions v3, le site met en avant le premier point par défaut.
+- Quatre points structurés sur `notion` ou `objectifs` peuvent converger vers une idée centrale. Trois points structurés sur `etapes` ou `notion` peuvent former un circuit. Vérifier la lisibilité et la relation entre les points. Pour les étapes de démonstration illustrées, utiliser les visuels du back-office et justifier leur choix selon DIA-12.
+- Pour `chiffres_cles`, indiquer `valeur` (nombre en texte), `unite` si nécessaire, `libelle`, `texte` explicatif si utile et `nature`. Une `proportion` facultative est comprise entre 0 et 1. `repere` désigne une consigne pédagogique. `statistique` exige une `source` composée du `coursId` d’un cours exploité et d’un `passage` exact (300 caractères au plus) contenant la valeur et son unité. Le serveur compare le passage au texte du cours. Le relecteur vérifie le contexte du chiffre et l’usage du repère. Le site affiche la nature (« Repère pédagogique » ou « Statistique sourcée ») et cite le passage source sous le chiffre.
+- Dans le scénario fictif de réponse à une demande de devis, conserver les mentions à confirmer. Le relecteur vérifie qu’aucun prix ni délai n’a été inventé.
+
+**Source.** [PLAN] : section « Atelier visuel v3 » et pilote « Répondre à une demande de devis » (`front/src/diaporamas/pilote/devis-tpe-v3.json`) ; catalogue `diaporamas/icones.json` ; DIA-02, DIA-04, DIA-05, DIA-11, DIA-12 et DIA-14.

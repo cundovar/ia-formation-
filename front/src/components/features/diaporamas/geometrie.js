@@ -31,5 +31,24 @@ export const styleForme = (element, format = FORMAT) => {
     borderRadius,
     ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
     ...(element.forme === 'trapeze' ? { clipPath: 'polygon(0 0, 100% 0, 78% 100%, 22% 100%)' } : {}),
+    ...(element.forme === 'bulle' ? { background: fondBulle(element), border: 'none', borderRadius: '0' } : {}),
+    ...(element.ombre ? { boxShadow: ombre(element.ombre, format) } : {}),
   }
+}
+
+// Ombre portée (thème Atelier visuel v3) : décalage et flou en pouces, suivant la taille de la diapositive
+const ombre = (o, format) => `0 ${rayon(o.decalage, format)} ${rayon(o.flou, format)} rgba(${[0, 2, 4].map((i) => parseInt(o.couleur.slice(i, i + 2), 16)).join(', ')}, ${o.opacite})`
+
+// Bulle de conversation (motif du thème v3) : rectangle arrondi et pointe en bas à gauche, dessinés en SVG
+// aux proportions réelles de l'élément (comme la forme « wedgeRoundRectCallout » du .pptx)
+export const traceBulle = (w, h, r) => {
+  const corps = h * (140 / 170)
+  const p = (v) => Math.round(v * 1000) / 1000
+  return `M${p(r)} 0H${p(w - r)}A${p(r)} ${p(r)} 0 0 1 ${p(w)} ${p(r)}V${p(corps - r)}A${p(r)} ${p(r)} 0 0 1 ${p(w - r)} ${p(corps)}`
+    + `H${p(w * 0.35)}L${p(w * 0.14)} ${p(h)}L${p(w * 0.19)} ${p(corps)}H${p(r)}A${p(r)} ${p(r)} 0 0 1 0 ${p(corps - r)}V${p(r)}A${p(r)} ${p(r)} 0 0 1 ${p(r)} 0Z`
+}
+
+const fondBulle = (element) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${element.w} ${element.h}" preserveAspectRatio="none"><path d="${traceBulle(element.w, element.h, element.rayon || 0.3)}" fill="#${element.fond}"/></svg>`
+  return `center / 100% 100% no-repeat url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }

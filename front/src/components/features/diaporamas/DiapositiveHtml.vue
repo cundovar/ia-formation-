@@ -18,7 +18,16 @@
       class="diapositive__titre"
       :style="styleTitre"
     >
-      {{ diapositive.titre }}
+      <span v-if="diapositive.titreSegments"><template
+        v-for="(segment, index) in diapositive.titreSegments"
+        :key="`titre-${index}`"
+      ><mark
+        v-if="segment.motCle"
+        class="diapositive__mot-cle"
+      >{{ segment.texte }}</mark><template v-else>{{ segment.texte }}</template></template></span>
+      <template v-else>
+        {{ diapositive.titre }}
+      </template>
     </component>
     <template
       v-for="(element, index) in diapositive.elements"
@@ -37,8 +46,12 @@
         :alt="element.alt"
         :style="zone(element, format)"
       >
+      <DiapositiveIcone
+        v-else-if="element.type === 'icone'"
+        :element="element"
+      />
       <DiapositiveTexte
-        v-else
+        v-else-if="element.type === 'texte'"
         :element="element"
       />
     </template>
@@ -66,6 +79,7 @@
 
 <script setup>
 import { computed, provide } from 'vue'
+import DiapositiveIcone from './DiapositiveIcone.vue'
 import DiapositiveTexte from './DiapositiveTexte.vue'
 import SceneCalque from './SceneCalque.vue'
 import { CLE_FORMAT, styleForme, taillePolice, zone } from './geometrie'
@@ -140,6 +154,16 @@ const styleNumero = computed(() => ({
   flex-direction: column;
   font-weight: 700;
   line-height: 1.15;
+}
+
+/* Mot-clé du titre (DIA-15) : surlignage pêche clair, texte vert (même rendu que le .pptx) */
+.diapositive__mot-cle {
+  padding: 0 0.08em;
+  border-radius: 0.12em;
+  background: #f6d9c4;
+  color: #2f6b4f;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .diapositive__image {

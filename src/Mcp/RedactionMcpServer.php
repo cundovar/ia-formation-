@@ -12,6 +12,7 @@ use App\Service\Redaction\DiaporamaBrief;
 use App\Service\Redaction\DiaporamaChecker;
 use App\Service\Redaction\DiaporamaScenario;
 use App\Service\Redaction\DiaporamaService;
+use App\Service\Redaction\DiaporamaV3;
 use App\Service\Redaction\SceneCatalogue;
 use App\Service\Redaction\QcmDraftChecker;
 use App\Service\Redaction\QcmDraftService;
@@ -494,7 +495,7 @@ final class RedactionMcpServer
         $points = ['type' => 'array', 'maxItems' => DiaporamaChecker::MAX_POINTS, 'items' => $court, 'description' => sprintf('%d points au plus, %d mots au plus chacun (DIA-01)', DiaporamaChecker::MAX_POINTS, DiaporamaChecker::MAX_POINT_WORDS)];
         $diapositive = self::schema([
             'modele' => ['type' => 'string', 'enum' => $this->diaporamaChecker->modeles()->ids(), 'description' => 'Mise en page de la diapositive (voir modeles dans preparer_diaporama : champs, limites, ordre de lecture, rendus web/pptx/PDF). Compositions : exemple_commente, avant_apres, demonstration, etude_de_cas, separateur'],
-            'scenarioPartie' => ['type' => 'string', 'pattern' => '^[a-z0-9_-]{1,30}$', 'description' => 'Identifiant de la partie du scénario que sert la diapositive (DIA-11)'],
+            'scenarioPartie' => ['type' => 'string', 'pattern' => '^[a-z0-9_-]{1,30}$', 'description' => 'Identifiant de la partie du scénario (DIA-11). Obligatoire avec Atelier visuel v3, dans l’ordre des parties (DIA-15).'],
             'exemple' => ['type' => 'string', 'maxLength' => 220, 'description' => 'Modèle exemple_commente : l\'exemple montré (une demande, une réponse, un extrait), fictif ; 100 caractères au plus avec une capture'],
             'commentaires' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 3, 'items' => ['type' => 'string', 'maxLength' => 50], 'description' => 'Modèle exemple_commente : 1 à 3 remarques numérotées'],
             'avant' => self::schema(['libelle' => ['type' => 'string', 'maxLength' => 24], 'texte' => ['type' => 'string', 'maxLength' => 140]], ['texte']) + ['description' => 'Modèle avant_apres : version de départ (libellé par défaut « Avant »)'],
@@ -512,7 +513,10 @@ final class RedactionMcpServer
             'sousTitre' => $court + ['description' => 'Modèles titre et separateur (90 caractères au plus pour un séparateur)'],
             'public' => $court + ['description' => 'Modèle titre : public visé, sinon celui du parcours'],
             'duree' => ['type' => ['integer', 'string'], 'description' => 'Modèles titre et exercice : durée en minutes'],
-            'points' => $points,
+            'points' => array_replace($points, [
+                'items' => ['oneOf' => [$court, DiaporamaV3::pointStructure()]],
+                'description' => 'Phrases courtes (DIA-01) ou points structurés avec Atelier visuel v3 (DIA-15, lister_icones).',
+            ]),
             'colonnes' => ['type' => 'array', 'minItems' => 2, 'maxItems' => 2, 'description' => 'Modèle comparaison : deux colonnes, par exemple « À faire » et « À éviter »', 'items' => self::schema([
                 'titre' => $court,
                 'points' => $points,
@@ -544,7 +548,7 @@ final class RedactionMcpServer
                 'additionalProperties' => true,
             ],
             'notes' => ['type' => 'string', 'maxLength' => 2000, 'description' => sprintf('Notes de présentation, de %d à %d caractères : ce que la personne qui présente dit (DIA-03). Facultatives sur la première et la dernière diapositive', ...DiaporamaChecker::NOTES_LENGTH)],
-        ], ['modele']);
+        ] + DiaporamaV3::champsDiapositive(), ['modele']);
         $texte = static fn (int $max, string $description = '') => ['type' => 'string', 'maxLength' => $max] + ($description === '' ? [] : ['description' => $description]);
         $brief = self::schema([
             'public' => ['type' => 'string', 'enum' => ['apprendre', 'former']],
@@ -554,6 +558,13 @@ final class RedactionMcpServer
             'theme' => ['type' => 'string', 'enum' => Diaporama::THEMES],
             'intention' => ['type' => 'string', 'enum' => array_keys(DiaporamaBrief::INTENTIONS)],
             'statut' => ['type' => 'string', 'enum' => DiaporamaBrief::STATUTS, 'description' => 'propose tant que la personne n\'a pas confirmé ; confirme ensuite'],
+            'visuel' => self::schema([
+                'palette' => $texte(200),
+                'typographie' => $texte(200),
+                'references' => $texte(200),
+                'styleSchemas' => $texte(200),
+                'illustrations' => $texte(200),
+            ]) + ['description' => 'Direction visuelle du diaporama. Les préférences guident le choix du thème et des compositions du site.'],
             'deductions' => ['type' => 'array', 'maxItems' => 8, 'items' => self::schema(['champ' => $texte(30), 'origine' => $texte(160)], ['champ', 'origine'])],
         ], ['public', 'dureeMinutes', 'objectif', 'intention']) + ['description' => 'Brief (DIA-11) : proposé (briefPropose de preparer_diaporama), présenté à la personne, corrigé, puis gardé avec le diaporama'];
         $liste = ['type' => 'array', 'maxItems' => 3, 'items' => $texte(120)];
@@ -579,12 +590,12 @@ final class RedactionMcpServer
                     'alternativeFixe' => $texte(160),
                 ], ['type', 'notion', 'justification']),
             ], ['id', 'titre', 'intention', 'dureeMinutes'])],
-        ], ['objectifGeneral', 'parties']) + ['description' => 'Scénario pédagogique (DIA-11), validé par la personne avant la création : vérifiez-le avec verifier_scenario_diaporama'];
+        ], ['objectifGeneral', 'parties']) + ['description' => 'Scénario pédagogique (DIA-11), validé par la personne avant la création : vérifiez-le avec verifier_scenario_diaporama. Avec Atelier visuel v3, quatre parties au plus (DIA-15).'];
         $champs = [
             'titre' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255],
             'sousTitre' => ['type' => 'string', 'maxLength' => 255],
             'diapositives' => ['type' => 'array', 'minItems' => 1, 'maxItems' => DiaporamaChecker::NOMBRE[Diaporama::TARGET_PATH][1], 'items' => $diapositive, 'description' => 'De 6 à 12 diapositives pour un cours, de 10 à 20 pour un chapitre, de 12 à 26 pour un parcours ; la première est le modèle titre, la dernière le modèle fin'],
-            'theme' => ['type' => 'string', 'enum' => Diaporama::THEMES, 'description' => 'Identifiant d\'un thème du site (DIA-05). standard par défaut ; atelier_visuel : fond crème, schéma au centre, encadrés en bas'],
+            'theme' => ['type' => 'string', 'enum' => Diaporama::THEMES, 'description' => 'Identifiant d\'un thème du site (DIA-05). standard par défaut, atelier_visuel ou atelier_visuel_v3 (contrat atelierVisuelV3 de preparer_diaporama)'],
             'objectif' => ['type' => 'string', 'maxLength' => DiaporamaChecker::MAX_OBJECTIF_LENGTH, 'description' => 'Ce que la présentation doit permettre, en une phrase (affiché sur l\'ouverture et dans l\'aperçu)'],
             'brief' => $brief,
             'scenario' => $scenario,
@@ -597,11 +608,15 @@ final class RedactionMcpServer
 
         return [
             [
+                new Tool('lister_icones', 'Lister les icônes Atelier visuel v3', self::schema([]), 'Catalogue fermé des icônes v3, avec la version et le sens de chaque identifiant (DIA-15). Lecture seule.', $readOnly),
+                fn () => DiaporamaV3::icones(),
+            ],
+            [
                 new Tool('lister_scenes', 'Lister les scènes animées', self::schema([]), 'Catalogue versionné des scènes animées (escalier, chaîne de traitement, aiguillage, entonnoir, loupe, sas de validation) : à quoi sert chacune, quand elle peut induire en erreur, ses champs et limites, ses étapes, son rendu en .pptx et PDF et un exemple. Aussi : thèmes du site et modèles de diapositive qui acceptent une scène. Ne modifie rien.', $readOnly),
                 fn () => $this->diaporamas->scenes(),
             ],
             [
-                new Tool('preparer_diaporama', 'Préparer un diaporama', self::schema($cible), "À lire avant d'écrire : texte du cours (de tous les cours du chapitre, ou des cours publiés du parcours), public, couverture et inventaire des cours avec leur statut, brief proposé (valeurs déduites à faire corriger), modèles et compositions avec leurs limites et rendus, thèmes, guide des scènes (notion, cas trompeurs, paramètres, rendus web/pptx/PDF, alternative fixe), visuels des cours (fiche complète, cours et passage, indice d'interface simulée), nombre de diapositives attendu, cours du chapitre pas encore publiés et diaporama existant. Ne modifie rien.", $readOnly),
+                new Tool('preparer_diaporama', 'Préparer un diaporama', self::schema($cible), "À lire avant d'écrire : texte du cours (de tous les cours du chapitre, ou des cours publiés du parcours), public, couverture et inventaire des cours avec leur statut, brief proposé (valeurs déduites à faire corriger), modèles et compositions avec leurs limites et rendus, thèmes, contrat Atelier visuel v3 et catalogue des icônes, guide des scènes (notion, cas trompeurs, paramètres, rendus web/pptx/PDF, alternative fixe), visuels des cours (fiche complète, cours et passage, indice d'interface simulée), nombre de diapositives attendu, cours du chapitre pas encore publiés et diaporama existant. Ne modifie rien.", $readOnly),
                 fn (array $args) => $this->diaporamas->source(...array_map(static fn (string $cle) => isset($args[$cle]) ? (int) $args[$cle] : null, ['coursId', 'moduleId', 'parcoursId'])),
             ],
             [
@@ -870,15 +885,16 @@ final class RedactionMcpServer
         return <<<TXT
             Prépare le diaporama du {$cible} {$id} ({$argument}).
 
-            Avant d'écrire : lire_regles avec les identifiants DIA-01 à DIA-13, RED-01, DON-04 et POS-06, et lis-les en entier ; lister_scenes pour connaître les scènes.
+            Avant d'écrire : lire_regles avec les identifiants DIA-01 à DIA-15, RED-01, DON-04 et POS-06, et lis-les en entier ; lister_scenes pour connaître les scènes.
 
             Méthode en 7 temps. Parle à la personne entre les temps 2, 3 et 4 : elle valide avant que tu crées le brouillon.
             1. Lire les sources et leur statut. preparer_diaporama avec {$argument} : lis tout le texte source, le public, la couverture, l'inventaire des cours, les visuels et le guide des scènes. Pour un chapitre, si des cours ne sont pas publiés, arrête-toi et dis lesquels. Pour un parcours, n'utilise que les cours publiés (DIA-10) et annonce la couverture réelle.
-            2. Proposer le brief (DIA-11). Pars de briefPropose et du contexte de la demande : public, durée indicative, objectif, contexte professionnel (fictif), thème (standard ou atelier_visuel) et intention (explicative, illustree ou atelier). Présente-le clairement en disant ce que tu as déduit et d'où, et demande les corrections. Garde statut « propose » tant que la personne n'a pas confirmé.
+            2. Proposer le brief (DIA-11). Pars de briefPropose et du contexte de la demande : public, durée indicative, objectif, contexte professionnel (fictif), thème (standard, atelier_visuel ou atelier_visuel_v3) et intention (explicative, illustree ou atelier). Présente-le clairement en disant ce que tu as déduit et d'où, et demande les corrections. Garde statut « propose » tant que la personne n'a pas confirmé.
             3. Proposer le scénario (DIA-11) : objectif général, fil rouge fictif qui relie les parties, progression, parties avec transition, démonstrations, moments de vérification, activité et durée, cours sources de chaque partie, visuels et scène envisagés. verifier_scenario_diaporama avec {$argument}, le brief et le scénario : corrige ce qui bloque, puis présente le scénario et sa couverture (cours non cités, absents ou non publiés) à la personne, et intègre ses corrections.
             4. Choisir visuels et scènes. Visuels (DIA-12) : seulement ceux de « visuels » ou de lister_captures ; examine-les avec voir_visuel ; pour chacun, une raison courte ; signale une interface simulée ; si aucun ne convient, dis-le. Scènes (DIA-07 à DIA-09) : d'après le sens, jamais d'après un mot du titre (relis « peutInduireEnErreur » : un niveau de stock qui monte et descend ne justifie pas un escalier) ; pour chacune, notion, justification, paramètres, rendus prévus et alternative fixe ; une scène pour trois diapositives au plus. Une scène s'anime sur le web ; dans le .pptx, ce sont des diapositives fixes successives, jamais une animation PowerPoint.
-            5. Composer les {$nombre} diapositives : la première au modèle titre, la dernière au modèle fin. Varie les compositions (DIA-13) : exemple_commente, avant_apres, demonstration, etude_de_cas, separateur au début de chaque partie, en plus des modèles classiques ; respecte les limites de chaque modèle (preparer_diaporama, modeles). Une idée par diapositive (DIA-01), synthèse et pas copie (DIA-02), détail dans les notes de 300 à 900 caractères (DIA-03), pratique avec des données fictives (DIA-04). Relie chaque diapositive à sa partie (scenarioPartie). Choisis seulement l'identifiant du thème : aucune couleur, police, position ni code.
-            6. Créer et contrôler. creer_diaporama avec brief, scenario et diapositives (ou modifier_diaporama si la cible a déjà un diaporama), puis verifier_diaporama : corrige les contrôles bloquants, traite les avertissements. Demande à la personne d'ouvrir l'aperçu (apercuUrl, réservé aux administrateurs) : il mesure chaque diapositive en 16:9 et en lecture étroite. Relance verifier_diaporama : controlesNavigateur donne la diapositive, l'élément, le problème et la mesure ; inspecte une diapositive avec voir_diaporama et son numéro ; corrige, puis fais rouvrir l'aperçu jusqu'à un rendu à jour sans problème.
+            5. Composer les {$nombre} diapositives : la première au modèle titre, la dernière au modèle fin. Varie les compositions (DIA-13) : exemple_commente, avant_apres, demonstration, etude_de_cas, et les modèles classiques. Pour les thèmes précédents, ajoute un separateur au début de chaque partie ; respecte les limites de chaque modèle (preparer_diaporama, modeles). Une idée par diapositive (DIA-01), synthèse et pas copie (DIA-02), détail dans les notes de 300 à 900 caractères (DIA-03), pratique avec des données fictives (DIA-04). Relie chaque diapositive à sa partie (scenarioPartie). Choisis seulement l'identifiant du thème : aucune couleur, police, position ni code.
+               Avec atelier_visuel_v3, lis atelierVisuelV3 dans preparer_diaporama et consulte lister_icones. Rattache toutes les diapositives à leur partie, dans l'ordre (quatre parties au plus). Le site crée les séparateurs de partie à la projection. Pour les deux schémas disponibles, compare le rendu de deux diapositives représentatives avec la personne avant de rédiger la série (DIA-14). Donne des points courts et choisis au besoin un seul point prioritaire. Pour chiffres_cles, distingue un repère pédagogique d'une statistique et cite le cours et le passage exact pour chaque statistique. Consulte l'état du rendu du modèle avant de l'utiliser dans une série à projeter. Dans le cas fictif du devis, n'invente ni prix ni délai.
+            6. Créer et contrôler. creer_diaporama avec brief, scenario et diapositives (ou modifier_diaporama si la cible a déjà un diaporama), puis verifier_diaporama : corrige les contrôles bloquants, traite les avertissements. Demande à la personne d'ouvrir l'aperçu (apercuUrl, réservé aux administrateurs) : il mesure chaque diapositive en 16:9 et en lecture étroite. Relance verifier_diaporama : controlesNavigateur donne le numéro source (separateur: true pour un séparateur automatique qui le précède), l'élément, le problème et la mesure ; inspecte une diapositive avec voir_diaporama et son numéro ; corrige, puis fais rouvrir l'aperçu jusqu'à un rendu à jour sans problème.
             7. Faire relire. Compte rendu : identifiant, brief, scénario, visuels choisis et leur raison, scènes et justification, couverture, avertissements et rendu. Demande une relecture avec l'AUTRE connecteur et la consigne « relire_diaporama ». Après un avis favorable : publier_diaporama, sauf si la personne veut garder le brouillon. Avec des réserves : modifier_diaporama, puis redemande une relecture.
 
             Ne publie jamais sans relecture favorable d'un autre connecteur. Si la personne te demande de garder le diaporama en brouillon, ne le publie pas.
@@ -892,7 +908,7 @@ final class RedactionMcpServer
 
             1. voir_diaporama {$id} (brief, scénario, diapositives, dernier rendu), puis verifier_diaporama {$id} : controles (automatiques), controlesNavigateur (rendu mesuré dans l'aperçu) et aRelire.
             2. preparer_diaporama avec la cible du diaporama (coursId, moduleId ou parcoursId) pour lire le texte source, la couverture et les visuels ; voir_visuel pour un visuel douteux.
-            3. lire_regles avec les identifiants DIA-01 à DIA-13, RED-01, DON-04 et POS-06 ; lister_scenes si le diaporama a des scènes.
+            3. lire_regles avec les identifiants DIA-01 à DIA-15, RED-01, DON-04 et POS-06 ; lister_scenes si le diaporama a des scènes.
             4. Grille de relecture (cite l'identifiant de règle pour chaque constat) :
                - fidélité : rien de faux ni d'ajouté par rapport au cours ; les limites de l'IA dites dans le cours restent présentes ;
                - DIA-11 : le diaporama suit le brief et le scénario ; transitions et fil rouge tiennent ; la couverture réelle est dite ; un brief encore « propose » est une réserve ;
@@ -903,6 +919,7 @@ final class RedactionMcpServer
                - DIA-12 : visuels existants, pertinents pour leur partie, légende juste, interface simulée signalée ; aucune métadonnée inventée ;
                - DIA-13 : compositions variées et adaptées (exemple commenté, avant / après, démonstration, étude de cas, séparateurs) ;
                - DIA-07 à DIA-09 : chaque scène sert une notion réelle du cours, avec justification et équivalent fixe ; le .pptx n'est pas présenté comme animé ;
+               - DIA-14 et DIA-15 : pour Atelier visuel v3, examine le rendu des deux schémas représentatifs. Vérifie que le schéma explique une relation réelle et qu'une seule carte est mise en avant dans les compositions v3. Un repère reste identifiable comme consigne pédagogique. Une statistique reprend fidèlement la valeur, l'unité et le contexte du passage cité. Signale tout modèle sans rendu utilisable. Dans le cas fictif du devis, vérifie qu'aucun prix ni délai n'a été inventé ;
                - DIA-10 (parcours) : seuls les cours publiés sont exploités, aucun module vide n'est présenté comme acquis.
             5. Avis :
                - « defavorable » si une information est fausse, si une donnée n'est pas fictive ou si une scène induit en erreur ;
