@@ -191,7 +191,7 @@ export const construirePptx = async (diaporama, { images = {}, site = 'Formation
   for (const diapositive of plan.diapositives) {
     for (const vue of vuesDiapositive(diapositive)) {
       const slide = pptx.addSlide({ masterName: diapositive.maitre })
-      slide.addText(diapositive.titre, { placeholder: 'titre' })
+      slide.addText(titrePptx(diapositive), { placeholder: 'titre' })
       diapositive.elements.forEach((element) => ajouterElement(slide, element))
       vue.elements.forEach((element) => ajouterElement(slide, element))
       if (vue.notes) slide.addNotes(vue.notes)
@@ -199,6 +199,14 @@ export const construirePptx = async (diaporama, { images = {}, site = 'Formation
   }
   return pptx
 }
+
+// Titre avec son mot-clé surligné (DIA-15), en morceaux de texte modifiables
+const titrePptx = (diapositive) => (diapositive.titreSegments
+  ? diapositive.titreSegments.map((segment) => ({
+      text: segment.texte,
+      options: segment.motCle ? { highlight: 'F6D9C4', color: '2F6B4F' } : {},
+    }))
+  : diapositive.titre)
 
 export const telechargerPptx = async (diaporama, options = {}) => {
   const pptx = await construirePptx(diaporama, options)

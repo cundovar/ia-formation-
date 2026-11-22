@@ -228,7 +228,10 @@ const diapositive = computed(() => plan.value.diapositives[index.value] ?? null)
 // Scène planifiée de la diapositive en cours
 const sceneCourante = computed(() => diapositive.value?.scene ?? null)
 const nombreEtapes = computed(() => sceneCourante.value?.etapes.length ?? 1)
-const variantes = computed(() => variantesDe(props.diaporama.diapositives?.[index.value]?.scene))
+const sourceCourante = computed(() => diapositive.value && !diapositive.value.separateur
+  ? props.diaporama.diapositives?.[diapositive.value.numeroSource - 1]
+  : null)
+const variantes = computed(() => variantesDe(sourceCourante.value?.scene))
 
 const estAuDebut = computed(() => index.value === 0 && (etape.value === 0 || fixe.value))
 const estALaFin = computed(() => index.value === plan.value.diapositives.length - 1 && (fixe.value || etape.value >= nombreEtapes.value - 1))
@@ -252,6 +255,11 @@ const allerA = (nouveau, etapeVoulue = 0) => {
   const total = plan.value.diapositives[index.value]?.scene?.etapes.length ?? 1
   etape.value = etapeVoulue === 'fin' ? total - 1 : Math.min(etapeVoulue, total - 1)
   fixe.value = false
+}
+
+const allerASource = (numeroSource, separateur = false) => {
+  const position = plan.value.diapositives.findIndex((page) => page.numeroSource === numeroSource && page.separateur === separateur)
+  if (position >= 0) allerA(position)
 }
 
 const suivant = () => {
@@ -279,13 +287,13 @@ const rejouer = () => {
 }
 
 const varianteActive = (v) => {
-  const choisie = variantesChoisies.value[index.value]?.[v.cle]
-  const parDefaut = props.diaporama.diapositives?.[index.value]?.scene?.[v.cle]
+  const choisie = variantesChoisies.value[diapositive.value.numeroSource - 1]?.[v.cle]
+  const parDefaut = sourceCourante.value?.scene?.[v.cle]
   return (choisie ?? parDefaut) === v.valeur
 }
 
 const choisirVariante = (v) => {
-  variantesChoisies.value = { ...variantesChoisies.value, [index.value]: { [v.cle]: v.valeur } }
+  variantesChoisies.value = { ...variantesChoisies.value, [diapositive.value.numeroSource - 1]: { [v.cle]: v.valeur } }
   rejouer()
 }
 
@@ -360,7 +368,7 @@ onBeforeUnmount(() => {
 // Un autre diaporama : on repart du début
 watch(() => props.diaporama, () => allerA(0))
 
-defineExpose({ suivant, precedent, allerA, rejouer, index, etape, mouvement, formatForce })
+defineExpose({ suivant, precedent, allerA, allerASource, rejouer, plan, index, etape, mouvement, formatForce })
 </script>
 
 <style scoped>

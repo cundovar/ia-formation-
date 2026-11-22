@@ -80,7 +80,7 @@ const avecScene = (diapo, ctx, points, options = {}) => {
     h: Z.schema.h - 2 * r.y - Z.legende,
   }
   const legende = { x: Z.schema.x + r.x, y: Z.schema.y + Z.schema.h - Z.legende - r.y / 2, w: Z.schema.w - 2 * r.x, h: Z.legende }
-  const scene = planifierScene(diapo.scene, { zone: dessin, couleurs: COULEURS_SCENE, variante: ctx.variantes?.[ctx.index] })
+  const scene = planifierScene(diapo.scene, { zone: dessin, couleurs: COULEURS_SCENE, variante: ctx.variante })
   return {
     elements: [
       surtitre(diapo, ctx),

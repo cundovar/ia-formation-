@@ -213,8 +213,8 @@
           >
             <a
               href="#"
-              @click.prevent="montrer(p.diapositive)"
-            >Diapositive {{ p.diapositive }}</a>{{ p.etape > 1 ? `, étape ${p.etape}` : '' }}
+              @click.prevent="montrer(p.diapositive, p.separateur)"
+            >{{ p.separateur ? 'Séparateur avant la diapositive' : 'Diapositive' }} {{ p.diapositive }}</a>{{ p.etape > 1 ? `, étape ${p.etape}` : '' }}
             ({{ p.format === 'etroit' ? 'lecture étroite' : '16:9' }}) : {{ p.message }}
           </li>
         </ul>
@@ -278,8 +278,8 @@ const diapositivesDe = (partieId) => (diaporama.value?.diapositives ?? [])
   .map((d, i) => (d?.scenarioPartie === partieId ? i + 1 : null))
   .filter(Boolean)
 const titreCours = (id) => diaporama.value?.coursSources?.find((c) => c.id === id)?.titre ?? `cours ${id}`
-const montrer = (numero) => {
-  projection.value?.allerA(numero - 1)
+const montrer = (numero, separateur = false) => {
+  projection.value?.allerASource(numero, separateur)
   document.querySelector('[data-testid="projection-zone"]')?.scrollIntoView({ block: 'center' })
 }
 
@@ -302,15 +302,15 @@ onMounted(async () => {
 
 // Parcourt chaque diapositive et chaque étape, dans les deux formats, et mesure le texte réellement affiché
 const mesurerFormat = async (format, problemes) => {
-  const total = diaporama.value?.diapositives?.length ?? 0
   projection.value.formatForce = format
-  for (let i = 0; i < total; i += 1) {
+  const pages = projection.value.plan.diapositives
+  for (const [i, page] of pages.entries()) {
     projection.value.allerA(i)
     let etape = 0
     for (;;) {
       await nextTick()
       const zone = document.querySelector('[data-testid="projection-zone"] .diapositive')
-      controlerRendu(zone).forEach((p) => problemes.push({ ...p, diapositive: i + 1, etape: etape + 1, format }))
+      controlerRendu(zone).forEach((p) => problemes.push({ ...p, diapositive: page.numeroSource, separateur: page.separateur, etape: etape + 1, format }))
       const avant = projection.value.etape
       if (projection.value.index !== i) break
       projection.value.suivant()
@@ -329,8 +329,8 @@ const verifierAffichage = async () => {
   // Mesure sans transition : une forme en mouvement fausserait les positions
   const mouvementAvant = projection.value.mouvement
   projection.value.mouvement = false
-  // La lecture étroite n'existe que pour le thème Atelier visuel
-  const formats = diaporama.value?.theme === 'atelier_visuel' ? ['large', 'etroit'] : ['large']
+  // Atelier visuel et son thème v3 ont une lecture étroite.
+  const formats = ['atelier_visuel', 'atelier_visuel_v3'].includes(diaporama.value?.theme) ? ['large', 'etroit'] : ['large']
   try {
     for (const format of formats) await mesurerFormat(format, problemes)
   } finally {
@@ -345,7 +345,7 @@ const verifierAffichage = async () => {
       await enregistrerControleRendu(props.id, {
         formats,
         navigateur: navigator.userAgent.match(/(Firefox|Edg|Chrome|Safari)\/[\d.]+/)?.[0] ?? 'navigateur',
-        problemes: problemes.map(({ diapositive, etape, format, element, autre, probleme, mesure }) => ({ diapositive, etape, format, element, autre, probleme, mesure })),
+        problemes: problemes.map(({ diapositive, separateur, etape, format, element, autre, probleme, mesure }) => ({ diapositive, separateur, etape, format, element, autre, probleme, mesure })),
       }, diaporama.value.jetonControleRendu)
       envoi.value = 'Résultat transmis au connecteur.'
     } catch {

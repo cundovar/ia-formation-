@@ -7,6 +7,7 @@
 // le PDF et le .pptx montrent la vue fixe, dont les formes et textes restent modifiables.
 // Les autres modèles sont dessinés par le thème Atelier visuel en attendant leur passage en v3.
 import { estIconeConnue } from './icones'
+import { hauteurTexte } from './mesure'
 import { COULEURS, OMBRE, RAYONS, TAILLES, ZONES, px } from './themes/atelierVisuelV3'
 
 const texte = (valeur) => (typeof valeur === 'string' ? valeur.trim() : '')
@@ -70,11 +71,16 @@ const progression = (ctx, partieId) => {
   const elements = []
   let x = ZONES.progression.x
   const { y, h } = ZONES.progression
+  const espaceLiaison = px(8) + px(22)
+  const largeurParPartie = (ZONES.site.x - x - px(16) - (parties.length - 1) * espaceLiaison) / parties.length
+  const caracteresMax = Math.floor((largeurParPartie - px(34)) / px(9.6))
   parties.forEach((partie, k) => {
     const active = partie.id === partieId
-    const w = px(34) + partie.titre.length * px(9.6)
+    const caracteres = Array.from(partie.titre)
+    const libelle = caracteres.length > caracteresMax ? `${caracteres.slice(0, caracteresMax - 1).join('').trimEnd()}…` : partie.titre
+    const w = px(34) + Array.from(libelle).length * px(9.6)
     if (active) elements.push(forme(`progression-${k}-fond`, { x, y, w, h }, COULEURS.sauge, { rayon: RAYONS.pilule }))
-    elements.push(bloc(`progression-${k}`, { x, y, w, h }, partie.titre, {
+    elements.push(bloc(`progression-${k}`, { x, y, w, h }, libelle, {
       taille: TAILLES.repere, gras: active, couleur: active ? COULEURS.texte : COULEURS.texteDoux, align: 'center', valign: 'middle', role: 'repere',
     }))
     x += w + px(8)
@@ -253,6 +259,143 @@ const circuit = (diapo, points) => {
   )
 }
 
+// Mot-clé du titre (DIA-15) : première occurrence exacte, entre deux limites de mot, comme le contrôle du serveur.
+// Renvoie les morceaux du titre, ou null si le mot-clé est absent ou introuvable.
+export const segmentsTitre = (titre, motCle) => {
+  const t = texte(titre)
+  const mot = texte(motCle)
+  if (!t || !mot) return null
+  const echappe = mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const trouve = new RegExp(`(?<![\\p{L}\\p{N}])${echappe}(?![\\p{L}\\p{N}])`, 'u').exec(t)
+  if (!trouve) return null
+  const fin = trouve.index + mot.length
+  return [
+    { texte: t.slice(0, trouve.index), motCle: false },
+    { texte: mot, motCle: true },
+    { texte: t.slice(fin), motCle: false },
+  ].filter((s) => s.texte)
+}
+
+// Chiffres clés : un nombre mis en valeur, son libellé, une explication et, pour une statistique, le passage du
+// cours qui l'établit (contrôlé par le serveur). Le site n'affiche jamais un chiffre sans son libellé.
+export const MODELE_CHIFFRES = 'chiffres_cles'
+
+const NATURES = {
+  repere: { libelle: 'Repère pédagogique', icone: 'cible' },
+  statistique: { libelle: 'Statistique sourcée', icone: 'document' },
+}
+
+export const donneesChiffres = (diapo) => {
+  const valeur = texte(diapo?.valeur)
+  const libelle = texte(diapo?.libelle)
+  if (!valeur || !libelle) return null
+  const proportion = typeof diapo.proportion === 'number' && Number.isFinite(diapo.proportion) && diapo.proportion >= 0 && diapo.proportion <= 1
+    ? diapo.proportion
+    : null
+  return {
+    valeur,
+    unite: texte(diapo.unite),
+    libelle,
+    texte: texte(diapo.texte),
+    nature: NATURES[diapo.nature] ? diapo.nature : 'repere',
+    proportion,
+    passage: texte(diapo.source?.passage),
+  }
+}
+
+const phraseSource = (passage) => `Source : extrait d’un cours du site, « ${passage} »`
+
+// Repli (Atelier visuel, lecture étroite) : une notion en phrases, sans perdre le chiffre ni sa source
+export const chiffresEnNotion = (diapo) => {
+  const d = donneesChiffres(diapo)
+  if (!d) return { ...diapo, modele: 'notion' }
+  const chiffre = [d.valeur, d.unite].filter(Boolean).join(' ')
+  return {
+    ...diapo,
+    modele: 'notion',
+    points: [`${chiffre} : ${d.libelle}`, d.texte, d.passage && phraseSource(d.passage)].filter(Boolean),
+  }
+}
+
+// Largeur moyenne d'un chiffre en Arial (em) : sert à placer l'unité juste après la valeur
+const EM_CHIFFRE = 0.58
+
+const chiffresCles = (d) => {
+  const avecColonne = Boolean(d.texte || d.passage)
+  const W = px(560)
+  const H = px(420)
+  const x = avecColonne ? px(72) : px(640) - W / 2
+  const y = px(176)
+  const interieur = W - px(64)
+  const nature = NATURES[d.nature]
+  // Unité courte (%, €, h…) sur la ligne du chiffre, à 45 % de sa taille ; unité longue sur la ligne suivante
+  const uniteEnLigne = d.unite.length > 0 && d.unite.length <= 4
+  const emTotal = d.valeur.length * EM_CHIFFRE + (uniteEnLigne ? 0.12 + d.unite.length * 0.6 * 0.45 : 0)
+  const taille = Math.max(40, Math.min(96, Math.floor((interieur * 72) / emTotal)))
+  const wValeur = Math.min(interieur, (d.valeur.length * EM_CHIFFRE * taille) / 72 + px(6))
+  const hValeur = (taille * 1.2) / 72
+  const yValeur = y + px(80)
+  const wNature = px(62) + nature.libelle.length * px(9.4)
+  const elements = [
+    forme('chiffre-carte', { x, y, w: W, h: H }, COULEURS.carte, { ombre: true }),
+    forme('chiffre-nature-fond', { x: x + px(32), y: y + px(28), w: wNature, h: px(36) }, COULEURS.clair, { rayon: RAYONS.pilule }),
+    icone('chiffre-nature-icone', nature.icone, { x: x + px(46), y: y + px(36), w: px(20), h: px(20) }),
+    bloc('chiffre-nature', { x: x + px(74), y: y + px(28), w: wNature - px(42), h: px(36) }, nature.libelle, {
+      taille: TAILLES.repere, gras: true, valign: 'middle', role: 'repere',
+    }),
+    bloc('chiffre-valeur', { x: x + px(32), y: yValeur, w: wValeur, h: hValeur }, d.valeur, {
+      taille, gras: true, couleur: COULEURS.accent, valign: 'bottom', role: 'chiffre',
+    }),
+  ]
+  let yLibelle = yValeur + hValeur + px(8)
+  if (uniteEnLigne) {
+    const tailleUnite = Math.max(24, Math.round(taille * 0.45))
+    elements.push(bloc('chiffre-unite', { x: x + px(32) + wValeur, y: yValeur, w: Math.max(px(24), interieur - wValeur), h: hValeur - (taille * 0.12) / 72 }, d.unite, {
+      taille: tailleUnite, gras: true, couleur: COULEURS.accent, valign: 'bottom', role: 'chiffre',
+    }))
+  } else if (d.unite) {
+    elements.push(bloc('chiffre-unite', { x: x + px(32), y: yLibelle - px(4), w: interieur, h: px(44) }, d.unite, {
+      taille: 28, gras: true, couleur: COULEURS.accent, valign: 'top', role: 'chiffre',
+    }))
+    yLibelle += px(44)
+  }
+  const basLibelle = d.proportion === null ? y + H - px(28) : y + H - px(84)
+  elements.push(bloc('chiffre-libelle', { x: x + px(32), y: yLibelle, w: interieur, h: Math.max(px(40), basLibelle - yLibelle) }, d.libelle, {
+    taille: TAILLES.motCle, gras: true, role: 'intertitre',
+  }))
+  if (d.proportion !== null) {
+    const yb = y + H - px(56)
+    const hb = px(22)
+    elements.push(forme('chiffre-jauge', { x: x + px(32), y: yb, w: interieur, h: hb }, COULEURS.carte, {
+      bordure: COULEURS.filet, epaisseur: 1.1, rayon: RAYONS.pilule,
+    }))
+    if (d.proportion > 0) {
+      elements.push(forme('chiffre-jauge-valeur', { x: x + px(32), y: yb, w: Math.max(hb, interieur * d.proportion), h: hb }, COULEURS.chaud, {
+        bordure: COULEURS.accent, epaisseur: 1.1, rayon: RAYONS.pilule,
+      }))
+    }
+  }
+  if (avecColonne) {
+    const xc = px(680)
+    const wc = px(528)
+    elements.push(forme('chiffre-filet', { x: xc - px(24), y: y + px(24), w: px(4), h: H - px(48) }, COULEURS.sauge, { forme: 'rect', rayon: 0 }))
+    if (d.texte) elements.push(bloc('chiffre-texte', { x: xc, y: y + px(24), w: wc, h: px(220) }, d.texte))
+    if (d.passage) {
+      // La source se cale en bas de la colonne, alignée sur le bas de la carte
+      const phrase = [{ texte: phraseSource(d.passage) }]
+      const hs = hauteurTexte(phrase, wc - px(34), TAILLES.repere) + px(8)
+      const ys = d.texte ? Math.max(y + px(260), y + H - px(24) - hs) : y + px(24)
+      elements.push(
+        icone('chiffre-source-icone', 'document', { x: xc, y: ys + px(2), w: px(22), h: px(22) }),
+        bloc('chiffre-source', { x: xc + px(34), y: ys, w: wc - px(34), h: y + H - px(24) - ys }, phraseSource(d.passage), {
+          taille: TAILLES.repere, couleur: COULEURS.texteDoux, role: 'repere',
+        }),
+      )
+    }
+  }
+  return elements
+}
+
 const pointsStructures = (points) => points.length > 0 && points.every((p) => p.titre)
 
 // Pour les dessins qui n'attendent que des phrases (Atelier visuel, lecture étroite) : « Titre : texte »
@@ -279,6 +422,22 @@ export const compositionV3 = (diapo) => {
  * @returns {{ elements: object[], scene: object|null } | null} null : la diapositive suit le thème Atelier visuel
  */
 export const disposerV3 = (diapo, ctx) => {
+  if (diapo.modele === 'separateur' && Number.isInteger(diapo.numero)) {
+    const zone = { x: 9.9, y: 1.65, w: 2.4, h: 2.4 }
+    const elements = [
+      ...reperes(diapo, ctx),
+      forme('partie-fond', zone, COULEURS.sauge, { forme: 'ellipse' }),
+      bloc('partie-numero', zone, String(diapo.numero).padStart(2, '0'), { taille: 68, gras: true, align: 'center', valign: 'middle' }),
+    ]
+    if (texte(diapo.sousTitre)) {
+      elements.push(bloc('partie-sous-titre', { x: ZONES.titre.x, y: 4.45, w: 8.6, h: 1.4 }, texte(diapo.sousTitre)))
+    }
+    return { elements, scene: null }
+  }
+  if (diapo.modele === MODELE_CHIFFRES) {
+    const donnees = donneesChiffres(diapo)
+    return donnees ? { elements: [...reperes(diapo, ctx), ...chiffresCles(donnees), ...synthese(diapo)], scene: null } : null
+  }
   const composition = compositionV3(diapo)
   if (!composition) return null
   return { elements: [...reperes(diapo, ctx), ...synthese(diapo)], scene: composition }

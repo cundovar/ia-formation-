@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import DiaporamaActions from '@/components/features/diaporamas/DiaporamaActions.vue'
 import DiapositiveHtml from '@/components/features/diaporamas/DiapositiveHtml.vue'
+import ProjectionDiaporama from '@/components/features/diaporamas/ProjectionDiaporama.vue'
+import pilote from '@/diaporamas/pilote/devis-tpe-v3.json'
 import { maitres, planDiaporama } from '@/diaporamas/miseEnPage'
 import demo from '../diaporamas/demo.json'
 
@@ -81,9 +83,37 @@ describe('DiaporamaActions', () => {
     wrapper.unmount()
   })
 
+  it('imprime les séparateurs dans le même ordre que la projection', async () => {
+    const wrapper = monter({ diaporama: pilote })
+    vi.spyOn(window, 'print').mockImplementation(() => {})
+    await wrapper.get('[data-testid="diaporama-pdf"]').trigger('click')
+    await flushPromises()
+    const titres = [...document.querySelectorAll('.diaporama-impression__page .diapositive h2')].map((titre) => titre.textContent.trim())
+    expect(titres).toEqual(['Formuler', pilote.diapositives[0].titre, 'Vérifier', pilote.diapositives[1].titre])
+    window.dispatchEvent(new Event('afterprint'))
+    await flushPromises()
+    wrapper.unmount()
+  })
+
   it('titre la section selon la cible', () => {
     const wrapper = monter({ cible: 'chapitre' })
     expect(wrapper.get('h2').text()).toBe('Diaporama du chapitre')
+    wrapper.unmount()
+  })
+})
+
+describe('ProjectionDiaporama', () => {
+  it('ouvre le contenu ou le séparateur correspondant au numéro source', async () => {
+    const wrapper = mount(ProjectionDiaporama, { props: { diaporama: pilote } })
+    wrapper.vm.allerASource(2)
+    await flushPromises()
+    expect(wrapper.get('[data-testid="projection-zone"] h2').text()).toBe(pilote.diapositives[1].titre)
+    wrapper.vm.allerASource(2, true)
+    await flushPromises()
+    expect(wrapper.get('[data-testid="projection-zone"] h2').text()).toBe('Vérifier')
+    wrapper.vm.suivant()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="projection-zone"] h2').text()).toBe(pilote.diapositives[1].titre)
     wrapper.unmount()
   })
 })
